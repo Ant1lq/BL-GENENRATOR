@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BL Pro - Expert MicroPort</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root { --blue-mp: #002e6d; --border-color: #000; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; margin: 0; padding: 10px; color: #333; }
@@ -30,6 +31,7 @@
         .btn-secondary { background: #28a745; color: white; border: none; padding: 18px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; font-size: 16px; margin-top: 10px; }
         .btn-mail { background: #0078d4; color: white; border: none; padding: 18px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; font-size: 16px; margin-top: 10px; }
         .btn-config { background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 10px; cursor: pointer; }
+        .btn-scan { background: #e0a800; color: #000; border: none; padding: 0 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; }
 
         .signature-area { background: #fdfdfd; border: 1px dashed #bbb; border-radius: 8px; padding: 8px; text-align: center; position: relative; }
         .sig-canvas { border: 1px solid #eee; background: white; border-radius: 4px; touch-action: none; width: 100%; height: 100px; }
@@ -41,6 +43,14 @@
         #sig-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .modal-sig-container { background: white; width: 100%; max-width: 800px; padding: 15px; border-radius: 12px; text-align: center; box-sizing: border-box; }
         .modal-sig-canvas { border: 2px dashed var(--blue-mp); background: #fafafa; border-radius: 8px; touch-action: none; width: 100%; height: 300px; margin-bottom: 15px; }
+
+        /* --- MODALE SCANNER HAUTE DENSITÉ --- */
+        #scanner-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 3000; flex-direction: column; justify-content: center; align-items: center; padding: 10px; box-sizing: border-box; }
+        .scanner-container { background: white; width: 100%; max-width: 480px; padding: 15px; border-radius: 16px; text-align: center; box-sizing: border-box; }
+        #reader { width: 100%; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+        .scanner-ui-box { margin: 10px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .zoom-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: var(--blue-mp); }
+        .scanner-hint { font-size: 10px; color: #555; line-height: 1.3; margin-top: 5px; text-align: left; }
 
         /* --- BL STRUCTURE --- */
         #bl-wrapper { background: #525659; padding: 20px 0; overflow-x: auto; }
@@ -122,12 +132,6 @@
     <div class="admin-section">
         <h3>2. Matériel <button class="btn-config" onclick="openConfig('materiel')">⚙️ GÉRER LES RÉFÉRENCES</button></h3>
         
-        <div style="background: #e6eef7; border: 2px dashed var(--blue-mp); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
-            <label style="color: var(--blue-mp); font-size: 12px; font-weight: bold; margin-bottom: 4px;">🔍 SCANNER UN BOÎTIER DIRECTEMENT (DAI OU PACEMAKER)</label>
-            <input type="text" id="scan-boitier" placeholder="Cliquez ici puis flashez le code-barres complet du boîtier..." oninput="parseBoitierBarcode(this)" style="border-color: var(--blue-mp); background: #fff; height: 40px; font-size: 14px;">
-            <small style="font-size: 10px; color: #555; display: block; margin-top: 4px;">Prend en charge l'extraction automatique de la REF, du S/N et de l'Expiration (Normes HIBC / GS1).</small>
-        </div>
-
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
             <div>
                 <label>Défibrillateur (DAI)</label>
@@ -140,7 +144,10 @@
         </div>
 
         <div id="cfg-defi" class="mat-config-box">
-            <span style="font-weight:bold; font-size:12px; color:var(--blue-mp);">Configuration DAI</span>
+            <span style="font-weight:bold; font-size:12px; color:var(--blue-mp); display:flex; justify-content:space-between; align-items:center;">
+                Configuration DAI
+                <button type="button" class="btn-scan" onclick="openScanner('defi')">📷 SCANNER CODE (TALENTIA)</button>
+            </span>
             <div class="grid-inputs" style="margin-top:5px;">
                 <div><label>Photo DAI</label><input type="file" onchange="saveImg(this, 'defi')"></div>
                 <div><label>Série (SN)</label><input type="text" id="sn-defi" oninput="sync()"></div>
@@ -151,7 +158,10 @@
         </div>
 
         <div id="cfg-pace" class="mat-config-box">
-            <span style="font-weight:bold; font-size:12px; color:var(--blue-mp);">Configuration Pacemaker</span>
+            <span style="font-weight:bold; font-size:12px; color:var(--blue-mp); display:flex; justify-content:space-between; align-items:center;">
+                Configuration Pacemaker
+                <button type="button" class="btn-scan" onclick="openScanner('pace')">📷 SCANNER CODE (ALIZÉA/ENO)</button>
+            </span>
             <div class="grid-inputs" style="margin-top:5px;">
                 <div><label>Photo PM</label><input type="file" onchange="saveImg(this, 'pace')"></div>
                 <div><label>Série (SN)</label><input type="text" id="sn-pace" oninput="sync()"></div>
@@ -171,6 +181,27 @@
         <button class="btn-secondary" onclick="captureImage()">📸 GÉNÉRER IMAGE (iPhone)</button>
     </div>
     <button class="btn-mail" onclick="generateEmail()">📧 GÉNÉRER DANS OUTLOOK</button>
+</div>
+
+<div id="scanner-modal">
+    <div class="scanner-container">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:14px;">SCANNER HAUTE RÉSOLUTION</h3>
+        <div id="reader"></div>
+        
+        <div class="scanner-ui-box">
+            <div class="zoom-label">
+                <span>ZOOM OPTER POUR LA NETTETÉ</span>
+                <span id="zoom-value">1.0x</span>
+            </div>
+            <input type="range" id="scanner-zoom" min="1" max="5" step="0.1" value="1" style="width:100%; height:30px; margin:0;" disabled>
+            
+            <div class="scanner-hint">
+                💡 <b>Conseil de visée :</b> Placez le code bien au centre de la zone. Pour les étiquettes de boîtier ou les DataMatrix minuscules, éloignez l'iPhone à 15-20 cm puis augmentez le curseur de zoom pour obtenir une mise au point parfaite.
+            </div>
+        </div>
+        
+        <button class="clear-btn" style="width:100%; padding:12px; font-weight:bold; border-radius:8px;" onclick="closeScanner()">ANNULER / FERMER</button>
+    </div>
 </div>
 
 <div id="config-modal">
@@ -274,6 +305,11 @@
         "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M", "Invicta 1CR58": "TLT001C", "Invicta 1CR68": "TLT005C", "Navigo ARC78": "TLT021C", "Navigo ARC88": "TLT022C", "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT020C"
     };
 
+    // Correspondance GTIN (DI du code barre) -> Nom exact du dispositif pour sélection automatique
+    let gtinMap = {
+        "08031527020914": "Talentia DR 3540"
+    };
+
     let listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
     let listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
     let listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
@@ -286,121 +322,9 @@
     let activeFullscreenTarget = null;
     let mCanvas, mCtx;
 
-    /* --- PARSEUR DE CODE-BARRES COMPLEXE POUR DAI & PM (HIBC / GS1) --- */
-    function parseBoitierBarcode(input) {
-        let raw = input.value.trim();
-        if (raw.length < 8) return; // Attend que le scan soit complet
-
-        let ref = "";
-        let sn = "";
-        let expDate = "";
-
-        // structure 1: Norme HIBC (commence généralement par '+')
-        if (raw.startsWith("+")) {
-            // Extraction de la REF (Ex: +E306TDF061C1 -> récupère TDF061C)
-            let primaryMatch = raw.match(/^\+([A-Z0-9]{4})([A-Z0-9]{7,8})/);
-            if (primaryMatch) {
-                ref = primaryMatch[2];
-            }
-            
-            // Extraction EXP (YYMMDD) et SN (après /$$3 ou +$$3)
-            let secondaryMatch = raw.match(/[\/\+]\$\$([0-7])([0-9]{6})([A-Z0-9]+)/) || raw.match(/\+([0-7])([0-9]{6})([A-Z0-9]+)/);
-            if (secondaryMatch) {
-                let dateStr = secondaryMatch[2];
-                let remainder = secondaryMatch[3];
-                
-                if (dateStr && dateStr.length === 6) {
-                    let yy = "20" + dateStr.substring(0, 2);
-                    let mm = dateStr.substring(2, 4);
-                    let dd = dateStr.substring(4, 6);
-                    expDate = `${yy}-${mm}-${dd}`;
-                }
-                if (remainder && remainder.length > 1) {
-                    sn = remainder.substring(0, remainder.length - 1); // Enlève le caractère de contrôle final
-                } else if (remainder) {
-                    sn = remainder;
-                }
-            }
-
-            // Balayage de sécurité si le format HIBC varie légèrement
-            if (!ref) {
-                for (let model in refsMap) {
-                    if (raw.includes(refsMap[model])) { ref = refsMap[model]; break; }
-                }
-            }
-        } 
-        // structure 2: Norme GS1
-        else {
-            let clean = raw.replace(/[\(\)]/g, ""); // Supprime les parenthèses si présentes
-            
-            // AI 17 = Date Expiration (YYMMDD)
-            let expMatch = clean.match(/17([0-9]{6})/);
-            if (expMatch) {
-                let dateStr = expMatch[1];
-                let yy = "20" + dateStr.substring(0, 2);
-                let mm = dateStr.substring(2, 4);
-                let dd = dateStr.substring(4, 6);
-                expDate = `${yy}-${mm}-${dd}`;
-            }
-            
-            // AI 21 = Numéro de série (SN)
-            let snMatch = clean.match(/21([A-Z0-9]{4,20})/);
-            if (snMatch) {
-                sn = snMatch[1];
-            }
-            
-            // Trouver la REF correspondante dans notre base
-            for (let model in refsMap) {
-                if (clean.includes(refsMap[model])) { ref = refsMap[model]; break; }
-            }
-        }
-
-        // --- APPLICATION DES DONNÉES EXTRAITES ---
-        if (ref) {
-            let targetType = ""; // 'defi' ou 'pace'
-            let targetModelName = "";
-
-            for (let modelName in refsMap) {
-                if (refsMap[modelName] === ref) {
-                    targetModelName = modelName;
-                    if (listDefis.includes(modelName)) {
-                        targetType = "defi";
-                    } else if (listPaces.includes(modelName)) {
-                        targetType = "pace";
-                    }
-                    break;
-                }
-            }
-
-            if (targetType) {
-                // Éteindre l'autre type pour éviter les doublons accidentels
-                if (targetType === "defi") document.getElementById("inPace").value = "";
-                else document.getElementById("inDefi").value = "";
-                toggleBox(targetType === "defi" ? "Pace" : "Defi");
-
-                // Sélectionner le bon modèle détecté
-                let selectElem = document.getElementById(targetType === "defi" ? "inDefi" : "inPace");
-                for (let i = 0; i < selectElem.options.length; i++) {
-                    if (selectElem.options[i].value === targetModelName) {
-                        selectElem.selectedIndex = i;
-                        break;
-                    }
-                }
-
-                // Déplier le bloc de configuration
-                toggleBox(targetType === "defi" ? "Defi" : "Pace");
-
-                // Injecter le SN et la date d'expiration extraits
-                if (sn) document.getElementById(`sn-${targetType}`).value = sn;
-                if (expDate) document.getElementById(`exp-${targetType}`).value = expDate;
-
-                // Synchronisation et réinitialisation de la zone de scan
-                sync();
-                input.value = ""; 
-                input.blur(); // Retire le focus pour indiquer le succès du traitement
-            }
-        }
-    }
+    // Variables de contrôle globales du scanner
+    let html5QrcodeScanner = null;
+    let activeScanTarget = null;
 
     function openConfig(mode) {
         const modal = document.getElementById('config-modal');
@@ -519,9 +443,164 @@
         sync();
     }
 
+    // --- ENGIN DE SCANNER & PARSER MATÉRIEL MÉDICAL (GS1-128 / DATA MATRIX) ---
+    function openScanner(targetId) {
+        activeScanTarget = targetId;
+        document.getElementById('scanner-modal').style.display = 'flex';
+        
+        html5QrcodeScanner = new Html5Qrcode("reader");
+        
+        const config = {
+            fps: 25,
+            qrbox: function(width, height) {
+                return { width: Math.floor(width * 0.85), height: Math.floor(height * 0.5) };
+            },
+            videoConstraints: {
+                facingMode: "environment",
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            }
+        };
+
+        html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess)
+        .then((previewTrack) => {
+            const track = html5QrcodeScanner.getVideoTrack();
+            const capabilities = track.getCapabilities();
+            const zoomSlider = document.getElementById('scanner-zoom');
+            const zoomVal = document.getElementById('zoom-value');
+            
+            if (capabilities.zoom) {
+                zoomSlider.min = capabilities.zoom.min;
+                zoomSlider.max = capabilities.zoom.max;
+                zoomSlider.step = capabilities.zoom.step;
+                zoomSlider.value = capabilities.zoom.current || capabilities.zoom.min;
+                zoomSlider.disabled = false;
+                zoomVal.innerText = parseFloat(zoomSlider.value).toFixed(1) + "x";
+                
+                zoomSlider.oninput = (e) => {
+                    const val = parseFloat(e.target.value);
+                    zoomVal.innerText = val.toFixed(1) + "x";
+                    track.applyConstraints({ advanced: [{ zoom: val }] });
+                };
+            } else {
+                zoomSlider.disabled = true;
+                zoomVal.innerText = "Non supporté par iOS";
+            }
+        })
+        .catch((err) => {
+            console.error("Erreur de démarrage de la caméra : ", err);
+        });
+    }
+
+    function closeScanner() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop().then(() => {
+                document.getElementById('scanner-modal').style.display = 'none';
+                document.getElementById('scanner-zoom').disabled = true;
+                html5QrcodeScanner = null;
+            }).catch(err => console.log(err));
+        } else {
+            document.getElementById('scanner-modal').style.display = 'none';
+        }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        if (navigator.vibrate) navigator.vibrate(100);
+        
+        // Parsing robuste multi-format (linéaire et composite)
+        const parsedData = parseMedicalBarcode(decodedText);
+        
+        if (activeScanTarget === 'defi' || activeScanTarget === 'pace') {
+            // Sélection automatique de l'appareil s'il est configuré dans gtinMap
+            if (parsedData.gtin && gtinMap[parsedData.gtin]) {
+                const selectId = activeScanTarget === 'defi' ? 'inDefi' : 'inPace';
+                document.getElementById(selectId).value = gtinMap[parsedData.gtin];
+                toggleBox(activeScanTarget === 'defi' ? 'Defi' : 'Pace');
+            }
+            
+            if (parsedData.sn) document.getElementById(`sn-${activeScanTarget}`).value = parsedData.sn;
+            if (parsedData.exp) document.getElementById(`exp-${activeScanTarget}`).value = parsedData.exp;
+        } else {
+            // Reste inchangé pour la partie sondes
+            const targetContainer = document.getElementById(activeScanTarget);
+            if (targetContainer) {
+                if (parsedData.sn) targetContainer.querySelector('.sn').value = parsedData.sn;
+                if (parsedData.exp) targetContainer.querySelector('.exp').value = parsedData.exp;
+            }
+        }
+        
+        closeScanner();
+        sync();
+    }
+
+    function parseMedicalBarcode(rawText) {
+        let sn = "";
+        let exp = "";
+        let gtin = "";
+        
+        // Nettoyage complet des espaces et des caractères de contrôle invisibles
+        let cleanText = rawText.replace(/[\u0000-\u001F\u007F-\u009F\s]/g, "");
+        
+        // FORMAT MULTI-ELEMENTS AVEC PARENTHÈSES EXPLICITES (01)...(11)...(17)...(21)...
+        if (cleanText.includes("(17)") || cleanText.includes("(21)") || cleanText.includes("(01)")) {
+            const gtinMatch = cleanText.match(/\(01\)(\d{14})/);
+            const expMatch = cleanText.match(/\(17\)(\d{6})/);
+            const snMatch = cleanText.match(/\(21\)([A-Za-z0-9\-]+)/);
+            
+            if (gtinMatch) gtin = gtinMatch[1];
+            if (expMatch) exp = formatGs1Date(expMatch[1]);
+            if (snMatch) sn = snMatch[1];
+            return { sn, exp, gtin };
+        }
+        
+        // FORMAT FLUIDE ET LINÉAIRE BRUT (Sans parenthèses, typique des lecteurs de codes barres de boîtier)
+        let index = 0;
+        while (index < cleanText.length) {
+            let ai2 = cleanText.substring(index, index + 2);
+            
+            if (ai2 === "01") {
+                gtin = cleanText.substring(index + 2, index + 16);
+                index += 16; // AI (2) + GTIN (14)
+            } else if (ai2 === "11") {
+                index += 8;  // Saute la date de fab : AI (2) + YYMMDD (6)
+            } else if (ai2 === "17") {
+                let expRaw = cleanText.substring(index + 2, index + 8);
+                exp = formatGs1Date(expRaw);
+                index += 8;  // AI (2) + YYMMDD (6)
+            } else if (ai2 === "21") {
+                // Le numéro de série est de longueur variable et conclut généralement la chaîne
+                sn = cleanText.substring(index + 2);
+                break;
+            } else {
+                index++; // Avance de secours pour éviter toute boucle infinie
+            }
+        }
+        
+        // SÉCURITÉ : Analyse regex autonome si l'extraction séquentielle a manqué une variable
+        if (!exp) {
+            const fallbackExp = cleanText.match(/17(\d{6})/);
+            if (fallbackExp) exp = formatGs1Date(fallbackExp[1]);
+        }
+        if (!sn) {
+            const fallbackSn = cleanText.match(/21([A-Za-z0-9\-]+)$/);
+            if (fallbackSn) sn = fallbackSn[1];
+        }
+        
+        if (!sn) sn = cleanText; // Retour ultime de la chaîne brute brute en SN si échec total
+        
+        return { sn, exp, gtin };
+    }
+
+    function formatGs1Date(yymmdd) {
+        const year = "20" + yymmdd.substring(0, 2);
+        const month = yymmdd.substring(2, 4);
+        const day = yymmdd.substring(4, 6);
+        return `${year}-${month}-${day}`;
+    }
+
     function toUnicodeBold(str) {
         const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        const boldAlphabet = '𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝐖𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐳𝟎𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗';
+        const boldAlphabet = '𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔|𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤|𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐳𝟎𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗';
         return str.split('').map(c => {
             const idx = alphabet.indexOf(c);
             return idx > -1 ? boldAlphabet.substr(idx * 2, 2) : c;
@@ -634,7 +713,11 @@
             const ingName = document.getElementById('inIng').value || "";
             const formattedStockName = `Stock MICROPORT CRM ${ingName.toUpperCase()}`;
             
-            d.innerHTML = `<b>${name}</b><div class="grid-inputs">
+            d.innerHTML = `<span style="font-weight:bold; font-size:12px; color:var(--blue-mp); display:flex; justify-content:space-between; align-items:center;">
+                <b>${name}</b>
+                <button type="button" class="btn-scan" onclick="openScanner('${id}')">📷 SCANNER DATAMATRIX (INVICTA)</button>
+            </span>
+            <div class="grid-inputs" style="margin-top:5px;">
                 <div><label>Photo</label><input type="file" onchange="saveImg(this, '${id}')"></div>
                 <div><label>SN</label><input type="text" class="sn" oninput="sync()"></div>
                 <div><label>Exp.</label><input type="date" class="exp" onchange="sync()"></div>
@@ -650,7 +733,6 @@
     function upMediaFile(input, tid, key) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = e => { sigSource[key] = 'file'; document.getElementById(tid).src = e.target.result; sync(); }; r.readAsDataURL(input.files[0]); } }
     function upMedia(input, tid) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = e => { document.getElementById(tid).src = e.target.result; sync(); }; r.readAsDataURL(input.files[0]); } }
 
-    /* --- LOGIQUE DE SYNCHRONISATION DES SIGNATURES AUTOMATIQUES --- */
     function sync() {
         const c = document.getElementById('inC').value;
         if(!c || !db[c]) return;
@@ -667,7 +749,6 @@
         document.getElementById('v-ing').innerText = ing;
         document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
         
-        // --- 1. BOITE CENTRALE : TRANSPORTEUR / INGENIEUR ---
         const sigTransImg = document.getElementById('v-sig-trans');
         
         if (sigSource['trans'] === 'draw') {
@@ -680,7 +761,6 @@
         } 
         else {
             document.getElementById('lbl-sig-ing').innerHTML = '';
-            
             if (ing === "Antoine LECOCQ") {
                 sigTransImg.src = "assets/signature-antoine.png";
             } else if (ing === "Baptiste DESARMENIEN") {
@@ -696,7 +776,6 @@
             }
         }
 
-        // --- 2. BOITE DE DROITE : TAMPON / CENTRE ---
         const sigCentreImg = document.getElementById('v-sig-centre');
         
         if (sigSource['centre'] === 'draw') {
@@ -709,7 +788,6 @@
         } 
         else {
             document.getElementById('lbl-sig-doc').innerHTML = '';
-            
             if (c === "CHU TOURS") {
                 sigCentreImg.src = "assets/tampon-chu-tours.png";
             } else if (c === "CHU ORLEANS") {
@@ -731,7 +809,6 @@
             }
         }
 
-        // --- TABLEAU DES MATÉRIELS ---
         const table = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
         table.innerHTML = ""; let n = 0;
         
