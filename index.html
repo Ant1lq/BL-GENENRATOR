@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BL Pro - Expert MicroPort</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        :root { --blue-mp: #002e6d; --border-color: #000; }
+        body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; background: #f0f2f5; margin: 0; padding: 10px; color: #333; }
+
+        .admin-panel { max-width: 1000px; margin: 0 auto 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .admin-section { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .admin-section h3 { font-size: 13px; color: var(--blue-mp); text-transform: uppercase; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 110px); gap: 10px; margin-bottom: 15px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px; }
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        
+        label { display: block; font-size: 11px; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; background: #fafafa; transition: border 0.2s; }
+        input:focus, select:focus { border-color: var(--blue-mp); outline: none; background: #fff; }
+        
+        button { background: var(--blue-mp); color: white; border: none; padding: 12px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s, transform 0.1s; font-size: 14px; }
+        button:hover { background: #001f4d; }
+        button:active { transform: scale(0.98); }
+        button.secondary { background: #e4e6eb; color: #000; }
+        button.secondary:hover { background: #d8dadf; }
+        button.danger { background: #e41e3f; }
+        button.danger:hover { background: #b31329; }
+        button.scan-btn { padding: 10px; background: #25d366; }
+        button.scan-btn:hover { background: #1ebd58; }
+
+        .card { background: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 15px; position: relative; }
+        .card-title { font-weight: bold; font-size: 14px; color: var(--blue-mp); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .sonde-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; margin-bottom: 10px; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #e1e4e8; }
+        .sonde-inputs { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; width: 100%; }
+
+        /* MODAL SCANNER TECHNIQUE */
+        #scan-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; padding: 15px; box-sizing: border-box; }
+        #scan-modal-content { background: white; width: 100%; max-width: 500px; border-radius: 12px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+        #reader { width: 100% !important; background: #000; }
+        #reader video { width: 100% !important; object-fit: cover; }
+        .scan-modal-actions { padding: 15px; background: #fff; display: flex; justify-content: center; border-top: 1px solid #eee; }
+
+        /* RENDU VISUEL DU BON DE LIVRAISON (A4) */
+        #output-container { background: #525659; padding: 40px 10px; display: flex; justify-content: center; }
+        .bl-page { background: white; width: 210mm; height: 297mm; padding: 15mm 20mm; box-sizing: border-box; box-shadow: 0 0 20px rgba(0,0,0,0.3); position: relative; font-size: 11px; line-height: 1.3; color: #000; font-family: Arial, sans-serif; display: flex; flex-direction: column; }
+        
+        .bl-header { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 25px; align-items: start; }
+        .logo-mp { font-weight: 900; font-size: 22px; color: var(--blue-mp); letter-spacing: -0.5px; }
+        .logo-sub { font-size: 8px; text-transform: uppercase; color: #555; letter-spacing: 1px; margin-top: -2px; font-weight: bold; }
+        .dest-box { border: 1px solid var(--border-color); padding: 12px; border-radius: 4px; min-height: 80px; font-size: 11px; background: #fff; line-height: 1.4; }
+        
+        .bl-title { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 20px; border-bottom: 2px solid var(--blue-mp); padding-bottom: 5px; color: var(--blue-mp); }
+        .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 25px; background: #f8f9fa; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .meta-item b { display: block; text-transform: uppercase; font-size: 9px; color: #555; margin-bottom: 2px; }
+        
+        .main-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
+        .main-table th { background: var(--blue-mp); color: white; border: 1px solid var(--border-color); padding: 8px; text-align: left; text-transform: uppercase; font-size: 10px; }
+        .main-table td { border: 1px solid var(--border-color); padding: 8px; vertical-align: top; }
+        .row-type { font-weight: bold; font-size: 10px; width: 60px; text-align: center; }
+        .row-img { width: 50px; text-align: center; }
+        .row-img img { max-height: 35px; max-width: 45px; object-fit: contain; }
+        
+        .footer-note { font-size: 9px; border: 1px solid var(--border-color); padding: 8px; border-radius: 4px; margin-bottom: 20px; background: #fafafa; }
+        .sig-section { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: auto; padding-top: 20px; }
+        .sig-box { border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; min-height: 90px; position: relative; background: #fff; }
+        .sig-label { font-size: 9px; font-weight: bold; text-transform: uppercase; color: #555; border-bottom: 1px solid #eee; padding-bottom: 3px; margin-bottom: 5px; }
+        .sig-img { position: absolute; bottom: 5px; right: 10px; max-height: 65px; pointer-events: none; }
+        .sig-text { font-size: 10px; font-weight: bold; color: #1a1a1a; margin-top: 5px; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .admin-panel, #scan-modal, .no-print { display: none !important; }
+            #output-container { padding: 0; background: transparent; }
+            .bl-page { box-shadow: none; width: 210mm; height: 297mm; padding: 15mm 20mm; page-break-after: avoid; page-break-inside: avoid; }
+        }
+        
+        @media (max-width: 768px) {
+            .grid-3 { grid-template-columns: repeat(3, 1fr); }
+            .sonde-inputs { grid-template-columns: 1fr; gap: 8px; }
+            .sonde-row { grid-template-columns: 1fr; }
+            button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--blue-mp); padding-bottom: 10px;">
+        <h2 style="margin: 0; color: var(--blue-mp); font-size: 18px;">Générateur de Bon de Livraison MicroPort</h2>
+        <span style="font-size: 11px; background: #e4e6eb; padding: 4px 8px; border-radius: 4px; font-weight: bold;">v2.3 - Live Scan</span>
+    </div>
+
+    <div class="admin-section">
+        <h3>⚙️ Paramètres du Document</h3>
+        <div class="grid-form">
+            <div>
+                <label>Date d'Implantation</label>
+                <input type="date" id="inDate">
+            </div>
+            <div>
+                <label>Centre Hospitalier</label>
+                <select id="inCentre" onchange="updateDoctorsAndRefs()"></select>
+            </div>
+            <div>
+                <label>Opérateur / Médecin</label>
+                <select id="inDoc"></select>
+            </div>
+            <div>
+                <label>Patient (Nom / Initiales)</label>
+                <input type="text" id="inPatient" placeholder="Ex: M. Jean DUPONT">
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section">
+        <h3>🫀 Dispositif Rythmique (Stimulateur ou Défibrillateur)</h3>
+        <div class="card">
+            <div class="card-title">Matériel Principal</div>
+            <div class="grid-form">
+                <div>
+                    <label>Modèle Détecté / Choisi</label>
+                    <select id="inPace"></select>
+                </div>
+                <div>
+                    <label>Numéro de Série (SN)</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" id="sn-pace" placeholder="Numéro de Série">
+                        <button class="scan-btn" onclick="startScanner('pace')">📷</button>
+                    </div>
+                </div>
+                <div>
+                    <label>Date de Péremption (EXP)</label>
+                    <input type="date" id="exp-pace">
+                </div>
+            </div>
+            <div class="grid-3">
+                <div>
+                    <label>Axe Prélèvement</label>
+                    <select id="p-pace">
+                        <option value="Dépôt de stock">Stock Hosp</option>
+                        <option value="Mallette ingénieur">Mallette</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Renouvellement</label>
+                    <select id="r-pace">
+                        <option value="non">NON</option>
+                        <option value="centre">CENTRE</option>
+                        <option value="ing">INGÉNIEUR</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">🔌 Electrodes & Sondes Connectées</h3>
+            <button type="button" class="secondary" style="padding: 6px 12px; font-size: 12px;" onclick="addSondeConfigRow()">+ Ajouter une sonde</button>
+        </div>
+        <div id="ui-sonde-configs"></div>
+    </div>
+
+    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;" class="no-print">
+        <button class="secondary" onclick="resetForm()">Réinitialiser</button>
+        <button onclick="generateBL()">👁️ Mettre à jour le Document</button>
+        <button class="danger" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button>
+    </div>
+</div>
+
+<div id="output-container">
+    <div class="bl-page" id="bl-render-zone">
+        <div class="bl-header">
+            <div>
+                <div class="logo-mp">MicroPort</div>
+                <div class="logo-sub">CRM France SAS</div>
+                <div style="margin-top: 15px; font-size: 10px; color: #444; line-height: 1.4;">
+                    <b>MicroPort CRM France SAS</b><br>
+                    Parc d'Affaires Technopolis<br>
+                    3 Avenue du Canada, Bât. Alpha<br>
+                    91940 Les Ulis<br>
+                    Tél: +33 (0)1 64 86 94 00
+                </div>
+            </div>
+            <div>
+                <div class="dest-box" id="lbl-centre-adresse">
+                    <i>Sélectionnez un établissement hospitalier pour mettre à jour l'adresse de livraison.</i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bl-title">Bon de Livraison / Suivi d'Implantation</div>
+
+        <div class="meta-grid">
+            <div class="meta-item"><b>Date d'Implantation</b><span id="lbl-date">-</span></div>
+            <div class="meta-item"><b>Médecin Opérateur</b><span id="lbl-doc">-</span></div>
+            <div class="meta-item"><b>Patient (Init.)</b><span id="lbl-patient">-</span></div>
+            <div class="meta-item"><b>Ingénieur Conseil</b><span>A. LECOCQ</span></div>
+        </div>
+
+        <table class="main-table">
+            <thead>
+                <tr>
+                    <th class="row-type">Type</th>
+                    <th class="row-img">Visuel</th>
+                    <th>Description du Dispositif Médical</th>
+                    <th style="width: 70px; text-align: center;">Qté</th>
+                </tr>
+            </thead>
+            <tbody id="bl-table-body">
+                <tr>
+                    <td colspan="4" style="text-align: center; color: #888; padding: 20px;">Aucun élément configuré. Cliquez sur "Mettre à jour le Document".</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 5px; font-size: 11px; text-align: right; padding-right: 10px;">
+            <b>Volume global d'unités délivrées :</b> <span id="v-total" style="font-size: 13px; color: var(--blue-mp);">0</span>
+        </div>
+
+        <div class="footer-note">
+            <b>Note réglementaire :</b> Ce document certifie la livraison et l'implantation des dispositifs médicaux MicroPort CRM listés ci-dessus au sein de votre établissement. Le matériel prélevé sur le stock de dépôt fera l'objet d'un remplacement standard automatique, sauf mention explicite d'un axe d'attribution direct ou d'un renouvellement spécifique.
+        </div>
+
+        <div class="sig-section">
+            <div class="sig-box">
+                <div class="sig-label">Pour l'Établissement Hospitalier</div>
+                <div class="sig-text" id="lbl-sig-hospital">-</div>
+                <div style="font-size: 8px; color: #777; margin-top: 15px;">Nom complet & Signature précédée de la mention manuscrite "Reçu conforme"</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-label">Pour MicroPort CRM France</div>
+                <div class="sig-text">A. LECOCQ</div>
+                <div style="font-size: 9px; color: #333; margin-top: 2px;">Spécialiste Rythmologie Clinique</div>
+                <img class="sig-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAYAAADD06VFAAAABmJLR0QA/wD/AP+gvaeTAAAHVklEQVR4nO3df2hVdx3H8YfGZGVpC6XW1mB/NIn90bS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isUisKtf2xaWpsNf6YI0u3PzS6/bFpxtwYg6wUhS6wP8Y2m6isg6wUhS6wP8Y2m6isA4Y4gD549zL7AAAAAElFTkSuQmCC">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scan-modal" class="no-print">
+    <div id="scan-modal-content">
+        <div style="background: var(--blue-mp); color: white; padding: 12px 15px; font-weight: bold; font-size: 14px;">
+            Alignement Optique Haute Résolution
+        </div>
+        <div id="reader"></div>
+        <div class="scan-modal-actions">
+            <button class="secondary" onclick="stopScanner()">Annuler et Fermer</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // BASE DE DONNÉES ET ATLAS MÉDICAL DE RÉFÉRENCE (SANS ABREVIATIONS)
+    const refsMap = {
+        // Stimulateurs Cardiaques (PM)
+        'ENO SR': '1234', 'ENO DR': '2345', 'ALAN S': '3456', 'ALAN DR': '4567',
+        'ALIZEA SUITE SR': '5678', 'ALIZEA SUITE DR': '6789',
+        // Défibrillateurs Cardiaques (DAI)
+        'TALENTIA DR': '7890', 'TALENTIA SONATA': '8901', 'TALENTIA CRT-D': '9012',
+        'PLATINIUM DR': '3210', 'PLATINIUM CRT-D': '4321',
+        // Électrodes & Sondes de Rythologie
+        'INVICTA J': 'S111', 'INVICTA S': 'S222', 'VEGA P': 'S333', 'VEGA S': 'S444',
+        'BIPOLUX': 'S555', 'PERPÉTUEL S': 'S666', 'ISOLINE': 'S777'
+    };
+
+    const imgs = {
+        'ENO SR': 'https://vno-api.microportcrm.com/uploads/product_images/ENO_SR.png',
+        'ENO DR': 'https://vno-api.microportcrm.com/uploads/product_images/ENO_DR.png',
+        'ALIZEA SUITE SR': 'https://vno-api.microportcrm.com/uploads/product_images/ALIZEA_SR.png',
+        'ALIZEA SUITE DR': 'https://vno-api.microportcrm.com/uploads/product_images/ALIZEA_DR.png',
+        'TALENTIA DR': 'https://vno-api.microportcrm.com/uploads/product_images/TALENTIA_DR.png',
+        'TALENTIA SONATA': 'https://vno-api.microportcrm.com/uploads/product_images/TALENTIA_DR.png',
+        'TALENTIA CRT-D': 'https://vno-api.microportcrm.com/uploads/product_images/TALENTIA_CRTD.png',
+        'pace': 'https://vno-api.microportcrm.com/uploads/product_images/ENO_DR.png',
+        'sonde': 'https://vno-api.microportcrm.com/uploads/product_images/INVICTA.png'
+    };
+
+    const databases = {
+        'CHU Poitiers': {
+            adresse: '<b>CHU de Poitiers</b><br>Service de Cardiologie / Rythmologie<br>2 Rue de la Milétrie<br>86021 Poitiers Cedex',
+            docs: ['Dr Nicolas', 'Dr Garcia', 'Dr Dupont'],
+            refs: ['ENO DR', 'ALIZEA SUITE DR', 'TALENTIA DR', 'TALENTIA CRT-D']
+        },
+        'Clinique St Gatien': {
+            adresse: '<b>Alliance de Santé - Clinique Saint Gatien</b><br>Bloc de Rythmologie Cardiaque<br>8 Place Cathédrale<br>37000 Tours',
+            docs: ['Dr Robert', 'Dr Laurent'],
+            refs: ['ENO SR', 'ENO DR', 'ALIZEA SUITE SR', 'ALIZEA SUITE DR']
+        },
+        'CH Angoulême': {
+            adresse: '<b>Centre Hospitalier d\'Angoulême</b><br>Plateau Technique d\'Implantologie<br>Rond-Point de Girac<br>16000 Angoulême',
+            docs: ['Dr Martin', 'Dr Petit'],
+            refs: ['ENO DR', 'ALIZEA SUITE DR', 'TALENTIA DR']
+        }
+    };
+
+    let html5QrcodeScanner = null;
+    let currentScanTargetPrefix = null;
+    let sondeCounter = 0;
+
+    // INITIALISATION DES MENUS DÉROULANTS AUTOMATIQUES
+    window.onload = function() {
+        document.getElementById('inDate').valueAsDate = new Date();
+        const cSel = document.getElementById('inCentre');
+        cSel.innerHTML = "";
+        Object.keys(databases).forEach(k => {
+            let opt = document.createElement('option');
+            opt.value = k; opt.innerText = k;
+            cSel.appendChild(opt);
+        });
+        updateDoctorsAndRefs();
+        addSondeConfigRow(); // Charge un premier slot de sonde vide par défaut
+    };
+
+    function updateDoctorsAndRefs() {
+        const cName = document.getElementById('inCentre').value;
+        const data = databases[cName];
+        if(!data) return;
+
+        // Mise à jour de l'affichage de l'adresse de livraison sur le livrable
+        document.getElementById('lbl-centre-adresse').innerHTML = data.adresse;
+
+        // Mise à jour du médecin opérateur
+        const dSel = document.getElementById('inDoc');
+        dSel.innerHTML = "";
+        data.docs.forEach(d => {
+            let opt = document.createElement('option');
+            opt.value = d; opt.innerText = d;
+            dSel.appendChild(opt);
+        });
+
+        // Mise à jour des dispositifs rythmologiques éligibles
+        const pSel = document.getElementById('inPace');
+        pSel.innerHTML = "<option value=''>-- Aucun --</option>";
+        data.refs.forEach(r => {
+            let opt = document.createElement('option');
+            opt.value = r; opt.innerText = r;
+            pSel.appendChild(opt);
+        });
+    }
+
+    // GESTION DYNAMIQUE DE LA GRILLE DES ELECTRODES/SONDES
+    function addSondeConfigRow() {
+        sondeCounter++;
+        const id = 's-' + sondeCounter;
+        const container = document.getElementById('ui-sonde-configs');
+
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.id = id;
+
+        // Création dynamique des options de sondes de rythmologie
+        let optionsHtml = "<option value=''>-- Sélectionner une sonde --</option>";
+        Object.keys(refsMap).forEach(k => {
+            if(k.includes('INVICTA') || k.includes('VEGA') || k.includes('BIPOLUX') || k.includes('PERPÉTUEL') || k.includes('ISOLINE')) {
+                optionsHtml += `<option value="${k}">${k}</option>`;
+            }
+        });
+
+        div.innerHTML = `
+            <div class="card-title">
+                <span>Électrode Connectée N°${sondeCounter}</span>
+                <button type="button" class="secondary danger" style="padding:4px 8px; font-size:11px;" onclick="removeSondeConfigRow('${id}')">Supprimer</button>
+            </div>
+            <div class="sonde-row">
+                <div class="sonde-inputs">
+                    <div>
+                        <label>Modèle Sonde</label>
+                        <select class="sonde-model-select" onchange="updateSondeLabel('${id}')">${optionsHtml}</select>
+                    </div>
+                    <div>
+                        <label>Numéro de Série (SN)</label>
+                        <div style="display:flex; gap:3px;">
+                            <input type="text" class="sn-input-field" placeholder="Série">
+                            <button type="button" class="scan-btn" onclick="startScanner('${id}')">📷</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Péremption</label>
+                        <input type="date" class="exp-input-field">
+                    </div>
+                    <div>
+                        <label>Axe</label>
+                        <select class="p">
+                            <option value="Dépôt de stock">Stock Hosp</option>
+                            <option value="Mallette ingénieur">Mallette</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-3" style="margin-top:5px;">
+                <div>
+                    <label>Renouvellement</label>
+                    <select class="r">
+                        <option value="non">NON</option>
+                        <option value="centre">CENTRE</option>
+                        <option value="ing">INGÉNIEUR</option>
+                    </select>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+
+    function removeSondeConfigRow(id) {
+        const row = document.getElementById(id);
+        if(row) row.remove();
+    }
+
+    function updateSondeLabel(id) {
+        // Fonction utilitaire pour d'éventuels rafraîchissements dynamiques
+    }
+
+    /* =========================================================================
+       --- LOGIQUE DE SCANNER OPTIMISÉE (1080P + MACRO ZOOM POUR IPHONE) ---
+       ========================================================================= */
+    function startScanner(targetPrefix) {
+        currentScanTargetPrefix = targetPrefix;
+        document.getElementById('scan-modal').style.display = 'flex';
+
+        // Support étendu des DataMatrix minuscules de sondes et des Code128 de DAI
+        const formatsToSupport = [
+            Html5QrcodeSupportedFormats.DATA_MATRIX,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.EAN_13
+        ];
+
+        html5QrcodeScanner = new Html5Qrcode("reader", { 
+            formatsToSupport: formatsToSupport,
+            verbose: false 
+        });
+        
+        const isSonde = targetPrefix.startsWith('s-');
+        
+        // Optimisation géométrique de la boîte de ciblage pour préserver la densité des pixels
+        const config = { 
+            fps: 25, 
+            qrbox: function(width, height) {
+                if (isSonde) {
+                    return { width: Math.floor(width * 0.85), height: Math.floor(width * 0.85) };
+                } else {
+                    return { width: Math.floor(width * 0.95), height: Math.floor(height * 0.55) };
+                }
+            },
+            aspectRatio: isSonde ? 1.0 : 1.777778
+        };
+
+        // CONTRAINTE MATÉRIELLE ULTRA HD : Force la capture en 1080p
+        const cameraConstraints = {
+            facingMode: "environment",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+        };
+
+        html5QrcodeScanner.start(
+            cameraConstraints, 
+            config,
+            onScanSuccess,
+            onScanFailure
+        ).then(() => {
+            // PARAMÉTRAGE AVANCÉ DE LA LENTILLE (ZOOM CONTRE LA PERTE DE FOCUS)
+            try {
+                const track = html5QrcodeScanner.getRunningTrack();
+                if (track) {
+                    const capabilities = track.getCapabilities();
+                    const constraints = {};
+                    
+                    // Verrouille l'autofocus en mode d'évaluation continue
+                    if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                        constraints.focusMode = 'continuous';
+                    }
+                    
+                    // Application du zoom numérique/optique x2.2 initial
+                    // Cela oblige l'opérateur à reculer, ajustant la mise au point macro de l'iPhone
+                    if (capabilities.zoom) {
+                        constraints.zoom = Math.min(2.2, capabilities.zoom.max);
+                    }
+                    
+                    if (Object.keys(constraints).length > 0) {
+                        track.applyConstraints({ advanced: [constraints] });
+                    }
+                }
+            } catch (e) {
+                console.warn("Ajustements matériels de la caméra non supportés :", e);
+            }
+        }).catch(err => {
+            alert("Accès caméra impossible : " + err);
+            stopScanner();
+        });
+    }
+
+    function stopScanner() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop().then(() => {
+                html5QrcodeScanner.clear();
+                document.getElementById('scan-modal').style.display = 'none';
+            }).catch(err => {
+                document.getElementById('scan-modal').style.display = 'none';
+            });
+        } else {
+            document.getElementById('scan-modal').style.display = 'none';
+        }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        let cleanText = decodedText.trim();
+        
+        // Parsing d'isolation de chaîne spécifique aux formats MicroPort CRM
+        if (cleanText.startsWith('S') || cleanText.startsWith('s')) {
+            cleanText = cleanText.substring(1);
+        }
+        if (cleanText.includes('+')) {
+            let segments = cleanText.split('+');
+            if (segments.length > 1) cleanText = segments[1];
+        }
+
+        // Routage de la valeur extraite vers le bon élément du DOM
+        if (currentScanTargetPrefix === 'pace') {
+            document.getElementById('sn-pace').value = cleanText;
+        } else if (currentScanTargetPrefix.startsWith('s-')) {
+            const targetRow = document.getElementById(currentScanTargetPrefix);
+            if (targetRow) {
+                targetRow.querySelector('.sn-input-field').value = cleanText;
+            }
+        }
+        stopScanner();
+    }
+
+    function onScanFailure(error) {
+        // Mode silencieux en cas d'échec d'analyse de trame pour ne pas surcharger le processeur
+    }
+
+    // LOGIQUE DE COMPOSITION FINALE DU LIVRABLE A4
+    function generateBL() {
+        // Synchronisation des métadonnées patients et structures hospitalières
+        const dVal = document.getElementById('inDate').value;
+        document.getElementById('lbl-date').innerText = dVal ? dVal.split('-').reverse().join('/') : '-';
+        document.getElementById('lbl-doc').innerText = document.getElementById('inDoc').value || '-';
+        document.getElementById('lbl-patient').innerText = document.getElementById('inPatient').value || '-';
+        document.getElementById('lbl-sig-hospital').innerText = document.getElementById('inCentre').value || '-';
+
+        const table = document.getElementById('bl-table-body');
+        table.innerHTML = "";
+
+        let n = 0;
+
+        // Injection du matériel principal (Stimulateur ou Défibrillateur)
+        const pVal = document.getElementById('inPace').value;
+        if(pVal !== "") { 
+            n++; 
+            let targetImg = imgs[pVal] || imgs['pace'];
+            addRow(table, "DAI / PM", pVal, targetImg, document.getElementById('sn-pace').value, document.getElementById('exp-pace').value, document.getElementById('p-pace').value, document.getElementById('r-pace').value); 
+        }
+
+        // Itération et injection de toutes les sondes configurées dans l'UI
+        document.querySelectorAll('#ui-sonde-configs > div').forEach(div => {
+            const mSelect = div.querySelector('.sonde-model-select').value;
+            if (mSelect !== "") {
+                n++; 
+                let targetImg = imgs[mSelect] || imgs['sonde'];
+                addRow(table, "SONDE", mSelect, targetImg, div.querySelector('.sn-input-field').value, div.querySelector('.exp-input-field').value, div.querySelector('.p').value, div.querySelector('.r').value);
+            }
+        });
+
+        if (n === 0) {
+            table.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888; padding: 20px;">Aucun élément configuré. Ajoutez du matériel.</td></tr>`;
+        }
+
+        document.getElementById('v-total').innerText = n;
+    }
+
+    function addRow(t, type, name, src, s, e, p, ren) {
+        const row = t.insertRow();
+        let rVal = refsMap[name] || "Inconnue";
+        
+        let det = [`<b>Modèle :</b> ${name} &nbsp;&nbsp;|&nbsp;&nbsp; <b>RÉF :</b> ${rVal}`];
+        if(s) det.push(`<b>Numéro de Série (SN) :</b> ${s}`); 
+        if(e) det.push(`<b>Date de Péremption (EXP) :</b> ${e.split('-').reverse().join('/')}`);
+        det.push(`<b>Axe de Prélèvement :</b> ${p}`); 
+        
+        let textRen = ren === "centre" ? "OUI (CENTRE)" : (ren === "ing" ? "OUI (INGÉNIEUR)" : "NON");
+        det.push(`<b>Renouvellement automatique :</b> ${textRen}`);
+        
+        row.innerHTML = `
+            <td class="row-type">${type}</td>
+            <td class="row-img"><img src="${src}" alt="Visuel"></td>
+            <td><div style="line-height:1.5;">${det.join('<br>')}</div></td>
+            <td style="text-align: center; font-weight: bold; font-size: 13px; vertical-align: middle;">1</td>
+        `;
+    }
+
+    function resetForm() {
+        if(confirm("Voulez-vous vider toutes les saisies en cours ?")) {
+            document.getElementById('sn-pace').value = "";
+            document.getElementById('exp-pace').value = "";
+            document.getElementById('inPatient').value = "";
+            document.getElementById('ui-sonde-configs').innerHTML = "";
+            addSondeConfigRow();
+            generateBL();
+        }
+    }
+</script>
+
+</body>
+</html>
