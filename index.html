@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BL Pro - Expert MicroPort</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+
+    <style>
+        :root { --blue-mp: #002e6d; --border-color: #000; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; margin: 0; padding: 10px; color: #333; }
+
+        .admin-panel { max-width: 1000px; margin: 0 auto 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .admin-section { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .admin-section h3 { font-size: 13px; color: var(--blue-mp); text-transform: uppercase; margin-bottom: 15px; display: flex; justify-content: space-between; }
+        
+        .grid-inputs { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 768px) { .grid-inputs { grid-template-columns: repeat(3, 1fr); } }
+
+        label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 5px; color: #666; }
+        input, select, textarea { width: 100%; height: 44px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; background: #fff; }
+
+        .sonde-cards-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 10px; }
+        .s-card { border: 1px solid #ddd; padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; font-size: 11px; font-weight: 600; background: #fff; display: flex; align-items: center; justify-content: center; min-height: 45px; }
+        .s-card.active { background: var(--blue-mp); color: white; border-color: var(--blue-mp); }
+
+        .mat-config-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-top: 10px; display: none; }
+        .active-form { display: block; }
+        
+        .btn-main { background: var(--blue-mp); color: white; border: none; padding: 18px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .btn-secondary { background: #28a745; color: white; border: none; padding: 18px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .btn-mail { background: #0078d4; color: white; border: none; padding: 18px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .btn-config { background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 10px; cursor: pointer; }
+        .btn-scan { background: #e0a800; color: #000; border: none; padding: 0 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+
+        .signature-area { background: #fdfdfd; border: 1px dashed #bbb; border-radius: 8px; padding: 8px; text-align: center; position: relative; }
+        .sig-canvas { border: 1px solid #eee; background: white; border-radius: 4px; touch-action: none; width: 100%; height: 100px; }
+        .sig-actions { display: flex; gap: 5px; justify-content: center; margin-top: 4px; }
+        .clear-btn { background: #dc3545; color: white; border: none; padding: 4px 10px; font-size: 11px; border-radius: 4px; cursor: pointer; }
+        .fullscreen-btn { background: #6c757d; color: white; border: none; padding: 4px 10px; font-size: 11px; border-radius: 4px; cursor: pointer; }
+
+        /* --- MODALE PLEIN ÉCRAN SIGNATURE --- */
+        #sig-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .modal-sig-container { background: white; width: 100%; max-width: 800px; padding: 15px; border-radius: 12px; text-align: center; box-sizing: border-box; }
+        .modal-sig-canvas { border: 2px dashed var(--blue-mp); background: #fafafa; border-radius: 8px; touch-action: none; width: 100%; height: 300px; margin-bottom: 15px; }
+
+        /* --- MODALE SCANNER HAUTE DENSITÉ --- */
+        #scanner-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 3000; flex-direction: column; justify-content: center; align-items: center; padding: 10px; box-sizing: border-box; }
+        .scanner-container { background: white; width: 100%; max-width: 480px; padding: 15px; border-radius: 16px; text-align: center; box-sizing: border-box; }
+        #reader { width: 100%; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+        .scanner-ui-box { margin: 10px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .zoom-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: var(--blue-mp); }
+        .scanner-hint { font-size: 10px; color: #555; line-height: 1.3; margin-top: 5px; text-align: left; }
+
+        /* --- MODALE DE RECADRAGE & TRAITEMENT PHOTO --- */
+        #crop-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 4000; flex-direction: column; justify-content: center; align-items: center; padding: 10px; box-sizing: border-box; }
+        .crop-container { background: white; width: 100%; max-width: 500px; padding: 15px; border-radius: 16px; text-align: center; box-sizing: border-box; display: flex; flex-direction: column; max-height: 90vh; }
+        .crop-wrapper { max-height: 55vh; overflow: hidden; background: #eee; border-radius: 8px; margin-bottom: 10px; position: relative; }
+        #crop-preview { max-width: 100%; display: block; }
+        #ocr-status { font-size: 12px; color: #002e6d; margin: 8px 0; font-weight: bold; min-height: 18px; }
+
+        /* --- BL STRUCTURE --- */
+        #bl-wrapper { background: #525659; padding: 20px 0; overflow-x: auto; }
+        #bl-canvas { width: 210mm; min-height: 297mm; background: white; margin: 0 auto; padding: 15mm 12mm; box-sizing: border-box; color: black; position: relative; }
+        @media (max-width: 210mm) { #bl-canvas { transform: scale(0.42); transform-origin: top center; margin-bottom: -600px; } }
+
+        .bl-header-table { width: 100%; margin-bottom: 10px; }
+        .bl-header-table td { border: 1.5px solid #000; padding: 4px 8px; font-size: 9px; font-weight: bold; height: 20px; text-transform: uppercase; }
+        .bl-header-table .bg-light { background-color: #f2f2f2; text-align: center; font-size: 9px; width: 30%; }
+
+        table.main-bl-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table.main-bl-table td { border: 1.5px solid #000; padding: 8px; font-size: 9px; vertical-align: top; }
+        table.main-bl-table .bg-light { background-color: #f2f2f2; font-weight: bold; text-align: center; font-size: 10px; padding: 5px; text-transform: uppercase; }
+        
+        .row-type { font-weight: bold; text-transform: uppercase; font-size: 9px; line-height: 1.4; }
+        .row-type small { font-weight: normal; color: #333; font-size: 9px; display: block; margin-top: 4px; }
+        .tech-details { font-size: 9px; line-height: 1.5; text-transform: uppercase; }
+
+        .legal-text { font-size: 9px; line-height: 1.3; font-family: Arial, sans-serif; }
+        .objet-container { margin: 15px 0 5px 0; padding: 6px 10px; background: white; font-size: 10px; font-weight: bold; text-transform: uppercase; border: 1.5px solid #000; font-family: Arial, sans-serif; }
+        .row-photo img { max-width: 95%; max-height: 90px; display: block; margin: 0 auto; }
+        .bl-sig-img { max-height: 65px; max-width: 100%; display: block; margin: 5px auto 0 auto; }
+
+        #image-result { text-align: center; margin: 20px auto; padding: 15px; background: #d4edda; border-radius: 12px; display: none; max-width: 1000px; border: 2px solid #28a745; }
+        #image-result img { max-width: 100%; border-radius: 8px; }
+        
+        #config-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; overflow-y:auto; padding:20px; box-sizing:border-box; }
+        .modal-content { background:white; padding:20px; border-radius:10px; max-width:600px; margin:auto; }
+    </style>
+</head>
+<body>
+
+<div class="admin-panel" id="admin-panel">
+    <div class="admin-section">
+        <h3>1. Logistique & Objet <button class="btn-config" onclick="openConfig('centres')">🏥 GÉRER LES CENTRES</button></h3>
+        <div class="grid-inputs">
+            <div><label>Logo (Optionnel - Écrase celui par défaut)</label><input type="file" onchange="upMedia(this, 'v-logo-img')"></div>
+            <div><label>Date</label><input type="date" id="inDate" onchange="sync()"></div>
+            <div><label>Établissement</label><select id="inC" onchange="initDocs(); sync();"></select></div>
+            <div><label>Médecin</label><select id="inD" onchange="sync();"></select></div>
+            <div><label>Ingénieur MicroPort</label><select id="inIng" onchange="updateDynamicStocks(); sync();"></select></div>
+            <div><label>Objet du BL (Acte)</label>
+                <select id="inActe" onchange="sync()">
+                    <option value="Primo-implantation">Primo-Implantation</option>
+                    <option value="Changement de boîtier">Changement de Boîtier</option>
+                    <option value="Upgrade">Upgrade / Montée en gamme</option>
+                    <option value="Changement de sonde">Changement de Sonde</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="grid-inputs" style="margin-top: 15px;">
+            <div class="signature-area">
+                <label>Signature Transporteur</label>
+                <canvas id="pad-trans" class="sig-canvas"></canvas>
+                <div class="sig-actions">
+                    <button class="fullscreen-btn" onclick="openFullscreenSig('trans')">↗️ Plein écran</button>
+                    <button class="clear-btn" onclick="clearPad('trans')">Effacer</button>
+                </div>
+            </div>
+            <div class="signature-area">
+                <label>Tampon / Signature Centre</label>
+                <canvas id="pad-centre" class="sig-canvas"></canvas>
+                <div class="sig-actions">
+                    <button class="fullscreen-btn" onclick="openFullscreenSig('centre')">↗️ Plein écran</button>
+                    <button class="clear-btn" onclick="clearPad('centre')">Effacer</button>
+                </div>
+            </div>
+            <div>
+                <label>Ou forcer l'import d'images externes</label>
+                <small style="font-size:10px;color:#666;">Transporteur :</small>
+                <input type="file" onchange="upMediaFile(this, 'v-sig-trans', 'trans')" style="height:32px; font-size:11px; padding:4px;">
+                <small style="font-size:10px;color:#666;">Centre :</small>
+                <input type="file" onchange="upMediaFile(this, 'v-sig-centre', 'centre')" style="height:32px; font-size:11px; padding:4px;">
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section">
+        <h3>2. Matériel <button class="btn-config" onclick="openConfig('materiel')">⚙️ GÉRER LES RÉFÉRENCES</button></h3>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+            <div>
+                <label>Défibrillateur (DAI)</label>
+                <select id="inDefi" onchange="toggleBox('Defi'); sync();"></select>
+            </div>
+            <div>
+                <label>Pacemaker (PM)</label>
+                <select id="inPace" onchange="toggleBox('Pace'); sync();"></select>
+            </div>
+        </div>
+
+        <div id="cfg-defi" class="mat-config-box">
+            <span style="font-weight:bold; font-size:12px; color:var(--blue-mp); display:flex; justify-content:space-between; align-items:center;">
+                Configuration DAI
+                <button type="button" class="btn-scan" onclick="triggerLabelPhoto('defi')">📷 ANALYSER ÉTIQUETTE</button>
+            </span>
+            <div class="grid-inputs" style="margin-top:5px;">
+                <div><label>Photo DAI (Remplacé auto.)</label><input type="file" onchange="saveImg(this, 'defi')"></div>
+                <div><label>Série (SN)</label><input type="text" id="sn-defi" oninput="sync()"></div>
+                <div><label>Expiration</label><input type="date" id="exp-defi" onchange="sync()"></div>
+                <div><label>Stock</label><select id="p-defi" onchange="sync()"><option value="Stock du centre">Stock Centre</option><option value="Stock MICROPORT CRM" class="dynamic-ing-stock">Stock Micro</option></select></div>
+                <div><label>Renouvellement</label><select id="r-defi" onchange="sync()"><option value="centre">à renouveler pour le stock du centre</option><option value="ing">à renouveler pour le stock de l'ingénieur</option><option value="aucun">ne nécessite pas de renouvellement</option></select></div>
+            </div>
+        </div>
+
+        <div id="cfg-pace" class="mat-config-box">
+            <span style="font-weight:bold; font-size:12px; color:var(--blue-mp); display:flex; justify-content:space-between; align-items:center;">
+                Configuration Pacemaker
+                <button type="button" class="btn-scan" onclick="triggerLabelPhoto('pace')">📷 ANALYSER ÉTIQUETTE</button>
+            </span>
+            <div class="grid-inputs" style="margin-top:5px;">
+                <div><label>Photo PM (Remplacé auto.)</label><input type="file" onchange="saveImg(this, 'pace')"></div>
+                <div><label>Série (SN)</label><input type="text" id="sn-pace" oninput="sync()"></div>
+                <div><label>Expiration</label><input type="date" id="exp-pace" onchange="sync()"></div>
+                <div><label>Stock</label><select id="p-pace" onchange="sync()"><option value="Stock du centre">Stock Centre</option><option value="Stock MICROPORT CRM" class="dynamic-ing-stock">Stock Micro</option></select></div>
+                <div><label>Renouvellement</label><select id="r-pace" onchange="sync()"><option value="centre">à renouveler pour le stock du centre</option><option value="ing">à renouveler pour le stock de l'ingénieur</option><option value="aucun">ne nécessite pas de renouvellement</option></select></div>
+            </div>
+        </div>
+
+        <label style="margin-top:15px;">Sondes</label>
+        <div class="sonde-cards-container" id="ui-sonde-cards"></div>
+        <div id="ui-sonde-configs"></div>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <button class="btn-main" onclick="window.print()">🖨️ PDF / IMPRIMER</button>
+        <button class="btn-secondary" onclick="captureImage()">📸 GÉNÉRER IMAGE (iPhone)</button>
+    </div>
+    <button class="btn-mail" onclick="generateEmail()">📧 GÉNÉRER DANS OUTLOOK</button>
+</div>
+
+<input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
+
+<div id="crop-modal">
+    <div class="crop-container">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:14px;">CADRAGE ET FILTRAGE DE L'ÉTIQUETTE</h3>
+        <div class="crop-wrapper">
+            <img id="crop-preview">
+        </div>
+        <div id="ocr-status">Ajustez les bords sur le pavé d'informations.</div>
+        <div style="display:flex; gap:10px; margin-top: auto;">
+            <button class="clear-btn" style="flex:1; padding:12px; font-weight:bold; border-radius:8px;" onclick="closeCropModal()">ANNULER</button>
+            <button class="btn-secondary" id="btn-validate-crop" style="flex:2; padding:12px; font-weight:bold; border-radius:8px; margin:0;" onclick="processCroppedImage()">ANALYSER & CONVERTIR N&B</button>
+        </div>
+    </div>
+</div>
+
+<div id="scanner-modal">
+    <div class="scanner-container">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:14px;">SCANNER HAUTE RÉSOLUTION</h3>
+        <div id="reader"></div>
+        
+        <div class="scanner-ui-box">
+            <div class="zoom-label">
+                <span>ZOOM OPTER POUR LA NETTETÉ</span>
+                <span id="zoom-value">1.0x</span>
+            </div>
+            <input type="range" id="scanner-zoom" min="1" max="4" step="0.1" value="1" style="width:100%; height:30px; margin:0;">
+            
+            <div class="scanner-hint">
+                💡 <b>Conseil Invicta (DataMatrix minuscule) :</b> Éloignez l'iPhone à environ 15-20 cm de l'étiquette, puis montez le curseur de zoom ci-dessus. L'autofocus se calera de manière ultra-nette sans effet de flou de proximité.
+            </div>
+        </div>
+        
+        <button class="clear-btn" style="width:100%; padding:12px; font-weight:bold; border-radius:8px;" onclick="closeScanner()">ANNULER / FERMER</button>
+    </div>
+</div>
+
+<div id="config-modal">
+    <div class="modal-content">
+        <h2 id="modal-title">Configuration</h2>
+        <p style="font-size:12px; color:red;">Attention : l'ajout ici est temporaire. Pour rendre définitif, il faut modifier le script au milieu du fichier HTML.</p>
+        <div id="modal-body"></div>
+        <button class="btn-main" onclick="closeConfig()">✅ VALIDER ET FERMER</button>
+    </div>
+</div>
+
+<div id="sig-modal" style="display:none;">
+    <div class="modal-sig-container">
+        <h3 id="sig-modal-title" style="margin-top:0; color:var(--blue-mp); text-transform:uppercase; font-size:14px;">Signature</h3>
+        <canvas id="modal-canvas" class="modal-sig-canvas"></canvas>
+        <div style="display:flex; gap:10px;">
+            <button class="clear-btn" style="flex:1; padding:12px;" onclick="clearModalPad()">Effacer</button>
+            <button class="btn-secondary" style="flex:2; padding:12px; margin:0;" onclick="closeFullscreenSig(true)">✅ Terminer</button>
+        </div>
+    </div>
+</div>
+
+<div id="image-result">
+    <p style="font-weight: bold; color: #155724;">✅ Image prête ! Reste appuyé dessus pour sauver ou copier (puis collez-la dans votre mail).</p>
+    <div id="img-container"></div>
+</div>
+
+<div id="bl-wrapper">
+    <div id="bl-canvas">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="width: 52%;">
+                <img id="v-logo-img" src="assets/logo-microport.png" style="max-width:160px; max-height:50px; display:block; margin-bottom: 8px;">
+                <div class="legal-text">
+                    <b>BON DE LIVRAISON / DELIVERY NOTE</b><br>
+                    <b>MICROPORT CRM France SAS</b><br>
+                    Parc d'Affaires NOVEOS - 4, avenue Réaumur - 92140 CLAMART Cedex - France<br>
+                    Tél: 01 46 01 89 89 - Fax: 01 46 01 89 60<br>
+                    SAS au capital de 82 200 000 euros - R.C.S. Nanterre 477 828 412 - Siret n° 477 828 412 00072
+                </div>
+            </div>
+            <div style="width:45%">
+                <table class="bl-header-table">
+                    <tr><td class="bg-light">DATE</td><td id="v-date"></td></tr>
+                    <tr><td class="bg-light">CENTRE</td><td id="v-centre"></td></tr>
+                    <tr><td class="bg-light">ADRESSE</td><td id="v-adr"></td></tr>
+                    <tr><td class="bg-light">IMPLANTEUR</td><td id="v-doc"></td></tr>
+                    <tr><td class="bg-light">INGENIEUR</td><td id="v-ing"></td></tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="objet-container" id="v-objet">OBJET : LIVRAISON MATÉRIEL POUR...</div>
+        
+        <table id="v-main-table" class="main-bl-table">
+            <thead>
+                <tr class="bg-light">
+                    <td width="20%">TYPE</td>
+                    <td width="45%">ETIQUETTE</td>
+                    <td width="35%">DETAILS TECHNIQUES</td>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        
+        <div style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 12px; margin-top: 15px;">
+            <div style="border:1.5px solid #000; text-align:center; padding:8px; font-family: Arial, sans-serif;">
+                <span style="font-size:9px; font-weight:bold; text-transform:uppercase; display:block; margin-bottom:5px;">NB ÉLÉMENTS</span>
+                <span id="v-total" style="font-size:24px; font-weight:bold; display:block; margin-top:2px;">0</span>
+            </div>
+            <div style="border:1.5px solid #000; padding:6px; font-size:9px; font-weight:bold; font-family: Arial, sans-serif; position: relative;">
+                Transporteur :
+                <div id="lbl-sig-ing" style="text-align:center; font-weight:normal; font-size:9px; margin-top:5px; color:#333;"></div>
+                <img id="v-sig-trans" class="bl-sig-img">
+            </div>
+            <div style="border:1.5px solid #000; padding:6px; font-size:9px; font-weight:bold; font-family: Arial, sans-serif;">
+                Signature / Tampon :
+                <div id="lbl-sig-doc" style="text-align:center; font-weight:normal; font-size:9px; margin-top:5px; color:#333;"></div>
+                <img id="v-sig-centre" class="bl-sig-img">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- DONNÉES INITIALES ---
+    let db = {
+        "CHU TOURS": { adr: "Av. de la République, 37170 Chambray-lès-Tours", docs: ["DR BODIN", "DR PIERRE", "DR BISSON", "DR LEMRINI", "DR LENORMAND", "DR NASARRE"] },
+        "CHU ORLEANS": { adr: "14 Av. de l'Hôpital, 45100 Orléans", docs: ["DR DOMAIN", "DR JACOBS", "DR SPIESSER", "DR LENORMAND"] },
+        "CHU LIMOGES": { adr: "2 Av. Martin Luther King, 87000 Limoges", docs: ["DR GUYMOYAT", "DR BAULEY"] },
+        "CHU POITIERS": { adr: "2 Rue de la Milétrie Cs 90577, 86000 Poitiers", docs: ["DR DEGAND", "DR GRCIA", "DR CHOURROUT", "DR LEGAL"] },
+        "CH BLOIS": { adr: "Mail Pierre Charlot, 41000 Blois", docs: ["DR LANG", "DR GARCIA", "DR LALLEMAND", "DR PETITJEAN"] },
+        "CH CHATEAUROUX": { adr: "216 Av. de Verdun, 36000 Châteauroux", docs: ["DR POITRINEAU", "DR GHANEM", "DR TEMGOUA NGOU"] },
+        "CH Bourges": { adr: "145 Av. François Mitterrand, 18000 Bourges", docs: ["DR HEURTEBISE", "DR DIDOT", "DR LEMRINI"] },
+        "Pôle Santé Oréliance": { adr: "ZAC des Portes du Loiret Sud, 555 Av. Jacqueline Auriol, 45770 Saran", docs: ["DR MOISEI", "DR GIRAUDEAU", "DR RISCHARD", "DR ANYS"] }
+    };
+
+    let refsMap = {
+        "Talentia VR 3240": "TDF061C", "Talentia VR 3210": "TDF059C", "Talentia DR 3540": "TDF062C", "Talentia DR 3510": "TDF060C", "Talentia CRTD 3844": "TDF068C", "Talentia CRTD 3841": "TDF067C", "Talentia CRTD 3811": "TDF066C",
+        "Alizéa DR 1600": "TPM020C", "Alizéa SR 1300": "TPM021C", "ENO SR": "TPM015C", "ENO DR": "TPM014C",
+        "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M", "Invicta 1CR58": "TLT001C", "Invicta 1CR68": "TLT005C", "Navigo ARC78": "TLT021C", "Navigo ARC88": "TLT022C", "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT020C"
+    };
+
+    let listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
+    let listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
+    let listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
+    let listIngs = ["Antoine LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
+    
+    let imgs = {};
+    let pads = {};
+    let sigSource = { trans: 'none', centre: 'none' };
+    
+    let activeFullscreenTarget = null;
+    let mCanvas, mCtx;
+
+    let html5QrcodeScanner = null;
+    let activeScanTarget = null;
+
+    // Variables globales pour le moteur de traitement photo
+    let activePhotoTarget = null;
+    let cropper = null;
+
+    function openConfig(mode) {
+        const modal = document.getElementById('config-modal');
+        const body = document.getElementById('modal-body');
+        modal.style.display = 'block';
+        if(mode === 'centres') {
+            document.getElementById('modal-title').innerText = "Ajouter un Centre";
+            body.innerHTML = `<label>Nom Centre</label><input id="newC"><label>Adresse</label><input id="newA"><label>Médecin (séparer par virgule)</label><input id="newD"><br><button class="btn-secondary" onclick="addC()">AJOUTER</button>`;
+        } else {
+            document.getElementById('modal-title').innerText = "Ajouter Matériel";
+            body.innerHTML = `<label>Type</label><select id="newT"><option value="defi">DAI</option><option value="pace">PM</option><option value="sonde">SONDE</option></select><label>Nom</label><input id="newN"><label>REF</label><input id="newR"><br><button class="btn-secondary" onclick="addM()">AJOUTER</button>`;
+        }
+    }
+    function addC() {
+        const n = document.getElementById('newC').value;
+        if(n) { db[n] = { adr: document.getElementById('newA').value, docs: document.getElementById('newD').value.split(',') }; updateMenus(); }
+    }
+    function addM() {
+        const n = document.getElementById('newN').value; const r = document.getElementById('newR').value;
+        if(n) { 
+            let type = document.getElementById('newT').value;
+            if(type === 'defi') listDefis.push(n); else if(type === 'pace') listPaces.push(n); else listSondes.push(n);
+            refsMap[n] = r; updateMenus(); 
+        }
+    }
+    function closeConfig() { document.getElementById('config-modal').style.display = 'none'; }
+
+    function initPads() {
+        ['trans', 'centre'].forEach(id => {
+            const canvas = document.getElementById(`pad-${id}`);
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.clientWidth - 16;
+            canvas.height = 100;
+            ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000000';
+            let drawing = false;
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            }
+            function start(e) { drawing = true; ctx.beginPath(); let p = getPos(e); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+            function move(e) { if(!drawing) return; let p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }
+            function stop() { 
+                if(drawing) { 
+                    drawing = false; 
+                    sigSource[id] = 'draw'; 
+                    document.getElementById(`v-sig-${id}`).src = canvas.toDataURL(); 
+                    sync();
+                } 
+            }
+            canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', stop);
+            canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); window.addEventListener('touchend', stop);
+            pads[id] = { canvas, ctx };
+        });
+
+        mCanvas = document.getElementById('modal-canvas');
+        mCtx = mCanvas.getContext('2d');
+        mCtx.lineWidth = 3; mCtx.lineCap = 'round'; mCtx.strokeStyle = '#000000';
+        let mDrawing = false;
+        
+        function getMPos(e) {
+            const rect = mCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+        mCanvas.addEventListener('mousedown', (e) => { mDrawing = true; mCtx.beginPath(); let p = getMPos(e); mCtx.moveTo(p.x, p.y); e.preventDefault(); });
+        mCanvas.addEventListener('mousemove', (e) => { if(!mDrawing) return; let p = getMPos(e); mCtx.lineTo(p.x, p.y); mCtx.stroke(); e.preventDefault(); });
+        window.addEventListener('mouseup', () => { mDrawing = false; });
+        
+        mCanvas.addEventListener('touchstart', (e) => { mDrawing = true; mCtx.beginPath(); let p = getMPos(e); mCtx.moveTo(p.x, p.y); e.preventDefault(); });
+        mCanvas.addEventListener('touchmove', (e) => { if(!mDrawing) return; let p = getMPos(e); mCtx.lineTo(p.x, p.y); mCtx.stroke(); e.preventDefault(); });
+        window.addEventListener('touchend', () => { mDrawing = false; });
+    }
+
+    function openFullscreenSig(target) {
+        activeFullscreenTarget = target;
+        const modal = document.getElementById('sig-modal');
+        const title = document.getElementById('sig-modal-title');
+        
+        title.innerText = target === 'trans' ? "Signature Transporteur (Plein Écran)" : "Signature / Tampon Centre (Plein Écran)";
+        modal.style.display = 'flex';
+        
+        mCanvas.width = mCanvas.parentElement.clientWidth - 10;
+        mCanvas.height = 350;
+        clearModalPad();
+    }
+
+    function clearModalPad() {
+        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+        mCtx.lineWidth = 3; mCtx.lineCap = 'round'; mCtx.strokeStyle = '#000000';
+    }
+
+    function closeFullscreenSig(save = false) {
+        if (save && activeFullscreenTarget) {
+            document.getElementById(`v-sig-${activeFullscreenTarget}`).src = mCanvas.toDataURL();
+            sigSource[activeFullscreenTarget] = 'draw';
+            
+            const miniPad = pads[activeFullscreenTarget];
+            miniPad.ctx.clearRect(0, 0, miniPad.canvas.width, miniPad.canvas.height);
+            const img = new Image();
+            img.onload = () => { miniPad.ctx.drawImage(img, 0, 0, miniPad.canvas.width, miniPad.canvas.height); };
+            img.src = mCanvas.toDataURL();
+            
+            sync();
+        }
+        document.getElementById('sig-modal').style.display = 'none';
+        activeFullscreenTarget = null;
+    }
+
+    function clearPad(id) {
+        pads[id].ctx.clearRect(0, 0, pads[id].canvas.width, pads[id].canvas.height);
+        document.getElementById(`v-sig-${id}`).removeAttribute('src');
+        sigSource[id] = 'none';
+        sync();
+    }
+
+    // --- CONFIGURATION PHOTO, RECADRAGE ET TRAITEMENT NOIR ET BLANC ---
+    function triggerLabelPhoto(targetId) {
+        activePhotoTarget = targetId;
+        document.getElementById('label-camera-input').click();
+    }
+
+    function handleLabelFile(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const modal = document.getElementById('crop-modal');
+                const image = document.getElementById('crop-preview');
+                image.src = e.target.result;
+                modal.style.display = 'flex';
+                
+                if (cropper) { cropper.destroy(); }
+                
+                cropper = new Cropper(image, {
+                    viewMode: 1,
+                    autoCropArea: 0.9,
+                    responsive: true,
+                    restore: false,
+                    checkCrossOrigin: false
+                });
+                document.getElementById('ocr-status').innerText = "Recadrez serré sur le pavé d'infos (S/N, EXP).";
+                document.getElementById('btn-validate-crop').disabled = false;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function closeCropModal() {
+        document.getElementById('crop-modal').style.display = 'none';
+        if (cropper) { cropper.destroy(); cropper = null; }
+        document.getElementById('label-camera-input').value = "";
+    }
+
+    function processCroppedImage() {
+        if (!cropper) return;
+        
+        const statusEl = document.getElementById('ocr-status');
+        const validateBtn = document.getElementById('btn-validate-crop');
+        statusEl.innerText = "Analyse & Traitement Noir & Blanc en cours... ⏳";
+        validateBtn.disabled = true;
+
+        // Récupération de l'image recadrée haute résolution
+        const canvas = cropper.getCroppedCanvas({ maxWidth: 1000, maxHeight: 1000 });
+        const ctx = canvas.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        
+        // Algorithme de filtrage Noir & Blanc pur à fort contraste (Binarisation optimale)
+        // Permet d'effacer le fond gris/jaune de l'étiquette pour un rendu blanc parfait
+        for (let i = 0; i < data.length; i += 4) {
+            let grayscale = 0.2126 * data[i] + 0.7152 * data[i+1] + 0.0722 * data[i+2];
+            let bwThreshold = (grayscale > 120) ? 255 : 0; // Seuil dynamique pour blanchir complètement le fond
+            data[i] = bwThreshold;
+            data[i+1] = bwThreshold;
+            data[i+2] = bwThreshold;
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        // Sauvegarde de la version filtrée N&B dans l'état de l'application
+        const finalBwImage = canvas.toDataURL('image/jpeg', 0.85);
+        imgs[activePhotoTarget] = finalBwImage;
+
+        // Lancement du moteur OCR Tesseract
+        Tesseract.recognize(canvas, 'eng')
+        .then(({ data: { text } }) => {
+            console.log("Texte Brut OCR extrait: ", text);
+            const extractedData = parseOcrLabelText(text);
+            
+            // Gestion unifiée DAI/PM ou SONDE dynamique
+            if (activePhotoTarget === 'defi' || activePhotoTarget === 'pace') {
+                if (extractedData.sn) {
+                    document.getElementById(`sn-${activePhotoTarget}`).value = extractedData.sn;
+                }
+                if (extractedData.exp) {
+                    document.getElementById(`exp-${activePhotoTarget}`).value = extractedData.exp;
+                }
+            } else {
+                const targetContainer = document.getElementById(activePhotoTarget);
+                if (targetContainer) {
+                    if (extractedData.sn) targetContainer.querySelector('.sn').value = extractedData.sn;
+                    if (extractedData.exp) targetContainer.querySelector('.exp').value = extractedData.exp;
+                }
+            }
+            
+            closeCropModal();
+            sync();
+        })
+        .catch(err => {
+            console.error("Échec OCR:", err);
+            statusEl.innerText = "Erreur de lecture automatique. Image N&B sauvegardée.";
+            setTimeout(() => { closeCropModal(); sync(); }, 1500);
+        });
+    }
+
+    function parseOcrLabelText(rawText) {
+        let sn = "";
+        let exp = "";
+        
+        let cleanText = rawText.replace(/[^A-Za-z0-9\(\)\s\-:]/g, "").replace(/\s+/g, " ");
+
+        // Détection de la chaîne standard UDI complète : (17)YYMMDD(21)SN
+        const udiMatch = cleanText.match(/\(17\)\s*(\d{6})\s*\(21\)\s*([A-Z0-9\-]+)/i) || cleanText.match(/17(\d{6})21([A-Z0-9\-]+)/i);
+        if (udiMatch) {
+            return { sn: udiMatch[2], exp: formatGs1Date(udiMatch[1]) };
+        }
+
+        const snMatch = cleanText.match(/SN\s*([A-Z0-9\-]{5,15})/i) || cleanText.match(/S\/?N\s*:?\s*([A-Z0-9\-]{5,15})/i);
+        if (snMatch) sn = snMatch[1];
+
+        const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
+        if (isoDateMatch) {
+            exp = `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
+        } else {
+            const expMatch = cleanText.match(/\(17\)\s*(\d{6})/i) || cleanText.match(/17\s*(\d{6})/);
+            if (expMatch) exp = formatGs1Date(expMatch[1]);
+        }
+
+        return { sn, exp };
+    }
+
+    // --- ENGIN DE SCANNER POUR SONDES ---
+    function openScanner(targetId) {
+        activeScanTarget = targetId;
+        document.getElementById('scanner-modal').style.display = 'flex';
+        
+        if (html5QrcodeScanner) {
+            try { html5QrcodeScanner.stop().catch(() => {}); } catch(e) {}
+        }
+        
+        html5QrcodeScanner = new Html5Qrcode("reader");
+        
+        const config = {
+            fps: 25,
+            qrbox: function(width, height) {
+                return { width: Math.floor(width * 0.85), height: Math.floor(height * 0.55) };
+            },
+            videoConstraints: {
+                facingMode: "environment",
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            }
+        };
+
+        html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess)
+        .then(() => {
+            const zoomSlider = document.getElementById('scanner-zoom');
+            const zoomVal = document.getElementById('zoom-value');
+            
+            zoomSlider.min = "1"; zoomSlider.max = "4"; zoomSlider.step = "0.1"; zoomSlider.value = "1"; zoomSlider.disabled = false;
+            zoomVal.innerText = "1.0x";
+            
+            let track = null;
+            try {
+                if (typeof html5QrcodeScanner.getRunningTrack === 'function') { track = html5QrcodeScanner.getRunningTrack(); }
+            } catch(e) { console.log("Piste vidéo inaccessible", e); }
+            
+            zoomSlider.oninput = (e) => {
+                const val = parseFloat(e.target.value);
+                zoomVal.innerText = val.toFixed(1) + "x";
+                
+                if (track && typeof track.getCapabilities === 'function') {
+                    try {
+                        const caps = track.getCapabilities();
+                        if (caps.zoom) { track.applyConstraints({ advanced: [{ zoom: val }] }).catch(() => {}); }
+                    } catch(err) {}
+                }
+                
+                const video = document.querySelector('#reader video');
+                if (video) {
+                    video.style.transform = `scale(${val})`;
+                    video.style.transformOrigin = 'center';
+                }
+            };
+        })
+        .catch((err) => { console.error("Erreur caméra : ", err); });
+    }
+
+    function closeScanner() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop().then(() => {
+                document.getElementById('scanner-modal').style.display = 'none';
+                html5QrcodeScanner = null;
+            }).catch(err => {
+                console.log(err);
+                document.getElementById('scanner-modal').style.display = 'none';
+                html5QrcodeScanner = null;
+            });
+        } else {
+            document.getElementById('scanner-modal').style.display = 'none';
+        }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        if (navigator.vibrate) navigator.vibrate(100);
+        
+        const parsedData = parseMedicalBarcode(decodedText);
+        
+        if (activeScanTarget === 'defi' || activeScanTarget === 'pace') {
+            if (parsedData.sn) document.getElementById(`sn-${activeScanTarget}`).value = parsedData.sn;
+            if (parsedData.exp) document.getElementById(`exp-${activeScanTarget}`).value = parsedData.exp;
+        } else {
+            const targetContainer = document.getElementById(activeScanTarget);
+            if (targetContainer) {
+                if (parsedData.sn) targetContainer.querySelector('.sn').value = parsedData.sn;
+                if (parsedData.exp) targetContainer.querySelector('.exp').value = parsedData.exp;
+            }
+        }
+        
+        closeScanner();
+        sync();
+    }
+
+    function parseMedicalBarcode(rawText) {
+        let sn = ""; let exp = "";
+        let cleanText = rawText.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+        
+        if (cleanText.includes("(17)") || cleanText.includes("(21)")) {
+            const expMatch = cleanText.match(/\(17\)(\d{6})/);
+            const snMatch = cleanText.match(/\(21\)([A-Za-z0-9\-]+)/);
+            if (expMatch) exp = formatGs1Date(expMatch[1]);
+            if (snMatch) sn = snMatch[1];
+            return { sn, exp };
+        }
+        
+        const patternStrict = cleanText.match(/17(\d{6})21([A-Za-z0-9\-]+)/);
+        if (patternStrict) { return { sn: patternStrict[2], exp: formatGs1Date(patternStrict[1]) }; }
+        
+        const isolExp = cleanText.match(/17(\d{6})/);
+        const isolSn = cleanText.match(/21([A-Za-z0-9\-]{5,15})/);
+        if (isolExp) exp = formatGs1Date(isolExp[1]);
+        if (isolSn) sn = isolSn[1];
+        
+        if (!sn) sn = cleanText;
+        return { sn, exp };
+    }
+
+    function formatGs1Date(yymmdd) {
+        const year = "20" + yymmdd.substring(0, 2);
+        const month = yymmdd.substring(2, 4);
+        const day = yymmdd.substring(4, 6);
+        return `${year}-${month}-${day}`;
+    }
+
+    function toUnicodeBold(str) {
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const boldAlphabet = '𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝐖𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤确认𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐳𝟎𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗';
+        return str.split('').map(c => {
+            const idx = alphabet.indexOf(c);
+            return idx > -1 ? boldAlphabet.substr(idx * 2, 2) : c;
+        }).join('');
+    }
+
+    function formatRenoText(renoKey, ingName, centreName) {
+        if(renoKey === "centre") return `👉 À renouveler pour le stock de : ${centreName}`;
+        if(renoKey === "ing") return `👉 À renouveler pour le stock de : ${ingName}`;
+        return "ℹ️ Ne nécessite pas de renouvellement";
+    }
+
+    function updateDynamicStocks() {
+        const ingName = document.getElementById('inIng').value || "";
+        const formattedStockName = `Stock MICROPORT CRM ${ingName.toUpperCase()}`;
+        document.querySelectorAll('.dynamic-ing-stock').forEach(option => { option.value = formattedStockName; });
+        document.querySelectorAll('.dynamic-ing-stock-sonde').forEach(option => { option.value = formattedStockName; });
+    }
+
+    function generateEmail() {
+        const centre = document.getElementById('inC').value || "(centre)";
+        const acte = document.getElementById('inActe').value || "(acte)";
+        const medecin = document.getElementById('inD').value || "(docteur)";
+        const ingName = document.getElementById('inIng').value || "l'ingénieur";
+        const rawDate = document.getElementById('inDate').value;
+        const dateStr = rawDate ? rawDate.split('-').reverse().join('/') : "(date)";
+        let detail = "";
+
+        function fmtExp(idVal) { return idVal ? idVal.split('-').reverse().join('/') : '(date)'; }
+
+        const dVal = document.getElementById('inDefi').value;
+        if(dVal !== "") {
+            const ref = refsMap[dVal] || "";
+            const sn = document.getElementById('sn-defi').value || '(S/N)';
+            const exp = fmtExp(document.getElementById('exp-defi').value);
+            const stk = document.getElementById('p-defi').value;
+            const renoCode = document.getElementById('r-defi').value;
+            detail += `🔹 ${toUnicodeBold('DÉFIBRILLATEUR :')} ${toUnicodeBold(dVal)} (REF: ${ref})%0A    • S/N : ${toUnicodeBold(sn)} | EXP : ${exp}%0A    • Provenance : ${stk}%0A    ${formatRenoText(renoCode, ingName, centre)}%0A%0A`;
+        }
+
+        const pVal = document.getElementById('inPace').value;
+        if(pVal !== "") {
+            const ref = refsMap[pVal] || "";
+            const sn = document.getElementById('sn-pace').value || '(S/N)';
+            const exp = fmtExp(document.getElementById('exp-pace').value);
+            const stk = document.getElementById('p-pace').value;
+            const renoCode = document.getElementById('r-pace').value;
+            detail += `🔹 ${toUnicodeBold('PACEMAKER :')} ${toUnicodeBold(pVal)} (REF: ${ref})%0A    • S/N : ${toUnicodeBold(sn)} | EXP : ${exp}%0A    • Provenance : ${stk}%0A    ${formatRenoText(renoCode, ingName, centre)}%0A%0A`;
+        }
+
+        document.querySelectorAll('#ui-sonde-configs > div').forEach(div => {
+            let sName = div.querySelector('b').innerText;
+            detail += `🔸 ${toUnicodeBold('SONDE :')} ${toUnicodeBold(sName)} (REF: ${refsMap[sName]||""})%0A    • S/N : ${div.querySelector('.sn').value || '(S/N)'} | EXP : ${fmtExp(div.querySelector('.exp').value)}%0A    • Provenance : ${div.querySelector('.p').value}%0A    ${formatRenoText(div.querySelector('.r').value, ingName, centre)}%0A%0A`;
+        });
+
+        const sub = encodeURIComponent(`Bon de livraison matériel pour ${acte} le ${dateStr} au ${centre}`);
+        const corps = encodeURIComponent(`Bonjour,\n\nVous trouverez ci-joint le bon de livraison du matériel implanté.\n\n---------------------------------------------\n📌 INFORMATIONS COMPLÈTES\n---------------------------------------------\n• Acte : ${acte}\n• Date : ${dateStr}\n• Centre : ${centre}\n• Médecin : ${medecin}\n\n---------------------------------------------\n📦 MATÉRIEL UTILISÉ\n---------------------------------------------\n`) + detail + encodeURIComponent(`---------------------------------------------\n\nJe reste à votre disposition pour de plus amples informations.\n\nCordialement,`);
+        window.open(`mailto:?subject=${sub}&body=${corps}`, '_blank');
+    }
+
+    function captureImage() {
+        const bl = document.getElementById('bl-canvas');
+        bl.style.transform = "none"; bl.style.margin = "0";
+        html2canvas(bl, { scale: 3 }).then(canvas => {
+            document.getElementById('img-container').innerHTML = '';
+            const img = new Image(); img.src = canvas.toDataURL("image/png");
+            document.getElementById('img-container').appendChild(img);
+            document.getElementById('image-result').style.display = 'block';
+            if(window.innerWidth < 800) { bl.style.transform = "scale(0.42)"; bl.style.margin = "0 auto -600px"; }
+            window.scrollTo(0,0);
+        });
+    }
+
+    updateMenus();
+
+    function updateMenus() {
+        const cSel = document.getElementById('inC'); cSel.innerHTML = ""; Object.keys(db).forEach(c => cSel.add(new Option(c, c)));
+        const dSel = document.getElementById('inDefi'); dSel.innerHTML = ""; dSel.add(new Option("-- Aucun --", ""));
+        listDefis.forEach(d => dSel.add(new Option(d, d)));
+        const pSel = document.getElementById('inPace'); pSel.innerHTML = ""; pSel.add(new Option("-- Aucun --", ""));
+        listPaces.forEach(p => pSel.add(new Option(p, p)));
+        const iSel = document.getElementById('inIng'); iSel.innerHTML = "";
+        listIngs.forEach(i => iSel.add(new Option(i, i)));
+        const grid = document.getElementById('ui-sonde-cards'); grid.innerHTML = "";
+        listSondes.forEach(s => {
+            const card = document.createElement('div'); card.className = 's-card'; card.innerText = s;
+            card.onclick = () => toggleSonde(s, card); grid.appendChild(card);
+        });
+        initDocs();
+        updateDynamicStocks();
+    }
+
+    function initDocs() {
+        const sel = document.getElementById('inD'); sel.innerHTML = "";
+        const c = document.getElementById('inC').value; db[c].docs.forEach(d => sel.add(new Option(d, d)));
+        sync();
+    }
+
+    function toggleBox(type) {
+        const val = document.getElementById(`in${type}`).value;
+        if(val !== "") document.getElementById(`cfg-${type.toLowerCase()}`).classList.add('active-form');
+        else document.getElementById(`cfg-${type.toLowerCase()}`).classList.remove('active-form');
+    }
+
+    function toggleSonde(name, card) {
+        const id = `s-${name.replace(/\s+/g, '')}`;
+        if(!card.classList.contains('active')) {
+            card.classList.add('active');
+            const d = document.createElement('div'); d.id = id; d.className = 'mat-config-box active-form';
+            const ingName = document.getElementById('inIng').value || "";
+            const formattedStockName = `Stock MICROPORT CRM ${ingName.toUpperCase()}`;
+            
+            d.innerHTML = `<span style="font-weight:bold; font-size:12px; color:var(--blue-mp); display:flex; justify-content:space-between; align-items:center;">
+                <b>${name}</b>
+                <div style="display:flex; gap:5px;">
+                    <button type="button" class="btn-scan" style="background:#0078d4; color:white;" onclick="triggerLabelPhoto('${id}')">📷 ANALYSER ÉTIQUETTE</button>
+                    <button type="button" class="btn-scan" onclick="openScanner('${id}')">📷 SCAN DATAMATRIX</button>
+                </div>
+            </span>
+            <div class="grid-inputs" style="margin-top:5px;">
+                <div><label>Photo</label><input type="file" onchange="saveImg(this, '${id}')"></div>
+                <div><label>SN</label><input type="text" class="sn" oninput="sync()"></div>
+                <div><label>Exp.</label><input type="date" class="exp" onchange="sync()"></div>
+                <div><label>Stock</label><select class="p" onchange="sync()"><option value="Stock du centre">Stock Centre</option><option value="${formattedStockName}" class="dynamic-ing-stock-sonde">Stock Micro</option></select></div>
+                <div><label>Renouvellement</label><select class="r" onchange="sync()"><option value="centre">à renouveler pour le stock du centre</option><option value="ing">à renouveler pour le stock de l'ingénieur</option><option value="aucun">ne nécessite pas de renouvellement</option></select></div>
+            </div>`;
+            document.getElementById('ui-sonde-configs').appendChild(d);
+        } else { card.classList.remove('active'); document.getElementById(id).remove(); }
+        sync();
+    }
+
+    function saveImg(input, key) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = e => { imgs[key] = e.target.result; sync(); }; r.readAsDataURL(input.files[0]); } }
+    function upMediaFile(input, tid, key) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = e => { sigSource[key] = 'file'; document.getElementById(tid).src = e.target.result; sync(); }; r.readAsDataURL(input.files[0]); } }
+    function upMedia(input, tid) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = e => { document.getElementById(tid).src = e.target.result; sync(); }; r.readAsDataURL(input.files[0]); } }
+
+    function sync() {
+        const c = document.getElementById('inC').value;
+        if(!c || !db[c]) return;
+        const act = document.getElementById('inActe').value;
+        const rawDate = document.getElementById('inDate').value;
+        const dStr = rawDate ? rawDate.split('-').reverse().join('/') : '';
+        const ing = document.getElementById('inIng').value || '';
+        const doc = document.getElementById('inD').value || '';
+        
+        document.getElementById('v-date').innerText = dStr;
+        document.getElementById('v-centre').innerText = c;
+        document.getElementById('v-adr').innerText = db[c].adr;
+        document.getElementById('v-doc').innerText = doc;
+        document.getElementById('v-ing').innerText = ing;
+        document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
+        
+        const sigTransImg = document.getElementById('v-sig-trans');
+        
+        if (sigSource['trans'] === 'draw') {
+            if (ing) {
+                document.getElementById('lbl-sig-ing').innerHTML = `${ing}<br><small style="font-size:8px; color:#555;">Ingénieur Microport CRM</small>`;
+            } else { document.getElementById('lbl-sig-ing').innerHTML = ''; }
+        } 
+        else if (sigSource['trans'] === 'file') {
+            document.getElementById('lbl-sig-ing').innerHTML = '';
+        } 
+        else {
+            document.getElementById('lbl-sig-ing').innerHTML = '';
+            if (ing === "Antoine LECOCQ") { sigTransImg.src = "assets/signature-antoine.png"; } 
+            else if (ing === "Baptiste DESARMENIEN") { sigTransImg.src = "assets/signature-baptiste.png"; } 
+            else if (ing === "Valentin GARTENLAUB") { sigTransImg.src = "assets/signature-valentin.png"; } 
+            else if (ing === "Francois MAINGAULT") { sigTransImg.src = "assets/signature-francois.png"; } 
+            else if (ing === "Johann MORIN") { sigTransImg.src = "assets/signature-johann.png"; } 
+            else { sigTransImg.removeAttribute('src'); }
+        }
+
+        const sigCentreImg = document.getElementById('v-sig-centre');
+        
+        if (sigSource['centre'] === 'draw') {
+            if (doc) {
+                document.getElementById('lbl-sig-doc').innerHTML = `${doc}<br><small style="font-size:8px; color:#555;">Service de Cardiologie<br>${c}</small>`;
+            } else { document.getElementById('lbl-sig-doc').innerHTML = ''; }
+        } 
+        else if (sigSource['centre'] === 'file') {
+            document.getElementById('lbl-sig-doc').innerHTML = '';
+        } 
+        else {
+            document.getElementById('lbl-sig-doc').innerHTML = '';
+            if (c === "CHU TOURS") { sigCentreImg.src = "assets/tampon-chu-tours.png"; } 
+            else if (c === "CHU ORLEANS") { sigCentreImg.src = "assets/tampon-chu-orleans.png"; } 
+            else if (c === "CHU LIMOGES") { sigCentreImg.src = "assets/tampon-chu-limoges.png"; } 
+            else if (c === "CHU POITIERS") { sigCentreImg.src = "assets/tampon-chu-poitiers.png"; } 
+            else if (c === "CH BLOIS") { sigCentreImg.src = "assets/tampon-ch-blois.png"; } 
+            else if (c === "CH CHATEAUROUX") { sigCentreImg.src = "assets/tampon-ch-chateauroux.png"; } 
+            else if (c === "CH Bourges") { sigCentreImg.src = "assets/tampon-ch-bourges.png"; } 
+            else if (c === "Pôle Santé Oréliance") { sigCentreImg.src = "assets/tampon-oreliance.png"; } 
+            else { sigCentreImg.removeAttribute('src'); }
+        }
+
+        const table = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
+        table.innerHTML = ""; let n = 0;
+        
+        const dVal = document.getElementById('inDefi').value;
+        if(dVal !== "") { n++; addRow(table, "DAI", dVal, imgs['defi'], document.getElementById('sn-defi').value, document.getElementById('exp-defi').value, document.getElementById('p-defi').value, document.getElementById('r-defi').value); }
+        const pVal = document.getElementById('inPace').value;
+        if(pVal !== "") { n++; addRow(table, "PM", pVal, imgs['pace'], document.getElementById('sn-pace').value, document.getElementById('exp-pace').value, document.getElementById('p-pace').value, document.getElementById('r-pace').value); }
+
+        document.querySelectorAll('#ui-sonde-configs > div').forEach(div => {
+            n++; addRow(table, "SONDE", div.querySelector('b').innerText, imgs[div.id], div.querySelector('.sn').value, div.querySelector('.exp').value, div.querySelector('.p').value, div.querySelector('.r').value);
+        });
+        document.getElementById('v-total').innerText = n;
+    }
+
+    function addRow(t, type, name, src, s, e, p, ren) {
+        const row = t.insertRow();
+        let rVal = refsMap[name] || "";
+        let det = [`<b>REF:</b> ${rVal}`];
+        if(s) det.push(`<b>SN:</b> ${s}`); 
+        if(e) det.push(`<b>EXP:</b> ${e.split('-').reverse().join('/')}`);
+        det.push(`<b>STOCK:</b> ${p}`); 
+        let textRen = ren === "centre" ? "OUI (CENTRE)" : (ren === "ing" ? "OUI (INGÉNIEUR)" : "NON");
+        det.push(`<b>RENOUVELLEMENT:</b> ${textRen}`);
+        
+        row.innerHTML = `<td class="row-type">${type}<br><small>${name}</small></td><td class="row-photo">${src ? `<img src="${src}">` : ''}</td><td class="tech-details">${det.join('<br>')}</td>`;
+    }
+
+    document.getElementById('inDate').valueAsDate = new Date();
+    initPads();
+    sync();
+</script>
+</body>
+</html>
