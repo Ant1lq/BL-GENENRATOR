@@ -363,7 +363,6 @@
 
 <input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
 
-<!-- MODAL CADRAGE -->
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
@@ -378,7 +377,6 @@
     </div>
 </div>
 
-<!-- MODAL AJOUT ET CONFIGURATION MANUELLE BACKUP -->
 <div id="manual-modal" class="ios-modal">
     <div class="ios-modal-content">
         <h3 id="manual-modal-title" style="margin-top:0; color:var(--blue-mp); font-size:16px; font-weight:bold;">Ajustement Matériel</h3>
@@ -429,7 +427,6 @@
     </div>
 </div>
 
-<!-- MODAL SIGNATURES AGRANDIES -->
 <div id="sig-modal" class="ios-modal">
     <div class="ios-modal-content" style="max-width:100%; border-radius:24px 24px 0 0;">
         <h3 id="sig-modal-title" style="margin-top:0; text-align:center; font-size:15px; color:var(--blue-mp); font-weight:bold;">ÉMARGEMENT ÉCRAN</h3>
@@ -441,9 +438,6 @@
     </div>
 </div>
 
-<!-- ==========================================
-     CANVAS TECHNIQUE RENDU A4 STRICT
-========================================== -->
 <div id="bl-wrapper">
     <div id="bl-canvas">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -493,13 +487,11 @@
             </div>
             <div style="border:1px solid #000; padding:10px; font-size:11px;">
                 <b>Visa / Signature Transporteur :</b>
-                <!-- Zone d'identité dynamique Transporteur -->
                 <div id="lbl-sig-ing" style="font-size:10px; color:#1e293b; font-weight:bold; margin-top:4px; margin-bottom:4px; line-height:1.2;"></div>
                 <img id="v-sig-trans" class="bl-sig-img">
             </div>
             <div style="border:1px solid #000; padding:10px; font-size:11px;">
                 <b>Tampon & Signature Centre :</b>
-                <!-- Zone d'identité dynamique Centre -->
                 <div id="lbl-sig-doc" style="font-size:10px; color:#1e293b; font-weight:bold; margin-top:4px; margin-bottom:4px; line-height:1.2;"></div>
                 <img id="v-sig-centre" class="bl-sig-img">
             </div>
@@ -522,11 +514,15 @@
     let refsMap = {
         "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M", 
         "Invicta 1CR58": "TLT001C", "Invicta 1CR68": "TLT005C", "Navigo ARC78": "TLT021C", "Navigo ARC88": "TLT022C", 
-        "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT020C",
+        "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT0200"
+    };
+
+    // Complétion automatique de la refsMap manquante dans le script initial pour s'assurer que Talentia/Alizéa tournent parfaitement
+    Object.assign(refsMap, {
         "Talentia VR 3240": "TDF061C", "Talentia VR 3210": "TDF059C", "Talentia DR 3540": "TDF062C", 
         "Talentia DR 3510": "TDF060C", "Talentia CRTD 3844": "TDF068C", "Talentia CRTD 3841": "TDF067C", "Talentia CRTD 3811": "TDF066C",
         "Alizéa DR 1600": "TPM020C", "Alizéa SR 1300": "TPM021C", "ENO SR": "TPM015C", "ENO DR": "TPM014C"
-    };
+    });
 
     let listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
     let listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
@@ -612,7 +608,6 @@
 
         const canvasClean = cropper.getCroppedCanvas();
         
-        // Renforcement noir et blanc agressif pour l'affichage de la photo du BL
         const canvasOcr = document.createElement('canvas');
         canvasOcr.width = canvasClean.width;
         canvasOcr.height = canvasClean.height;
@@ -621,10 +616,9 @@
         
         const imgData = ctxOcr.getImageData(0, 0, canvasOcr.width, canvasOcr.height);
         const data = imgData.data;
-        // Seuil binarisation strict pour simuler un vrai scanner N&B
         for (let i = 0; i < data.length; i += 4) {
             let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-            let bw = (grayscale > 110) ? 255 : 0; 
+            let bw = (grayscale > 115) ? 255 : 0; 
             data[i] = data[i+1] = data[i+2] = bw;
         }
         ctxOcr.putImageData(imgData, 0, 0);
@@ -646,13 +640,12 @@
         let matchedModel = "Inconnu";
         let detectedType = "SONDE"; 
         
-        // AMÉLIORATION PARSEUR : Traitement du texte en continu (enlève les retours à la ligne) et tolérance aux caractères parasites
         let normalizedText = text.toUpperCase()
             .replace(/[\n\r]/g, " ")
             .replace(/[^A-Z0-9\s]/g, "")
             .replace(/\s+/g, " ");
 
-        // Passe 1 : Recherche exacte de la référence ou du nom épuré
+        // Passe 1 : Recherche exacte
         for (let name in refsMap) {
             let ref = refsMap[name].toUpperCase();
             let uName = name.toUpperCase().replace(/[^A-Z0-9\s]/g, "").replace(/\s+/g, " ");
@@ -662,12 +655,11 @@
             }
         }
 
-        // Passe 2 (AMÉLIORATION SONDES SPÉCIFIQUE) : Recherche croisée racine + numéro si l'étiquette comporte un défaut de lecture
+        // Passe 2 : Racine + numéro (Spécifique Invicta/Vega)
         if (matchedModel === "Inconnu") {
             for (let name in refsMap) {
                 let uName = name.toUpperCase();
-                let mainChunk = uName.split(' ')[0]; // Récupère "VEGA", "SONRTIP", "INVICTA", "NAVIGO"...
-                
+                let mainChunk = uName.split(' ')[0]; 
                 if (mainChunk.length > 3 && normalizedText.includes(mainChunk)) {
                     let numbersInModel = uName.match(/\d+/);
                     if (numbersInModel && normalizedText.includes(numbersInModel[0])) {
@@ -678,7 +670,7 @@
             }
         }
 
-        // Passe 3 : Fallback par défaut original en cas d'échec
+        // Fallback
         if (matchedModel === "Inconnu") {
             for (let name in refsMap) {
                 let chunks = name.split(' ');
@@ -703,30 +695,58 @@
         }
 
         let sn = ""; let exp = "";
-        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-:]/g, "").replace(/\s+/g, " ");
         
+        // --- PARSEUR DE S/N EXTRA-LARGE & ROBUSTE POUR INVICTA / DATA MATRIX ---
+        // 1. Nettoyage intermédiaire conservant les parenthèses critiques du GS1-UDI
+        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
+        
+        // Tentative de capture via UDI Complet (17)YYMMDD(21)SN
         const udiMatch = cleanText.match(/\(17\)\s*(\d{6})\s*\(21\)\s*([A-Z0-9\-]+)/i) || cleanText.match(/17(\d{6})21([A-Z0-9\-]+)/i);
+        
         if (udiMatch) {
-            exp = formatGs1Date(udiMatch[1]); sn = udiMatch[2];
+            exp = formatGs1Date(udiMatch[1]); 
+            sn = udiMatch[2].trim();
         } else {
-            const snMatch = cleanText.match(/SN\s*([A-Z0-9\-]{5,15})/i) || cleanText.match(/S\/?N\s*:?\s*([A-Z0-9\-]{5,15})/i);
-            if (snMatch) sn = snMatch[1];
+            // Analyse textuelle ciblée : captures des variations complexes de labels "S/N" ou "SN:"
+            const regexSnList = [
+                /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,15})/i,
+                /QTY\s*\d+\s+([A-Z0-9\-]{6,12})/i, // Capture secours si le SN est collé sous la quantité
+                /(?:INV[I1]CTA.*\s+)([A-Z0-9\-]{6,12})/i // Détection directe si le SN suit le mot Invicta sans label intermédiaire
+            ];
+
+            for (let reg of regexSnList) {
+                let m = cleanText.match(reg);
+                if (m && m[1]) {
+                    sn = m[1].trim();
+                    break;
+                }
+            }
+
+            // Extraction standard de la date d'expiration
             const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
-            if (isoDateMatch) exp = `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
+            if (isoDateMatch) {
+                exp = `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
+            } else {
+                const multiDateMatch = cleanText.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
+                if (multiDateMatch) exp = `${multiDateMatch[3]}-${multiDateMatch[2]}-${multiDateMatch[1]}`;
+            }
         }
+
+        // Nettoyage final des résidus de lecture de caractères sur le S/N
+        if (sn) sn = sn.replace(/^[:\-\s]+/, "");
 
         basketItems.push({
             type: detectedType,
             model: matchedModel !== "Inconnu" ? matchedModel : (listSondes[0]), 
-            sn: sn,
-            exp: exp,
+            sn: sn || "",
+            exp: exp || "",
             stock: "Stock du centre", 
             reno: "centre", 
             img: snapshot
         });
 
         renderBasket();
-        if (matchedModel === "Inconnu") { openManualAddModal(basketItems.length - 1); }
+        if (matchedModel === "Inconnu" || !sn) { openManualAddModal(basketItems.length - 1); }
     }
 
     function formatGs1Date(yymmdd) {
@@ -758,7 +778,7 @@
                     <span style="font-size:11px; font-weight:700; background:rgba(255,255,255,0.7); padding:2px 8px; border-radius:6px; border:1px solid rgba(0,0,0,0.05);">REF: ${refsMap[item.model] || '??'}</span>
                 </div>
                 <div class="detected-details">
-                    <b>S/N :</b> ${item.sn || 'Non détecté'} &nbsp;|&nbsp; <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'Non détectée'}<br>
+                    <b>S/N :</b> ${item.sn || '<span style="color:var(--danger);font-weight:bold;">A renseigner ⚠️</span>'} &nbsp;|&nbsp; <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'Non détectée'}<br>
                     <small style="opacity:0.85; display:block; margin-top:3px;">Stock : ${item.stock} &bull; Suivi : ${item.reno === 'centre' ? 'Stock Centre' : (item.reno === 'ing' ? 'Stock Ingé' : 'Aucun')}</small>
                 </div>
                 <div class="detected-actions">
@@ -915,7 +935,6 @@
         document.getElementById('v-ing').innerText = ing;
         document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
         
-        // --- MISE À ZONE CONDITIONNELLE ET ÉPURÉE DES LABELS (UNIQUEMENT SUR SIGNATURE MANUELLE SI DRAW) ---
         if (sigSource['trans'] === 'draw') {
             document.getElementById('lbl-sig-ing').innerText = `${ing}\nIngénieur CRM`;
         } else {
@@ -991,14 +1010,13 @@
         basketItems.forEach((item) => {
             let ref = refsMap[item.model] || 'N/A';
             let expFr = item.exp ? item.exp.split('-').reverse().join('/') : 'N/A';
-            
             let renoTxt = item.reno === 'centre' ? centre : ing;
             
             let typeLabel = "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑";
             if (item.type === "PM") typeLabel = "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑";
             if (item.type === "SONDE") typeLabel = "🔸 𝐒𝐎𝐍𝐃𝐄";
 
-            detailMatos += `${typeLabel} : 𝐓𝐚l𝐞𝐧𝐭𝐢α ${item.model.replace("Talentia ", "")} (REF: ${ref})\n`;
+            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n`;
             detailMatos += `• S/N : ${item.sn || 'N/A'} | EXP : ${expFr}\n`;
             detailMatos += `• Provenance : ${item.stock}\n`;
             detailMatos += `👉 À renouveler pour le stock de : ${renoTxt}\n\n`;
