@@ -645,17 +645,40 @@
     function detectAndAddProductFromText(text, snapshot) {
         let matchedModel = "Inconnu";
         let detectedType = "SONDE"; 
-        let normalizedText = text.replace(/[^A-Za-z0-9\s\-]/g, "").toUpperCase();
+        
+        // AMÉLIORATION PARSEUR : Traitement du texte en continu (enlève les retours à la ligne) et tolérance aux caractères parasites
+        let normalizedText = text.toUpperCase()
+            .replace(/[\n\r]/g, " ")
+            .replace(/[^A-Z0-9\s]/g, "")
+            .replace(/\s+/g, " ");
 
+        // Passe 1 : Recherche exacte de la référence ou du nom épuré
         for (let name in refsMap) {
             let ref = refsMap[name].toUpperCase();
-            let uName = name.toUpperCase();
+            let uName = name.toUpperCase().replace(/[^A-Z0-9\s]/g, "").replace(/\s+/g, " ");
             if (normalizedText.includes(ref) || normalizedText.includes(uName)) {
                 matchedModel = name;
                 break;
             }
         }
 
+        // Passe 2 (AMÉLIORATION SONDES SPÉCIFIQUE) : Recherche croisée racine + numéro si l'étiquette comporte un défaut de lecture
+        if (matchedModel === "Inconnu") {
+            for (let name in refsMap) {
+                let uName = name.toUpperCase();
+                let mainChunk = uName.split(' ')[0]; // Récupère "VEGA", "SONRTIP", "INVICTA", "NAVIGO"...
+                
+                if (mainChunk.length > 3 && normalizedText.includes(mainChunk)) {
+                    let numbersInModel = uName.match(/\d+/);
+                    if (numbersInModel && normalizedText.includes(numbersInModel[0])) {
+                        matchedModel = name;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Passe 3 : Fallback par défaut original en cas d'échec
         if (matchedModel === "Inconnu") {
             for (let name in refsMap) {
                 let chunks = name.split(' ');
@@ -892,7 +915,7 @@
         document.getElementById('v-ing').innerText = ing;
         document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
         
-        // --- MISE À JOUR CONDITIONNELLE ET ÉPURÉE DES LABELS (UNIQUEMENT SUR SIGNATURE MANUELLE SI DRAW) ---
+        // --- MISE À ZONE CONDITIONNELLE ET ÉPURÉE DES LABELS (UNIQUEMENT SUR SIGNATURE MANUELLE SI DRAW) ---
         if (sigSource['trans'] === 'draw') {
             document.getElementById('lbl-sig-ing').innerText = `${ing}\nIngénieur CRM`;
         } else {
