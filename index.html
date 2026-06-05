@@ -511,6 +511,7 @@
 </div>
 
 <script>
+    // BASE DE DONNÉES CENTRES ET MÉDECINS INTEGRALE RECONSTITUÉE
     let db = {
         "CHU TOURS": { adr: "Av. de la République, 37170 Chambray-lès-Tours", docs: ["Dr Bodin", "Dr Pierre", "Dr Bisson", "Dr Lemrini", "Dr Lenormand", "Dr Nasarre"] },
         "CHU ORLEANS": { adr: "14 Av. de l'Hôpital, 45100 Orléans", docs: ["Dr Domain", "Dr Jacobs", "Dr Spiesser", "Dr Lenormand"] },
@@ -537,7 +538,7 @@
     let listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
     let listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
     let listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
-    let listIngs = ["Antoine LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
+    let listIngs = ["A. LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
     
     let basketItems = []; 
     let sigSource = { trans: 'none', centre: 'none' };
@@ -658,10 +659,6 @@
         });
     }
 
-    // ==========================================
-    // PARSING ET LOGIQUE D'EXTRACTION AVANCÉE
-    // ==========================================
-
     function extractSerialNumber(text, type) {
         let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
         
@@ -691,16 +688,17 @@
         return "";
     }
 
+    // ALGORITHME DE DÉTECTION ROBUSTE FORMAT ISO/EUROPÉEN (ADAPTÉ POUR VEGA)
     function extractExpirationDate(text) {
         let cleanText = text.replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         
-        // STRATÉGIE 1 : Format ISO strict AAAA-MM-JJ (ex: 2028-08-01 présent sur les nouvelles Vega)
+        // STRATÉGIE 1 : Format ISO strict AAAA-MM-JJ (ex: 2028-08-01 présent sur l'image VEGA R52)
         const isoDateMatch = cleanText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
         if (isoDateMatch) {
             return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
         }
 
-        // STRATÉGIE 2 : Format classique européen JJ/MM/AAAA (ex: 01/08/2028 ou 25/07/2028)
+        // STRATÉGIE 2 : Format classique européen JJ/MM/AAAA (ex: 01/08/2028)
         const frDateMatch = cleanText.match(/\b(\d{2})[-/](\d{2})[-/](\d{4})\b/);
         if (frDateMatch) {
             return `${frDateMatch[3]}-${frDateMatch[2]}-${frDateMatch[1]}`;
@@ -831,10 +829,6 @@
         if (matchedModel === "Inconnu" || !sn || !exp) { openManualAddModal(basketItems.length - 1); }
     }
 
-    // ==========================================
-    // INTERFACE PANIER, CONFIGURATIONS ET MODALS
-    // ==========================================
-
     function renderBasket() {
         const container = document.getElementById('detected-items-list');
         const emptyState = document.getElementById('empty-state-msg');
@@ -947,6 +941,7 @@
     function initPads() {
         ['trans', 'centre'].forEach(id => {
             const canvas = document.getElementById(`pad-${id}`);
+            if(!canvas) return;
             const ctx = canvas.getContext('2d');
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = 90;
@@ -959,7 +954,7 @@
         });
 
         mCanvas = document.getElementById('modal-canvas');
-        mCtx = mCanvas.getContext('2d');
+        if(mCanvas) mCtx = mCanvas.getContext('2d');
     }
 
     function getPos(c, e) {
@@ -1031,7 +1026,7 @@
 
         const sigTransImg = document.getElementById('v-sig-trans');
         if (sigSource['trans'] === 'none') {
-            if (ing === "Antoine LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
+            if (ing === "A. LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
             else if (ing === "Baptiste DESARMENIEN") sigTransImg.src = "assets/signature-baptiste.png";
             else if (ing === "Valentin GARTENLAUB") sigTransImg.src = "assets/signature-valentin.png";
             else if (ing === "Francois MAINGAULT") sigTransImg.src = "assets/signature-francois.png";
@@ -1134,7 +1129,7 @@
         html2canvas(document.getElementById('bl-canvas'), { scale: 2.5 }).then(canvas => {
             const container = document.getElementById('img-container');
             container.innerHTML = '';
-            const img = new Image(); img.src = canvas.toDataURL(\"image/png\");
+            const img = new Image(); img.src = canvas.toDataURL("image/png");
             container.appendChild(img);
             document.getElementById('image-result').style.display = 'block';
             wrapper.style.display = oldDisplay;
