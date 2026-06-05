@@ -659,37 +659,31 @@
     }
 
     // ==========================================
-    // FONCTIONS D'ANALYSE ET EXTRACTION CORRIGÉES
+    // PARSING ET LOGIQUE D'EXTRACTION AVANCÉE
     // ==========================================
 
     function extractSerialNumber(text, type) {
         let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
         
-        // STRATÉGIE 1 : Détection UDI GS1 (recherche le bloc après le marqueur (21) ou 21 en fin de chaîne)
         const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{6,12})/i) || cleanText.match(/21([A-Z0-9]{8})\b/i);
         if (udiMatch) return udiMatch[1].trim();
 
-        // STRATÉGIE 2 : Structure spécifique SONDE MicroPort
         if (type === "SONDE") {
-            // Format VEGA : 3 lettres + 6 chiffres (ex: DRG110400, DRG110965)
             const vegaSondeRegex = /\b([A-Z]{3}\d{6})\b/i;
             let vegaMatch = cleanText.match(vegaSondeRegex);
             if (vegaMatch) return vegaMatch[1].trim();
 
-            // Format Standard/Récents : (ex: 58TR125922)
             const microportSondeRegex = /\b(\d{2}[A-Z][A-Z0-9][A-Z0-9]{4,8})\b/i;
             let mpMatch = cleanText.match(microportSondeRegex);
             if (mpMatch) return mpMatch[1].trim();
         }
 
-        // STRATÉGIE 3 : Structure spécifique BOÎTIER MicroPort (ex: 3 chiffres + 2 lettres + 3 chiffres -> 528JU008)
         if (type === "BOITIER") {
             const microportBoitierRegex = /\b(\d{3}[A-Z]{2}\d{3})\b/i;
             let mpBoxMatch = cleanText.match(microportBoitierRegex);
             if (mpBoxMatch) return mpBoxMatch[1].trim();
         }
 
-        // PLAN DE SECOURS : Recherche classique derrière le mot-clé SN
         const genericRegex = /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,12})/i;
         let m = cleanText.match(genericRegex);
         if (m && m[1]) return m[1].trim();
@@ -698,10 +692,23 @@
     }
 
     function extractExpirationDate(text) {
-        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
+        let cleanText = text.replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         
-        // STRATÉGIE 1 : Détection UDI GS1 (recherche l'identifiant (17) au format AAMMJJ comme sur le Talentia)
-        const udiExpMatch = cleanText.match(/\(17\)\s*(\d{6})/i) || cleanText.match(/\b17(\d{6})\d{2}21/i);
+        // STRATÉGIE 1 : Format ISO strict AAAA-MM-JJ (ex: 2028-08-01 présent sur les nouvelles Vega)
+        const isoDateMatch = cleanText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
+        if (isoDateMatch) {
+            return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
+        }
+
+        // STRATÉGIE 2 : Format classique européen JJ/MM/AAAA (ex: 01/08/2028 ou 25/07/2028)
+        const frDateMatch = cleanText.match(/\b(\d{2})[-/](\d{2})[-/](\d{4})\b/);
+        if (frDateMatch) {
+            return `${frDateMatch[3]}-${frDateMatch[2]}-${frDateMatch[1]}`;
+        }
+
+        // STRATÉGIE 3 : Détection UDI GS1 (Identifiant (17) au format AAMMJJ - ex: Talentia)
+        let udiCleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
+        const udiExpMatch = udiCleanText.match(/\(17\)\s*(\d{6})/i) || udiCleanText.match(/\b17(\d{6})\d{2}21/i);
         if (udiExpMatch) {
             let rawDate = udiExpMatch[1]; 
             let year = "20" + rawDate.substring(0, 2);
@@ -709,14 +716,6 @@
             let day = rawDate.substring(4, 6);
             return `${year}-${month}-${day}`;
         }
-
-        // STRATÉGIE 2 : Format ISO classique AAAA-MM-JJ (Sondes Navigo / Invicta)
-        const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
-        if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
-
-        // STRATÉGIE 3 : Format classique européen JJ/MM/AAAA (ex: 25/07/2028, 01/08/2028)
-        const frDateMatch = cleanText.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
-        if (frDateMatch) return `${frDateMatch[3]}-${frDateMatch[2]}-${frDateMatch[1]}`;
 
         return "";
     }
@@ -728,7 +727,6 @@
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         let listBoitiers = [...listDefis, ...listPaces];
         
-        // STRATÉGIE A : Recherche prioritaire absolue par le Code REF Catalogue (ex: TDF062C)
         for (let name of listBoitiers) {
             let ref = refsMap[name].toUpperCase();
             if (normalizedText.includes(ref)) {
@@ -737,7 +735,6 @@
             }
         }
 
-        // STRATÉGIE B : Plan de secours par mots-clés textuels si la REF a sauté à la lecture
         if (matchedModel === "Inconnu") {
             if (/TALENTIA/i.test(normalizedText)) {
                 if (/VR/i.test(normalizedText) || /3240/i.test(normalizedText)) matchedModel = "Talentia VR 3240";
@@ -781,7 +778,6 @@
         let matchedModel = "Inconnu";
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
 
-        // STRATÉGIE A : Recherche prioritaire absolue par le Code REF Catalogue (ex: TLD041C, TLT022C)
         for (let name of listSondes) {
             let ref = refsMap[name].toUpperCase();
             if (normalizedText.includes(ref)) {
@@ -790,7 +786,6 @@
             }
         }
 
-        // STRATÉGIE B : Plan de secours par mots-clés si la REF est coupée ou mal lue
         if (matchedModel === "Inconnu") {
             if (/(INV|1NV|LNV)TA/i.test(normalizedText) || /INVICTA/i.test(normalizedText)) {
                 if (normalizedText.includes("68")) matchedModel = "Invicta 1CR68";
@@ -837,7 +832,7 @@
     }
 
     // ==========================================
-    // RENDER DE L'INTERFACE PANIER ET SYNC
+    // INTERFACE PANIER, CONFIGURATIONS ET MODALS
     // ==========================================
 
     function renderBasket() {
@@ -1139,7 +1134,7 @@
         html2canvas(document.getElementById('bl-canvas'), { scale: 2.5 }).then(canvas => {
             const container = document.getElementById('img-container');
             container.innerHTML = '';
-            const img = new Image(); img.src = canvas.toDataURL("image/png");
+            const img = new Image(); img.src = canvas.toDataURL(\"image/png\");
             container.appendChild(img);
             document.getElementById('image-result').style.display = 'block';
             wrapper.style.display = oldDisplay;
