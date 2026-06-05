@@ -659,7 +659,7 @@
     }
 
     // ==========================================
-    // FONCTIONS D'ANALYSE ET EXTRACTION OPTIMISÉES
+    // FONCTIONS D'ANALYSE ET EXTRACTION CORRIGÉES
     // ==========================================
 
     function extractSerialNumber(text, type) {
@@ -669,8 +669,14 @@
         const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{6,12})/i) || cleanText.match(/21([A-Z0-9]{8})\b/i);
         if (udiMatch) return udiMatch[1].trim();
 
-        // STRATÉGIE 2 : Structure spécifique SONDE MicroPort (ex: 58TR125922 ou 88S4U02021)
+        // STRATÉGIE 2 : Structure spécifique SONDE MicroPort
         if (type === "SONDE") {
+            // Format VEGA : 3 lettres + 6 chiffres (ex: DRG110400, DRG110965)
+            const vegaSondeRegex = /\b([A-Z]{3}\d{6})\b/i;
+            let vegaMatch = cleanText.match(vegaSondeRegex);
+            if (vegaMatch) return vegaMatch[1].trim();
+
+            // Format Standard/Récents : (ex: 58TR125922)
             const microportSondeRegex = /\b(\d{2}[A-Z][A-Z0-9][A-Z0-9]{4,8})\b/i;
             let mpMatch = cleanText.match(microportSondeRegex);
             if (mpMatch) return mpMatch[1].trim();
@@ -708,7 +714,7 @@
         const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
         if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
 
-        // STRATÉGIE 3 : Format classique européen JJ/MM/AAAA
+        // STRATÉGIE 3 : Format classique européen JJ/MM/AAAA (ex: 25/07/2028, 01/08/2028)
         const frDateMatch = cleanText.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
         if (frDateMatch) return `${frDateMatch[3]}-${frDateMatch[2]}-${frDateMatch[1]}`;
 
@@ -773,10 +779,9 @@
 
     function parseSondeText(text, snapshot) {
         let matchedModel = "Inconnu";
-        
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
 
-        // STRATÉGIE A : Recherche prioritaire absolue par le Code REF Catalogue (ex: TLT022C, TLT001C)
+        // STRATÉGIE A : Recherche prioritaire absolue par le Code REF Catalogue (ex: TLD041C, TLT022C)
         for (let name of listSondes) {
             let ref = refsMap[name].toUpperCase();
             if (normalizedText.includes(ref)) {
@@ -785,7 +790,7 @@
             }
         }
 
-        // STRATÉGIE B : Plan de secours par mots-clés si la REF est coupée
+        // STRATÉGIE B : Plan de secours par mots-clés si la REF est coupée ou mal lue
         if (matchedModel === "Inconnu") {
             if (/(INV|1NV|LNV)TA/i.test(normalizedText) || /INVICTA/i.test(normalizedText)) {
                 if (normalizedText.includes("68")) matchedModel = "Invicta 1CR68";
@@ -832,7 +837,7 @@
     }
 
     // ==========================================
-    // RESTE DE LA LOGIQUE D'INTERFACE DU PANIER
+    // RENDER DE L'INTERFACE PANIER ET SYNC
     // ==========================================
 
     function renderBasket() {
