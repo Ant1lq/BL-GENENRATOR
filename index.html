@@ -13,462 +13,677 @@
 
     <style>
         :root { 
-            --blue-mp: #002e6d; \n            --blue-light: #f0f5fa;\n            --accent: #0078d4;\n            --accent-light: #e1f0fe;\n            --success: #2e7d32;\n            --success-light: #e8f5e9;\n            --warning: #f57c00;\n            --warning-light: #fff3e0;\n            --danger: #d32f2f;\n            --text-main: #333333;\n            --text-muted: #666666;\n            --border-color: #cccccc;\n            --shadow: 0 4px 12px rgba(0,0,0,0.1);\n            --radius: 12px;\n        }\n\n        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }\n\n        body {\n            background-color: #f4f6f9;\n            color: var(--text-main);\n            padding-bottom: 60px;\n        }\n\n        header {\n            background: linear-gradient(135deg, var(--blue-mp), #004b93);\n            color: white;\n            padding: 20px 15px;\n            text-align: center;\n            border-bottom-left-radius: 20px;\n            border-bottom-right-radius: 20px;\n            box-shadow: var(--shadow);\n        }\n\n        header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.5px; }\n        header p { font-size: 0.9rem; opacity: 0.9; margin-top: 5px; }\n\n        .container {\n            max-width: 600px;\n            margin: 0 auto;\n            padding: 15px;\n        }\n\n        .card {\n            background: white;\n            border-radius: var(--radius);\n            padding: 15px;\n            margin-bottom: 15px;\n            box-shadow: var(--shadow);\n        }\n\n        .card-title {\n            font-size: 1.1rem;\n            color: var(--blue-mp);\n            margin-bottom: 12px;\n            font-weight: 600;\n            display: flex;\n            align-items: center;\n            gap: 8px;\n        }\n\n        .form-group {\n            margin-bottom: 12px;\n        }\n\n        .form-group label {\n            display: block;\n            font-size: 0.85rem;\n            color: var(--text-muted);\n            margin-bottom: 4px;\n            font-weight: 500;\n        }\n\n        .form-control, select {\n            width: 100%;\n            padding: 10px 12px;\n            border: 1px solid var(--border-color);\n            border-radius: 8px;\n            font-size: 0.95rem;\n            color: var(--text-main);\n            background-color: #fff;\n            transition: border-color 0.2s;\n        }\n\n        .form-control:focus, select:focus {\n            outline: none;\n            border-color: var(--accent);\n        }\n\n        .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }\n\n        .btn-group-scan {\n            display: grid;\n            grid-template-columns: 1fr 1fr;\n            gap: 10px;\n            margin-top: 10px;\n        }\n\n        .btn {\n            display: inline-flex;\n            align-items: center;\n            justify-content: center;\n            padding: 12px;\n            border: none;\n            border-radius: 8px;\n            font-size: 0.95rem;\n            font-weight: 600;\n            cursor: pointer;\n            transition: all 0.2s;\n            gap: 8px;\n            text-decoration: none;\n        }\n\n        .btn-primary { background-color: var(--blue-mp); color: white; }\n        .btn-primary:hover { background-color: #001f4d; }\n        .btn-accent { background-color: var(--accent); color: white; }\n        .btn-success { background-color: var(--success); color: white; }\n        .btn-danger { background-color: var(--danger); color: white; }\n        .btn-outline { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-main); }\n\n        .basket-item {\n            border-left: 5px solid var(--accent);\n            padding: 10px;\n            background: var(--blue-light);\n            border-radius: 6px;\n            margin-bottom: 10px;\n            position: relative;\n        }\n        .basket-item.type-DAI { border-left-color: var(--danger); background: #fff5f5; }\n        .basket-item.type-PM { border-left-color: var(--warning); background: var(--warning-light); }\n        .basket-item.type-SONDE { border-left-color: var(--accent); background: var(--accent-light); }\n\n        .basket-item h4 { font-size: 0.95rem; color: var(--blue-mp); margin-bottom: 4px; }\n        .basket-item p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }\n\n        .btn-delete-item {\n            position: absolute;\n            top: 10px;\n            right: 10px;\n            background: none;\n            border: none;\n            color: var(--danger);\n            font-weight: bold;\n            cursor: pointer;\n            font-size: 1.1rem;\n        }\n\n        .btn-edit-item {\n            position: absolute;\n            bottom: 10px;\n            right: 10px;\n            background: none;\n            border: none;\n            color: var(--accent);\n            cursor: pointer;\n            font-size: 0.85rem;\n            text-decoration: underline;\n        }\n\n        #camera-modal, #cropper-modal, #manual-modal {\n            position: fixed;\n            top:0; left:0; width:100vw; height:100vh;\n            background: rgba(0,0,0,0.85);\n            display: none;\n            z-index: 1000;\n            flex-direction: column;\n            justify-content: center;\n            align-items: center;\n            padding: 15px;\n        }\n\n        .modal-content {\n            background: white;\n            width: 100%;\n            max-width: 500px;\n            border-radius: var(--radius);\n            padding: 20px;\n            box-shadow: var(--shadow);\n            max-height: 90vh;\n            overflow-y: auto;\n        }\n\n        .cropper-container-box {\n            width: 100%;\n            max-height: 60vh;\n            background: #333;\n            margin-bottom: 15px;\n            overflow: hidden;\n        }\n\n        #cropper-image {\n            max-width: 100%;\n            max-height: 60vh;\n            display: block;\n        }\n\n        #camera-stream {\n            width: 100%;\n            max-width: 450px;\n            border-radius: 8px;\n            background: black;\n        }\n\n        .camera-controls {\n            display: flex;\n            gap: 15px;\n            margin-top: 15px;\n            width: 100%;\n            max-width: 450px;\n        }\n\n        .camera-controls .btn { flex: 1; }\n\n        #loading-ocr {\n            display: none;\n            position: fixed;\n            top:0; left:0; width:100vw; height:100vh;\n            background: rgba(255,255,255,0.8);\n            z-index: 2000;\n            flex-direction: column;\n            justify-content: center;\n            align-items: center;\n        }\n        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--blue-mp); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }\n        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\n\n        #bl-wrapper {\n            background: #fff;\n            padding: 0;\n            margin: 0;\n        }\n\n        #bl-canvas {\n            width: 210mm;\n            min-height: 297mm;\n            padding: 20mm 15mm;\n            margin: 0 auto;\n            background: #fff;\n            position: relative;\n            color: #000;\n            font-size: 11pt;\n            line-height: 1.4;\n        }\n\n        .bl-header {\n            display: flex;\n            justify-content: space-between;\n            align-items: flex-start;\n            border-bottom: 2px solid var(--blue-mp);\n            padding-bottom: 15px;\n            margin-bottom: 25px;\n        }\n        .bl-logo-side h2 { color: var(--blue-mp); font-size: 22pt; font-weight: bold; letter-spacing: 0.5px; }\n        .bl-logo-side p { font-size: 9pt; color: #555; text-transform: uppercase; margin-top: 2px; }\n        .bl-meta-side { text-align: right; font-size: 10pt; line-height: 1.5; }\n\n        .bl-title-box {\n            text-align: center;\n            margin-bottom: 30px;\n        }\n        .bl-title-box h3 { font-size: 16pt; color: #000; font-weight: bold; text-transform: uppercase; border: 1px solid #000; display: inline-block; padding: 6px 20px; }\n\n        .bl-grid-intervenants {\n            display: grid;\n            grid-template-columns: 1fr 1fr;\n            gap: 20px;\n            margin-bottom: 30px;\n        }\n        .bl-block-info { border: 1px solid #ccc; padding: 12px; border-radius: 6px; background: #fafafa; }\n        .bl-block-info h5 { font-size: 10pt; text-transform: uppercase; color: var(--blue-mp); border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 6px; font-weight: bold; }\n        .bl-block-info p { font-size: 10.5pt; margin-bottom: 3px; }\n\n        .bl-table {\n            width: 100%;\n            border-collapse: collapse;\n            margin-bottom: 35px;\n        }\n        .bl-table th {\n            background-color: var(--blue-mp);\n            color: white;\n            font-weight: bold;\n            text-align: left;\n            padding: 8px 10px;\n            font-size: 10pt;\n            text-transform: uppercase;\n            border: 1px solid var(--blue-mp);\n        }\n        .bl-table td {\n            padding: 9px 10px;\n            border: 1px solid #ddd;\n            font-size: 10pt;\n            vertical-align: middle;\n        }\n        .bl-table tr:nth-child(even) td { background-color: #fcfcfc; }\n\n        .bl-footer-signatures {\n            margin-top: 50px;\n            display: flex;\n            justify-content: space-between;\n            padding: 0 20px;\n        }\n        .signature-box {\n            text-align: center;\n            width: 45%;\n        }\n        .signature-box p { font-size: 10pt; font-weight: bold; margin-bottom: 45px; text-decoration: underline; }\n        .signature-line { border-bottom: 1px dashed #999; width: 100%; height: 1px; }\n        .signature-box span { display: block; font-size: 9pt; color: #666; margin-top: 5px; font-style: italic; }\n\n        #image-result { display: none; text-align: center; margin-top: 20px; }\n        #image-result img { max-width: 100%; border: 1px solid #ccc; box-shadow: var(--shadow); border-radius: 8px; }\n\n        @media print {\n            body * { visibility: hidden; }\n            #bl-wrapper, #bl-wrapper * { visibility: visible; }\n            #bl-wrapper { position: absolute; left: 0; top: 0; width: 100%; }\n            @page { size: A4; margin: 0; }\n            body { padding: 0; background: #fff; }\n        }\n    </style>
+            --blue-mp: #002e6d; 
+            --blue-light: #f0f5fa;
+            --accent: #0078d4;
+            --accent-light: #e1f0fe;
+            --success: #2e7d32;
+            --success-light: #e8f5e9;
+            --warning: #f57c00;
+            --warning-light: #fff3e0;
+            --danger: #d32f2f;
+            --danger-light: #ffebee;
+            --neutral-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--neutral-bg); 
+            margin: 0; 
+            padding: 0; 
+            color: var(--text-main);
+            padding-bottom: 60px;
+        }
+
+        .app-container {
+            max-width: 440px; 
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        header {
+            text-align: center;
+            padding: 16px 0;
+            margin-bottom: 8px;
+        }
+        header h1 {
+            font-size: 22px;
+            color: var(--blue-mp);
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .scan-zone {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-smart-scan {
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 15px;
+            width: 100%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+        .btn-scan-boitier {
+            background: linear-gradient(135deg, var(--blue-mp), #1e40af);
+            box-shadow: 0 6px 14px rgba(30, 64, 175, 0.2);
+        }
+        .btn-scan-sonde {
+            background: linear-gradient(135deg, var(--accent), #0369a1);
+            box-shadow: 0 6px 14px rgba(3, 105, 161, 0.2);
+        }
+
+        .btn-smart-scan:active { transform: scale(0.97); opacity: 0.95; }
+
+        .app-card {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--blue-mp);
+            text-transform: uppercase;
+            margin-top: 0;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .form-group { margin-bottom: 14px; }
+        label { 
+            display: block; 
+            font-size: 12px; 
+            font-weight: 600; 
+            margin-bottom: 6px; 
+            color: var(--text-muted); 
+        }
+        input, select, textarea { 
+            width: 100%; 
+            height: 48px; 
+            padding: 0 14px; 
+            border: 1.5px solid var(--border-color); 
+            border-radius: 12px; 
+            font-size: 15px; 
+            background: #fff; 
+            color: var(--text-main);
+            transition: all 0.2s;
+            -webkit-appearance: none; 
+        }
+        select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .btn-action-block {
+            background: var(--blue-light);
+            border: 1.5px dashed var(--accent);
+            color: var(--accent);
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        .detected-item-card {
+            background: #fdfdfd;
+            border-radius: 14px;
+            padding: 14px;
+            margin-top: 10px;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .detected-item-card.DAI { background: var(--warning-light); border-left: 5px solid var(--warning); }
+        .detected-item-card.PM { background: var(--success-light); border-left: 5px solid var(--success); }
+        .detected-item-card.SONDE { background: var(--accent-light); border-left: 5px solid var(--accent); }
+
+        .detected-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+        .detected-details { font-size: 12px; color: #334155; line-height: 1.5; }
+        .detected-actions { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+        
+        .btn-mini {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-mini.edit { background: #e2e8f0; color: var(--text-main); }
+        .btn-mini.delete { background: var(--danger-light); color: var(--danger); }
+
+        .signature-box {
+            border: 1.5px dashed var(--border-color);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .sig-canvas {
+            width: 100%;
+            height: 90px;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            touch-action: none;
+        }
+
+        .ios-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(6px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: flex-end; 
+        }
+        .ios-modal-content {
+            background: white;
+            width: 100%;
+            max-width: 440px;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            padding: 24px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .crop-wrapper { width: 100%; max-height: 40vh; overflow: hidden; background: #000; border-radius: 14px; margin-bottom: 16px; }
+        #crop-preview { max-width: 100%; display: block; }
+
+        .sticky-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .btn-primary-ios { background: var(--blue-mp); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; font-size: 15px; cursor: pointer; text-align: center; width: 100%; }
+        .btn-secondary-ios { background: #1e293b; color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; font-size: 15px; cursor: pointer; text-align: center; width: 100%; }
+        .btn-mail-ios { background: var(--success); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; font-size: 15px; cursor: pointer; text-align: center; width: 100%; }
+
+        #bl-wrapper { background: #525659; padding: 30px 0; overflow-x: auto; margin-top: 25px; }
+        #bl-canvas { width: 210mm; min-height: 297mm; background: white; margin: 0 auto; padding: 20mm 15mm; box-sizing: border-box; color: black; font-family: Arial, sans-serif; }
+        
+        .bl-title-block { font-size: 12px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 5px; }
+        
+        .bl-header-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+        .bl-header-table td { border: 1px solid #000; padding: 6px 10px; font-size: 11px; }
+        .bl-header-table .bg-light { background-color: #e6e6e6; font-weight: bold; width: 25%; }
+        
+        .objet-container { margin: 15px 0; padding: 8px; background: #f2f2f2; font-size: 12px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; }
+        
+        table.main-bl-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table.main-bl-table th { border: 1px solid #000; padding: 10px; font-size: 11px; background-color: #e6e6e6; text-transform: uppercase; text-align: center; }
+        table.main-bl-table td { border: 1px solid #000; padding: 8px; font-size: 11px; vertical-align: middle; }
+        
+        .row-photo-flat { padding: 8px !important; text-align: center; background: #ffffff; }
+        .row-photo-flat img { max-width: 100%; height: auto; max-height: 115px; display: block; margin: 0 auto; filter: grayscale(1) contrast(1.7) brightness(0.95); }
+        
+        .bl-sig-img { max-height: 65px; max-width: 100%; display: block; margin: 5px auto; }
+        
+        .legal-text { font-size: 9.5px; line-height: 1.4; color: #000; margin-top: 5px; font-family: Arial, sans-serif; }
+
+        #image-result { background: #e8f5e9; padding: 16px; border-radius: 14px; margin-top: 16px; text-align: center; display: none; border: 2px solid var(--success); }
+        #image-result img { max-width: 100%; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    </style>
 </head>
 <body>
 
-<header>
-    <h1>BL Pro App</h1>
-    <p>Générateur de Bons de Livraison Privés & Expert CRM</p>
-</header>
+<div class="app-container">
+    <header>
+        <h1>⚡ BL PRO SMART LOG</h1>
+    </header>
 
-<div class="container">
-    
-    <div class="card">
-        <div class="card-title">🏥 Contexte Opératoire</div>
+    <div class="scan-zone">
+        <button class="btn-smart-scan btn-scan-boitier" onclick="triggerSmartAnalysis('BOITIER')">
+            📷 SCANNER UN BOÎTIER (PM / DAI)
+        </button>
+        <button class="btn-smart-scan btn-scan-sonde" onclick="triggerSmartAnalysis('SONDE')">
+            📷 SCANNER UNE SONDE
+        </button>
+    </div>
+
+    <div class="app-card">
+        <div class="card-title">1️⃣ Logistique & Contextes</div>
         <div class="form-group">
-            <label for="inCentre">Centre Hospitalier / Clinique</label>
-            <select id="inCentre" onchange="updateDoctors()">
-                <option value="CHU de Poitiers">CHU de Poitiers</option>
-                <option value="Clinique de l'Alliance">Clinique de l'Alliance</option>
-                <option value="Pôle Santé République">Pôle Santé République</option>
-            </select>
+            <label>Établissement</label>
+            <select id="inC" onchange="initDocs()"></select>
         </div>
-        <div class="form-group">
-            <label for="inMedecin">Médecin Implanteur</label>
-            <select id="inMedecin">
-                </select>
-        </div>
-        <div class="row-2">
+        <div class="grid-2">
             <div class="form-group">
-                <label for="inPatient">Nom / Initiale Patient</label>
-                <input type="text" id="inPatient" class="form-control" placeholder="Ex: M. DUPONT ou X">
+                <label>Médecin Implanteur</label>
+                <select id="inD" onchange="sync()"></select>
             </div>
             <div class="form-group">
-                <label for="inActe">Type d'Acte Opératoire</label>
-                <select id="inActe">
+                <label>Ingénieur d'App.</label>
+                <select id="inIng" onchange="updateDynamicStocks()"></select>
+            </div>
+        </div>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Acte / Objet du BL</label>
+                <select id="inActe" onchange="sync()">
                     <option value="Primo-Implantation">Primo-Implantation</option>
-                    <option value="Changement de Boîtier">Changement de Boîtier</option>
+                    <option value="Changement de Boitier">Changement de Boitier</option>
+                    <option value="Upgrade">Upgrade</option>
                     <option value="Changement de Sonde">Changement de Sonde</option>
-                    <option value="Upgrade / Évolution">Upgrade / Évolution</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label>Date de l'Acte</label>
+                <input type="date" id="inDate" onchange="sync()">
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-title">📸 Scan d'Étiquette Matériel</div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
-            Sélectionnez le type de matériel puis scannez l'étiquette avec votre appareil ou importez une photo.
-        </p>
+    <div class="app-card">
+        <div class="card-title">
+            2️⃣ Matériels scannés au BL
+            <span id="badge-total" style="background:var(--blue-mp); color:white; font-size:12px; padding:3px 10px; border-radius:20px; font-weight:bold;">0</span>
+        </div>
         
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <button class="btn btn-outline" id="btn-select-boitier" style="flex:1; border-color: var(--danger); color: var(--danger);" onclick="setScanTarget('BOITIER')">🤖 Boîtier (PM/DAI)</button>
-            <button class="btn btn-outline" id="btn-select-sonde" style="flex:1; border-color: var(--accent); color: var(--accent);" onclick="setScanTarget('SONDE')">🧬 Sonde Rythmique</button>
+        <div id="detected-items-list">
+            <div id="empty-state-msg" style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px 0; line-height:1.4;">
+                Aucun matériel détecté.<br>Utilisez les boutons de <b>Capture</b> ou ajoutez manuellement.
+            </div>
         </div>
 
-        <div id="scan-actions-box" style="display: none;">
-            <div class="btn-group-scan">
-                <button class="btn btn-primary" onclick="openCamera()"><span style="font-size:1.2rem">📷</span> Prendre Photo</button>
-                <label class="btn btn-accent" style="margin:0;">
-                    <span style="font-size:1.2rem">📁</span> Galerie / Fichier
-                    <input type="file" accept="image/*" style="display:none;" onchange="handleFileImport(event)">
-                </label>
+        <button class="btn-action-block" onclick="openManualAddModal()">➕ AJOUT MANUEL OU AJUSTEMENT</button>
+    </div>
+
+    <div class="app-card">
+        <div class="card-title">3️⃣ Signatures & Émargements</div>
+        <div class="grid-2">
+            <div class="signature-box">
+                <label>Transporteur</label>
+                <canvas id="pad-trans" class="sig-canvas"></canvas>
+                <button class="btn-mini edit" style="margin-top:6px; width:100%; justify-content:center;" onclick="openFullscreenSig('trans')">Agrandir</button>
             </div>
-            <button class="btn btn-outline" style="width: 100%; margin-top: 10px; font-size: 0.85rem;" onclick="openManualAddModal(-1)">➕ Ajouter manuellement sans scan</button>
+            <div class="signature-box">
+                <label>Centre / Tampon</label>
+                <canvas id="pad-centre" class="sig-canvas"></canvas>
+                <button class="btn-mini edit" style="margin-top:6px; width:100%; justify-content:center;" onclick="openFullscreenSig('centre')">Agrandir</button>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-title">📦 Matériel à inclure dans le BL</div>
-        <div id="basket-container">
-            <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 10px;">Aucun matériel scanné pour le moment.</p>
-        </div>
-    </div>
-
-    <div class="card" style="text-align: center;">
-        <div class="card-title" style="justify-content: center;">🚀 Actions de Finalisation</div>
-        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 5px;">
-            <button class="btn btn-success" style="font-size: 1.05rem;" onclick="processFinalBL('IMAGE')">🖼️ Générer le BL en Image (Mobile)</button>
-            <div class="row-2">
-                <button class="btn btn-primary" onclick="processFinalBL('PDF')">🖨️ Imprimer / PDF</button>
-                <button class="btn btn-accent" onclick="processFinalBL('EMAIL')">📧 Envoyer par Mail</button>
-            </div>
+    <div class="sticky-actions">
+        <button class="btn-mail-ios" onclick="generateEmail()">📧 COMPTE-RENDU OUTLOOK DIRECT</button>
+        <div class="grid-2">
+            <button class="btn-primary-ios" onclick="generatePDF()">🖨️ EXPORT PDF</button>
+            <button class="btn-secondary-ios" onclick="captureImage()">📸 COPIE IMAGE</button>
         </div>
     </div>
 
     <div id="image-result">
-        <h3 style="color: var(--success); font-size: 1.1rem; margin-bottom: 10px;">L'image de votre BL est prête !</h3>
-        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Restez appuyé sur l'image ci-dessous pour l'enregistrer ou la partager.</p>
+        <p style="font-weight: bold; color: #2e7d32; font-size: 13px; margin:0 0 10px 0;">✅ Image générée prête ! Restez appuyé pour copier.</p>
         <div id="img-container"></div>
     </div>
-
 </div>
 
-<div id="loading-ocr">
-    <div class="spinner"></div>
-    <h3 style="color: var(--blue-mp); font-weight: 600;" id="loading-text">Analyse de l'étiquette en cours...</h3>
-    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Extraction des données industrielles MicroPort</p>
-</div>
+<input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
 
-<div id="camera-modal">
-    <video id="camera-stream" autoplay playsinline></video>
-    <div class="camera-controls">
-        <button class="btn btn-danger" onclick="closeCamera()">Annuler</button>
-        <button class="btn btn-success" onclick="takeSnapshot()">📸 Capturer</button>
-    </div>
-</div>
-
-<div id="cropper-modal">
-    <div class="modal-content" style="max-width: 95vw;">
-        <h3 style="margin-bottom: 10px; color: var(--blue-mp); font-size: 1.1rem;">Recadrer sur la zone texte / codes</h3>
-        <div class="cropper-container-box">
-            <img id="cropper-image" src="">
+<div id="crop-modal" class="ios-modal">
+    <div class="ios-modal-content">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
+        <div class="crop-wrapper">
+            <img id="crop-preview">
         </div>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn btn-danger" style="flex:1;" onclick="closeCropper()">Annuler</button>
-            <button class="btn btn-success" style="flex:1;" onclick="validateCrop()">🔍 Valider & Analyser</button>
+        <div id="ocr-status" style="font-size:13px; text-align:center; font-weight:bold; color:var(--accent); margin-bottom:16px;">Cadrer les codes barres et références de la boîte.</div>
+        <div class="grid-2">
+            <button class="btn-mini edit" style="padding:14px; justify-content:center;" onclick="closeCropModal()">ANNULER</button>
+            <button class="btn-primary-ios" id="btn-validate-crop" style="padding:14px;" onclick="processCroppedImage()">ANALYSER 🔍</button>
         </div>
     </div>
 </div>
 
-<div id="manual-modal">
-    <div class="modal-content">
-        <h3 id="manual-modal-title" style="margin-bottom:15px; color:var(--blue-mp); border-bottom:2px solid var(--blue-mp); padding-bottom:5px;">Ajustement Matériel</h3>
-        
-        <input type="hidden" id="edit-item-index" value="-1">
+<div id="manual-modal" class="ios-modal">
+    <div class="ios-modal-content">
+        <h3 id="manual-modal-title" style="margin-top:0; color:var(--blue-mp); font-size:16px; font-weight:bold;">Ajustement Matériel</h3>
+        <input type="hidden" id="edit-index" value="-1">
         
         <div class="form-group">
-            <label for="modal-model">Modèle précis de l'appareil</label>
-            <select id="modal-model">
-                </select>
+            <label>Type de Matériel</label>
+            <select id="man-type" onchange="updateManualModelOptions()">
+                <option value="DAI">Défibrillateur (DAI)</option>
+                <option value="PM">Pacemaker (PM)</option>
+                <option value="SONDE">Sonde</option>
+            </select>
         </div>
-
         <div class="form-group">
-            <label for="modal-sn">Numéro de Série (S/N)</label>
-            <input type="text" id="modal-sn" class="form-control" placeholder="Ex: 528JU008 ou 58TR125922">
+            <label>Modèle / Référence</label>
+            <select id="man-model"></select>
         </div>
-
-        <div class="form-group">
-            <label for="modal-exp">Date de Péremption</label>
-            <input type="date" id="modal-exp" class="form-control">
-        </div>
-
-        <div class="row-2">
+        <div class="grid-2">
             <div class="form-group">
-                <label for="modal-stock">Provenance du Stock</label>
-                <select id="modal-stock">
-                    <option value="Stock du centre">Stock du centre</option>
-                    <option value="Dépôt temporaire">Dépôt temporaire</option>
-                    <option value="Mallette Expert">Mallette Expert</option>
-                </select>
+                <label>Numéro de Série (SN)</label>
+                <input type="text" id="man-sn">
             </div>
             <div class="form-group">
-                <label for="modal-reno">Destinataire Renouvellement</label>
-                <select id="modal-reno">
-                    <option value="centre">Hôpital / Centre</option>
-                    <option value="microport">Remplacement MicroPort</option>
-                    <option value="hors_bl">Aucun (Hors BL)</option>
-                </select>
+                <label>Date Expiration</label>
+                <input type="date" id="man-exp">
             </div>
         </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 20px;">
-            <button class="btn btn-outline" style="flex:1;" onclick="closeManualAddModal()">Annuler</button>
-            <button class="btn btn-primary" style="flex:1;" onclick="saveManualItem()">💾 Enregistrer</button>
+        <div class="form-group">
+            <label>Provenance Stock</label>
+            <select id="man-stock" onchange="autoAlignRenewalOption()">
+                <option value="Stock du centre">Stock du centre</option>
+                <option value="Stock MICROPORT CRM" id="man-dynamic-stock">Stock MICROPORT CRM</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Suivi / Renouvellement</label>
+            <select id="man-reno">
+                <option value="centre">À renouveler pour le stock du centre</option>
+                <option value="ing">À renouveler pour le stock de l'ingénieur</option>
+                <option value="aucun">Ne nécessite pas de renouvellement</option>
+            </select>
+        </div>
+        
+        <div class="grid-2" style="margin-top:20px;">
+            <button class="btn-mini edit" style="padding:14px; justify-content:center;" onclick="closeManualModal()">FERMER</button>
+            <button class="btn-primary-ios" style="padding:14px;" onclick="saveManualItem()">VALIDER AU BL</button>
         </div>
     </div>
 </div>
 
-<div id="bl-wrapper" style="display: none;">
+<div id="sig-modal" class="ios-modal">
+    <div class="ios-modal-content" style="max-width:100%; border-radius:24px 24px 0 0;">
+        <h3 id="sig-modal-title" style="margin-top:0; text-align:center; font-size:15px; color:var(--blue-mp); font-weight:bold;">ÉMARGEMENT ÉCRAN</h3>
+        <canvas id="modal-canvas" style="width:100%; height:280px; background:#fafafa; border:2px dashed var(--accent); border-radius:14px; touch-action:none;"></canvas>
+        <div class="grid-2" style="margin-top:20px;">
+            <button class="btn-mini edit" style="padding:14px; justify-content:center;" onclick="clearModalPad()">EFFACER</button>
+            <button class="btn-primary-ios" style="padding:14px;" onclick="closeFullscreenSig(true)">VALIDER ✅</button>
+        </div>
+    </div>
+</div>
+
+<div id="bl-wrapper">
     <div id="bl-canvas">
-        <div class="bl-header">
-            <div class="bl-logo-side">
-                <h2>MicroPort CRM</h2>
-                <p>Expertise en Rythmologie Cardiaque</p>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="width: 55%;">
+                <img id="v-logo-img" src="assets/logo-microport.png" style="max-width:200px; max-height:60px; display:block; margin-bottom: 8px;">
+                <div class="legal-text">
+                    <b>BON DE LIVRAISON / DELIVERY NOTE</b><br>
+                    <b>MICROPORT CRM France SAS</b><br>
+                    Parc d'Affaires NOVEOS<br>
+                    4, avenue Réaumur<br>
+                    92140 CLAMART Cedex - France<br>
+                    Tél: 01 46 01 89 89 - Fax: 01 46 01 89 60<br>
+                    SAS au capital de 82 200 000 euros<br>
+                    R.C.S. Nanterre 477 828 412<br>
+                    Siret nº 477 828 412 00072
+                </div>
             </div>
-            <div class="bl-meta-side">
-                <p><strong>Date :</strong> <span id="lblDateBL">--/--/----</span></p>
-                <p><strong>Ingénieur :</strong> A. LECOCQ</p>
-                <p><strong>Statut :</strong> Matériel Implanté</p>
-            </div>
-        </div>
-
-        <div class="bl-title-box">
-            <h3>Bon de Livraison Clinique / Matériel</h3>
-        </div>
-
-        <div class="bl-grid-intervenants">
-            <div class="bl-block-info">
-                <h5>Établissement de Santé</h5>
-                <p><strong>Centre :</strong> <span id="lblCentre">--</span></p>
-                <p><strong>Ville :</strong> France</p>
-            </div>
-            <div class="bl-block-info">
-                <h5>Informations d'Implantation</h5>
-                <p><strong>Médecin :</strong> <span id="lblMedecin">Dr --</span></p>
-                <p><strong>Patient :</strong> <span id="lblPatient">--</span></p>
-                <p><strong>Acte :</strong> <span id="lblActe">--</span></p>
+            <div style="width:42%">
+                <div class="bl-title-block">BON DE LIVRAISON / DELIVERY NOTE</div>
+                <table class="bl-header-table">
+                    <tr><td class="bg-light">DATE BL</td><td id="v-date"></td></tr>
+                    <tr><td class="bg-light">CENTRE</td><td id="v-centre"></td></tr>
+                    <tr><td class="bg-light">ADRESSE</td><td id="v-adr"></td></tr>
+                    <tr><td class="bg-light">IMPLANTEUR</td><td id="v-doc"></td></tr>
+                    <tr><td class="bg-light">INGENIEUR</td><td id="v-ing"></td></tr>
+                </table>
             </div>
         </div>
-
-        <table class="bl-table">
+        
+        <div class="objet-container" id="v-objet">OBJET : LIVRAISON MATÉRIEL</div>
+        
+        <table id="v-main-table" class="main-bl-table">
             <thead>
                 <tr>
-                    <th style="width: 15%;">Type</th>
-                    <th style="width: 35%;">Désignation Matériel</th>
-                    <th style="width: 15%;">Code Réf</th>
-                    <th style="width: 20%;">Numéro de Série</th>
-                    <th style="width: 15%;">Péremption</th>
+                    <th width="22%">PRODUIT / TYPE</th>
+                    <th width="43%">ETIQUETTE</th>
+                    <th width="35%">SPÉCIFICATIONS LOGISTIQUES</th>
                 </tr>
             </thead>
-            <tbody id="bl-table-body">
-                </tbody>
+            <tbody></tbody>
         </table>
-
-        <div class="bl-block-info" style="margin-bottom: 40px;">
-            <h5>Clauses administratives et logistiques</h5>
-            <p style="font-size: 8.5pt; color: #444; line-height: 1.3;">
-                Le matériel répertorié ci-dessus a été ouvert, contrôlé et implanté cliniquement en stricte conformité avec les règles de l'art. Ce document sert de justificatif de suivi et de traçabilité pour le déclenchement immédiat du processus de renouvellement de stock au bénéfice de l'établissement.
-            </p>
-        </div>
-
-        <div class="bl-footer-signatures">
-            <div class="signature-box">
-                <p>Pour le Centre Hospitalier</p>
-                <div class="signature-line"></div>
-                <span>Signature & Cachet</span>
+        
+        <div style="display: grid; grid-template-columns: 140px 1fr 1fr; gap: 20px; margin-top: 30px;">
+            <div style="border:1px solid #000; text-align:center; padding:15px; background:#f9f9f9;">
+                <span style="font-size:10px; font-weight:bold; display:block; text-transform:uppercase;">TOTAL ÉLÉMENTS</span>
+                <span id="v-total" style="font-size:28px; font-weight:bold; display:block; margin-top:5px;">0</span>
             </div>
-            <div class="signature-box">
-                <p>Pour MicroPort CRM</p>
-                <div class="signature-line" style="border-bottom-style: solid; padding-top: 10px;"></div>
-                <span style="font-weight: bold; color: #111;">A. LECOCQ</span>
-                <span>Ingénieur de Terrain CRM</span>
+            <div style="border:1px solid #000; padding:10px; font-size:11px;">
+                <b>Visa / Signature Transporteur :</b>
+                <div id="lbl-sig-ing" style="font-size:10px; color:#1e293b; font-weight:bold; margin-top:4px; margin-bottom:4px; line-height:1.2;"></div>
+                <img id="v-sig-trans" class="bl-sig-img">
+            </div>
+            <div style="border:1px solid #000; padding:10px; font-size:11px;">
+                <b>Tampon & Signature Centre :</b>
+                <div id="lbl-sig-doc" style="font-size:10px; color:#1e293b; font-weight:bold; margin-top:4px; margin-bottom:4px; line-height:1.2;"></div>
+                <img id="v-sig-centre" class="bl-sig-img">
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // 1. DATA DICTIONARIES & MAPPINGS
-    const centersData = {
-        "CHU de Poitiers": ["Dr Philippe", "Dr Rodrigue", "Dr Sandrine"],
-        "Clinique de l'Alliance": ["Dr Bernard", "Dr Veronique"],
-        "Pôle Santé République": ["Dr Jean-Marc", "Dr Christophe", "Dr Amélie"]
+    let db = {
+        "CHU TOURS": { adr: "Av. de la République, 37170 Chambray-lès-Tours", docs: ["Dr Bodin", "Dr Pierre", "Dr Bisson", "Dr Lemrini", "Dr Lenormand", "Dr Nasarre"] },
+        "CHU ORLEANS": { adr: "14 Av. de l'Hôpital, 45100 Orléans", docs: ["Dr Domain", "Dr Jacobs", "Dr Spiesser", "Dr Lenormand"] },
+        "CHU LIMOGES": { adr: "2 Av. Martin Luther King, 87000 Limoges", docs: ["Dr Guymoyat", "Dr Bauley"] },
+        "CHU POITIERS": { adr: "2 Rue de la Milétrie Cs 90577, 86000 Poitiers", docs: ["Dr Degand", "Dr Gracia", "Dr Chourrout", "Dr Legal"] },
+        "CH BLOIS": { adr: "Mail Pierre Charlot, 41000 Blois", docs: ["Dr Lang", "Dr Garcia", "Dr Lallemand", "Dr Petitjean"] },
+        "CH CHATEAUROUX": { adr: "216 Av. de Verdun, 36000 Châteauroux", docs: ["Dr Poitrineau", "Dr Ghanem", "Dr Temgoua Ngou"] },
+        "CH Bourges": { adr: "145 Av. François Mitterrand, 18000 Bourges", docs: ["Dr Heurtebise", "Dr Didot", "Dr Lemrini"] },
+        "Pôle Santé Oréliance": { adr: "ZAC des Portes du Loiret Sud, 555 Av. Jacqueline Auriol, 45770 Saran", docs: ["Dr Moisei", "Dr Giraudeau", "Dr Rischard", "Dr Anys"] }
     };
 
-    const listDefis = ["Talentia VR 3240", "Talentia DR 3540", "Talentia CRTD 3844"];
-    const listPaces = ["Alizéa SR 1300", "Alizéa DR 1600", "ENO SR", "ENO DR"];
-    const listSondes = ["Vega R52", "Vega R58", "Vega M58", "SonRTip PS 55D", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
-
-    const refsMap = {
-        "Talentia VR 3240": "TDF061C",
-        "Talentia DR 3540": "TDF062C",
-        "Talentia CRTD 3844": "TDF063C",
-        "Alizéa SR 1300": "TPA061C",
-        "Alizéa DR 1600": "TPA062C",
-        "ENO SR": "TPA063C",
-        "ENO DR": "TPA064C",
-        "Vega R52": "TLD041C",
-        "Vega R58": "TLD042C",
-        "Vega M58": "TLD042M",
-        "SonRTip PS 55D": "TLD0010",
-        "Invicta 1CR58": "TLT001C",
-        "Invicta 1CR68": "TLT005C",
-        "Navigo ARC78": "TLT021C",
-        "Navigo ARC88": "TLT022C",
-        "Navigo 2D78": "TLT019C",
-        "Navigo 2D88": "TLT0200"
+    let refsMap = {
+        "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M", 
+        "Invicta 1CR58": "TLT001C", "Invicta 1CR68": "TLT005C", "Navigo ARC78": "TLT021C", "Navigo ARC88": "TLT022C", 
+        "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT0200"
     };
 
-    let basketItems = [];
-    let currentScanTarget = ""; 
-    let localStream = null;
-    let cropperInstance = null;
-
-    // 2. INITIALIZATION ROUTINES
-    window.addEventListener('DOMContentLoaded', () => {
-        updateDoctors();
-        renderBasket();
+    Object.assign(refsMap, {
+        "Talentia VR 3240": "TDF061C", "Talentia VR 3210": "TDF059C", "Talentia DR 3540": "TDF062C", 
+        "Talentia DR 3510": "TDF060C", "Talentia CRTD 3844": "TDF068C", "Talentia CRTD 3841": "TDF067C", "Talentia CRTD 3811": "TDF066C",
+        "Alizéa DR 1600": "TPM020C", "Alizéa SR 1300": "TPM021C", "ENO SR": "TPM015C", "ENO DR": "TPM014C"
     });
 
-    function updateDoctors() {
-        const center = document.getElementById('inCentre').value;
-        const medSelect = document.getElementById('inMedecin');
-        medSelect.innerHTML = "";
-        centersData[center].forEach(doc => {
-            let opt = document.createElement('option');
-            opt.value = doc; opt.textContent = doc;
-            medSelect.appendChild(opt);
-        });
+    let listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
+    let listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
+    let listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
+    let listIngs = ["Antoine LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
+    
+    let basketItems = []; 
+    let sigSource = { trans: 'none', centre: 'none' };
+    let activeFullscreenTarget = null;
+    let mCanvas, mCtx;
+    let cropper = null;
+    let currentScanScope = "BOITIER"; 
+
+    window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('inDate').valueAsDate = new Date();
+        buildLogistiqueMenus();
+        initPads();
+        sync();
+    });
+
+    function buildLogistiqueMenus() {
+        const cSel = document.getElementById('inC'); cSel.innerHTML = ""; 
+        Object.keys(db).forEach(c => cSel.add(new Option(c, c)));
+        const iSel = document.getElementById('inIng'); iSel.innerHTML = "";
+        listIngs.forEach(i => iSel.add(new Option(i, i)));
+        initDocs();
     }
 
-    function setScanTarget(type) {
-        currentScanTarget = type;
-        document.getElementById('btn-select-boitier').style.backgroundColor = type === 'BOITIER' ? 'var(--danger)' : 'transparent';
-        document.getElementById('btn-select-boitier').style.color = type === 'BOITIER' ? 'white' : 'var(--danger)';
-        document.getElementById('btn-select-sonde').style.backgroundColor = type === 'SONDE' ? 'var(--accent)' : 'transparent';
-        document.getElementById('btn-select-sonde').style.color = type === 'SONDE' ? 'white' : 'var(--accent)';
-        
-        document.getElementById('scan-actions-box').style.display = "block";
+    function initDocs() {
+        const sel = document.getElementById('inD'); sel.innerHTML = "";
+        const c = document.getElementById('inC').value; 
+        if(db[c]) { db[c].docs.forEach(d => sel.add(new Option(d, d))); }
+        updateDynamicStocks();
+        sync();
     }
 
-    // 3. HARDWARE BASKET CONTROLLER
-    function renderBasket() {
-        const container = document.getElementById('basket-container');
-        if (basketItems.length === 0) {
-            container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 10px;">Aucun matériel scanné pour le moment.</p>`;
-            return;
+    function updateDynamicStocks() {
+        const ingName = document.getElementById('inIng').value || "";
+        const formattedStockName = `Stock MICROPORT CRM ${ingName.toUpperCase()}`;
+        document.getElementById('man-dynamic-stock').value = formattedStockName;
+        document.getElementById('man-dynamic-stock').innerText = formattedStockName;
+        sync();
+    }
+
+    function autoAlignRenewalOption() {
+        const stockProv = document.getElementById('man-stock').value;
+        const renoSel = document.getElementById('man-reno');
+        if (stockProv === "Stock du centre") {
+            renoSel.value = "centre";
+        } else {
+            renoSel.value = "ing";
         }
+    }
+
+    function triggerSmartAnalysis(scope) {
+        currentScanScope = scope; 
+        const statusEl = document.getElementById('ocr-status');
+        if (scope === "BOITIER") {
+            statusEl.innerText = "Cadrer les codes barres et la référence du Boîtier (TALENTIA, ALIZEA, ENO...).";
+        } else {
+            statusEl.innerText = "Cadrer les codes barres et la référence de la Sonde (VEGA, INVICTA, NAVIGO...).";
+        }
+        document.getElementById('label-camera-input').click();
+    }
+
+    function handleLabelFile(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const modal = document.getElementById('crop-modal');
+                const image = document.getElementById('crop-preview');
+                image.src = e.target.result;
+                modal.style.display = 'flex';
+                if (cropper) { cropper.destroy(); }
+                cropper = new Cropper(image, { viewMode: 1, autoCropArea: 0.95 });
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function closeCropModal() {
+        document.getElementById('crop-modal').style.display = 'none';
+        if (cropper) { cropper.destroy(); cropper = null; }
+        document.getElementById('label-camera-input').value = "";
+    }
+
+    function processCroppedImage() {
+        if (!cropper) return;
+        const statusEl = document.getElementById('ocr-status');
+        statusEl.innerText = "Analyse OCR en cours... ⏳";
+
+        const canvasClean = cropper.getCroppedCanvas();
         
-        container.innerHTML = "";
-        basketItems.forEach((item, index) => {
-            let div = document.createElement('div');
-            div.className = `basket-item type-${item.type}`;
-            
-            let dateFr = "Inconnue";
-            if(item.exp) {
-                let parts = item.exp.split('-');
-                if(parts.length === 3) dateFr = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        const canvasOcr = document.createElement('canvas');
+        canvasOcr.width = canvasClean.width;
+        canvasOcr.height = canvasClean.height;
+        const ctxOcr = canvasOcr.getContext('2d');
+        ctxOcr.drawImage(canvasClean, 0, 0);
+        
+        const imgData = ctxOcr.getImageData(0, 0, canvasOcr.width, canvasOcr.height);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+            let bw = (grayscale > 110) ? 255 : 0; 
+            data[i] = data[i+1] = data[i+2] = bw;
+        }
+        ctxOcr.putImageData(imgData, 0, 0);
+        const savedCleanSnapshot = canvasOcr.toDataURL('image/jpeg', 0.85);
+
+        Tesseract.recognize(canvasOcr, 'eng')
+        .then(({ data: { text } }) => {
+            if (currentScanScope === "BOITIER") {
+                parseBoitierText(text, savedCleanSnapshot);
+            } else {
+                parseSondeText(text, savedCleanSnapshot);
             }
-
-            div.innerHTML = `
-                <button class="btn-delete-item" onclick="deleteItem(${index})">×</button>
-                <h4>${item.model} (${item.type})</h4>
-                <p><strong>REF :</strong> ${refsMap[item.model] || 'N/A'} &nbsp;|&nbsp; <strong>S/N :</strong> ${item.sn || '<span style="color:var(--danger)">À renseigner</span>'}</p>
-                <p><strong>Péremption :</strong> ${dateFr} &nbsp;|&nbsp; <strong>Stock :</strong> ${item.stock}</p>
-                <button class="btn-edit-item" onclick="openManualAddModal(${index})">Ajuster / Modifier</button>
-            `;
-            container.appendChild(div);
+            closeCropModal();
+        })
+        .catch(err => {
+            console.error(err);
+            closeCropModal();
+            openManualAddModal();
         });
     }
 
-    function deleteItem(index) {
-        basketItems.splice(index, 1);
-        renderBasket();
-    }
+    // ==========================================
+    // FONCTIONS D'ANALYSE ET EXTRACTION OPTIMISÉES
+    // ==========================================
 
-    // 4. STREAMING CAMERA MODULE
-    function openCamera() {
-        document.getElementById('camera-modal').style.display = 'flex';
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
-            .then(stream => {
-                localStream = stream;
-                document.getElementById('camera-stream').srcObject = stream;
-            })
-            .catch(err => {
-                alert("Erreur d'accès à la caméra arrière. Autorisez l'accès ou importez un fichier.");
-                closeCamera();
-            });
-    }
-
-    function closeCamera() {
-        if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-        }
-        document.getElementById('camera-modal').style.display = 'none';
-    }
-
-    function takeSnapshot() {
-        const video = document.getElementById('camera-stream');
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        closeCamera();
-        initCropper(canvas.toDataURL('image/jpeg'));
-    }
-
-    function handleFileImport(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            initCropper(e.target.result);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // 5. CROPPER ENGINE
-    function initCropper(imgDataUrl) {
-        document.getElementById('cropper-modal').style.display = 'flex';
-        const imgElement = document.getElementById('cropper-image');
-        imgElement.src = imgDataUrl;
-        
-        if(cropperInstance) cropperInstance.destroy();
-        
-        cropperInstance = new Cropper(imgElement, {
-            viewMode: 1,
-            autoCropArea: 0.8,
-            scalable: true,
-            zoomable: true,
-            background: false
-        });
-    }
-
-    function closeCropper() {
-        document.getElementById('cropper-modal').style.display = 'none';
-        if(cropperInstance) cropperInstance.destroy();
-    }
-
-    function validateCrop() {
-        if (!cropperInstance) return;
-        const croppedCanvas = cropperInstance.getCroppedCanvas({ maxWidth: 1024, maxHeight: 1024 });
-        const base64Image = croppedCanvas.toDataURL('image/jpeg');
-        closeCropper();
-        executeOCR(base64Image);
-    }
-
-    // 6. DEEP INTELLIGENT TESSERACT OCR PARSING
-    function executeOCR(imgBase64) {
-        const loader = document.getElementById('loading-ocr');
-        loader.style.display = 'flex';
-
-        Tesseract.recognize(imgBase64, 'eng+fra', { logger: m => console.log(m) })
-            .then(({ data: { text } }) => {
-                loader.style.display = 'none';
-                console.log("=== RAW TEXT RECEIVED FROM TESSERACT ===");
-                console.log(text);
-                console.log("=========================================");
-                
-                if (currentScanTarget === "BOITIER") {
-                    parseBoitierText(text, imgBase64);
-                } else {
-                    parseSondeText(text, imgBase64);
-                }
-            })
-            .catch(err => {
-                loader.style.display = 'none';
-                alert("Erreur lors de la lecture de l'étiquette. Entrée manuelle ouverte.");
-                openManualAddModal(-1);
-            });
-    }
-
-    // 7. ROBUST SPECIFIC EXTRACTORS
     function extractSerialNumber(text, type) {
         let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
         
-        // 1. STRATÉGIE UDI GS1 (La plus puissante, décodage direct)
+        // STRATÉGIE 1 : Détection UDI GS1 (recherche le bloc après le marqueur (21) ou 21 en fin de chaîne)
         const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{6,12})/i) || cleanText.match(/21([A-Z0-9]{8})\b/i);
         if (udiMatch) return udiMatch[1].trim();
 
-        // 2. STRATÉGIE SPÉCIFIQUE SONDE (ex: 58TR125922 ou 88S4U02021)
+        // STRATÉGIE 2 : Structure spécifique SONDE MicroPort (ex: 58TR125922 ou 88S4U02021)
         if (type === "SONDE") {
             const microportSondeRegex = /\b(\d{2}[A-Z][A-Z0-9][A-Z0-9]{4,8})\b/i;
             let mpMatch = cleanText.match(microportSondeRegex);
             if (mpMatch) return mpMatch[1].trim();
         }
 
-        // 3. STRATÉGIE SPÉCIFIQUE BOÎTIER (ex: 3 chiffres + 2 lettres + 3 chiffres comme 528JU008)
+        // STRATÉGIE 3 : Structure spécifique BOÎTIER MicroPort (ex: 3 chiffres + 2 lettres + 3 chiffres -> 528JU008)
         if (type === "BOITIER") {
             const microportBoitierRegex = /\b(\d{3}[A-Z]{2}\d{3})\b/i;
             let mpBoxMatch = cleanText.match(microportBoitierRegex);
             if (mpBoxMatch) return mpBoxMatch[1].trim();
         }
 
-        // 4. PLAN DE SECOURS GÉNÉRIQUE : Détection derrière mot-clé SN
+        // PLAN DE SECOURS : Recherche classique derrière le mot-clé SN
         const genericRegex = /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,12})/i;
         let m = cleanText.match(genericRegex);
         if (m && m[1]) return m[1].trim();
@@ -479,7 +694,7 @@
     function extractExpirationDate(text) {
         let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
         
-        // 1. Détection dans la chaîne UDI GS1 après l'identifiant (17) au format AAMMJJ (Cas du Boîtier Talentia)
+        // STRATÉGIE 1 : Détection UDI GS1 (recherche l'identifiant (17) au format AAMMJJ comme sur le Talentia)
         const udiExpMatch = cleanText.match(/\(17\)\s*(\d{6})/i) || cleanText.match(/\b17(\d{6})\d{2}21/i);
         if (udiExpMatch) {
             let rawDate = udiExpMatch[1]; 
@@ -489,18 +704,17 @@
             return `${year}-${month}-${day}`;
         }
 
-        // 2. Détection format ISO standard AAAA-MM-JJ (Cas des sondes Navigo/Invicta)
+        // STRATÉGIE 2 : Format ISO classique AAAA-MM-JJ (Sondes Navigo / Invicta)
         const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
         if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
 
-        // 3. Détection format classique européen JJ/MM/AAAA
+        // STRATÉGIE 3 : Format classique européen JJ/MM/AAAA
         const frDateMatch = cleanText.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
         if (frDateMatch) return `${frDateMatch[3]}-${frDateMatch[2]}-${frDateMatch[1]}`;
 
         return "";
     }
 
-    // 8. STRUCTURAL PARSING FOR PACEMAKERS & DEFIBRILLATORS
     function parseBoitierText(text, snapshot) {
         let matchedModel = "Inconnu";
         let detectedType = "DAI";
@@ -508,7 +722,7 @@
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         let listBoitiers = [...listDefis, ...listPaces];
         
-        // STRATÉGIE A : Match prioritaire et absolu par la REF catalogue (ex: TDF062C)
+        // STRATÉGIE A : Recherche prioritaire absolue par le Code REF Catalogue (ex: TDF062C)
         for (let name of listBoitiers) {
             let ref = refsMap[name].toUpperCase();
             if (normalizedText.includes(ref)) {
@@ -517,7 +731,7 @@
             }
         }
 
-        // STRATÉGIE B : Plan de secours par le nom commercial textuel
+        // STRATÉGIE B : Plan de secours par mots-clés textuels si la REF a sauté à la lecture
         if (matchedModel === "Inconnu") {
             if (/TALENTIA/i.test(normalizedText)) {
                 if (/VR/i.test(normalizedText) || /3240/i.test(normalizedText)) matchedModel = "Talentia VR 3240";
@@ -554,18 +768,15 @@
         });
 
         renderBasket();
-        if (matchedModel === "Inconnu" || !sn || !exp) { 
-            openManualAddModal(basketItems.length - 1); 
-        }
+        if (matchedModel === "Inconnu" || !sn || !exp) { openManualAddModal(basketItems.length - 1); }
     }
 
-    // 9. STRUCTURAL PARSING FOR LEAD LEADERS (SONDES)
     function parseSondeText(text, snapshot) {
         let matchedModel = "Inconnu";
         
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
 
-        // STRATÉGIE A : Match prioritaire et absolu par la REF catalogue (ex: TLT022C, TLT001C)
+        // STRATÉGIE A : Recherche prioritaire absolue par le Code REF Catalogue (ex: TLT022C, TLT001C)
         for (let name of listSondes) {
             let ref = refsMap[name].toUpperCase();
             if (normalizedText.includes(ref)) {
@@ -574,7 +785,7 @@
             }
         }
 
-        // STRATÉGIE B : Plan de secours par mots-clés tolérants aux défauts OCR
+        // STRATÉGIE B : Plan de secours par mots-clés si la REF est coupée
         if (matchedModel === "Inconnu") {
             if (/(INV|1NV|LNV)TA/i.test(normalizedText) || /INVICTA/i.test(normalizedText)) {
                 if (normalizedText.includes("68")) matchedModel = "Invicta 1CR68";
@@ -617,185 +828,326 @@
         });
 
         renderBasket();
-        if (matchedModel === "Inconnu" || !sn || !exp) { 
-            openManualAddModal(basketItems.length - 1); 
-        }
+        if (matchedModel === "Inconnu" || !sn || !exp) { openManualAddModal(basketItems.length - 1); }
     }
 
-    // 10. MANUAL ASSIGNMENT WINDOW CONTROL
-    function openManualAddModal(index) {
-        document.getElementById('manual-modal').style.display = 'flex';
-        document.getElementById('edit-item-index').value = index;
-        
-        const modelSelect = document.getElementById('modal-model');
-        modelSelect.innerHTML = "";
-        
-        let targetedList = [];
-        if (index !== -1) {
-            let item = basketItems[index];
-            document.getElementById('manual-modal-title').textContent = `Ajustement Manuel : ${item.type}`;
-            targetedList = (item.type === "SONDE") ? listSondes : (item.type === "PM" ? listPaces : listDefis);
-        } else {
-            document.getElementById('manual-modal-title').textContent = "Ajout Matériel Direct";
-            targetedList = (currentScanTarget === "SONDE") ? listSondes : [...listDefis, ...listPaces];
-        }
+    // ==========================================
+    // RESTE DE LA LOGIQUE D'INTERFACE DU PANIER
+    // ==========================================
 
-        targetedList.forEach(m => {
-            let o = document.createElement('option');
-            o.value = m; o.textContent = `${m} [${refsMap[m] || ''}]`;
-            modelSelect.appendChild(o);
+    function renderBasket() {
+        const container = document.getElementById('detected-items-list');
+        const emptyState = document.getElementById('empty-state-msg');
+        
+        const oldCards = container.querySelectorAll('.detected-item-card');
+        oldCards.forEach(c => c.remove());
+
+        if (basketItems.length === 0) {
+            emptyState.style.display = "block";
+            document.getElementById('badge-total').innerText = "0";
+            sync();
+            return;
+        }
+        emptyState.style.display = "none";
+        document.getElementById('badge-total').innerText = basketItems.length;
+
+        basketItems.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = `detected-item-card ${item.type}`;
+            div.innerHTML = `
+                <div class="detected-header">
+                    <span style="font-weight:800;">${item.type} &bull; ${item.model}</span>
+                    <span style="font-size:11px; font-weight:700; background:rgba(255,255,255,0.7); padding:2px 8px; border-radius:6px; border:1px solid rgba(0,0,0,0.05);">REF: ${refsMap[item.model] || '??'}</span>
+                </div>
+                <div class="detected-details">
+                    <b>S/N :</b> ${item.sn || '<span style="color:var(--danger);font-weight:bold;">A renseigner ⚠️</span>'} &nbsp;|&nbsp; <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'Non détectée'}<br>
+                    <small style="opacity:0.85; display:block; margin-top:3px;">Stock : ${item.stock} &bull; Suivi : ${item.reno === 'centre' ? 'Stock Centre' : (item.reno === 'ing' ? 'Stock Ingé' : 'Aucun')}</small>
+                </div>
+                <div class="detected-actions">
+                    <button class="btn-mini edit" onclick="openManualAddModal(${index})">✏️ Ajuster / Backup</button>
+                    <button class="btn-mini delete" onclick="deleteBasketItem(${index})">🗑️ Retirer</button>
+                </div>
+            `;
+            container.appendChild(div);
         });
 
-        if (index !== -1) {
-            let item = basketItems[index];
-            modelSelect.value = item.model;
-            document.getElementById('modal-sn').value = item.sn;
-            document.getElementById('modal-exp').value = item.exp;
-            document.getElementById('modal-stock').value = item.stock;
-            document.getElementById('modal-reno').value = item.reno;
-        } else {
-            document.getElementById('modal-sn').value = "";
-            document.getElementById('modal-exp').value = "";
-            document.getElementById('modal-stock').value = "Stock du centre";
-            document.getElementById('modal-reno').value = "centre";
-        }
+        sync();
     }
 
-    function closeManualAddModal() {
-        document.getElementById('manual-modal').style.display = 'none';
-    }
-
-    function saveManualItem() {
-        const index = parseInt(document.getElementById('edit-item-index').value);
-        const model = document.getElementById('modal-model').value;
-        const sn = document.getElementById('modal-sn').value.trim().toUpperCase();
-        const exp = document.getElementById('modal-exp').value;
-        const stock = document.getElementById('modal-stock').value;
-        const reno = document.getElementById('modal-reno').value;
-
-        let type = "SONDE";
-        if (listDefis.includes(model)) type = "DAI";
-        else if (listPaces.includes(model)) type = "PM";
-
-        if (index !== -1) {
-            basketItems[index].model = model;
-            basketItems[index].type = type;
-            basketItems[index].sn = sn;
-            basketItems[index].exp = exp;
-            basketItems[index].stock = stock;
-            basketItems[index].reno = reno;
-        } else {
-            basketItems.push({ type, model, sn, exp, stock, reno, img: null });
-        }
-
-        closeManualAddModal();
+    function deleteBasketItem(index) {
+        basketItems.splice(index, 1);
         renderBasket();
     }
 
-    // 11. GENERATION PIPELINE (IMAGE, PDF, EMAIL)
-    function buildCanvasData() {
-        const d = new Date();
-        document.getElementById('lblDateBL').textContent = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-        document.getElementById('lblCentre').textContent = document.getElementById('inCentre').value;
-        document.getElementById('lblMedecin').textContent = "Dr " + document.getElementById('inMedecin').value;
-        document.getElementById('lblPatient').textContent = document.getElementById('inPatient').value || "Non spécifié";
-        document.getElementById('lblActe').textContent = document.getElementById('inActe').value;
+    function openManualAddModal(index = -1) {
+        const modal = document.getElementById('manual-modal');
+        document.getElementById('edit-index').value = index;
+        
+        updateManualModelOptions();
 
-        const body = document.getElementById('bl-table-body');
-        body.innerHTML = "";
-
-        if(basketItems.length === 0) {
-            body.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#777;">Aucun matériel sélectionné.</td></tr>`;
-            return;
+        if (index > -1) {
+            const item = basketItems[index];
+            document.getElementById('manual-modal-title').innerText = "✏️ Ajustement Matériel";
+            document.getElementById('man-type').value = item.type;
+            updateManualModelOptions();
+            document.getElementById('man-model').value = item.model;
+            document.getElementById('man-sn').value = item.sn;
+            document.getElementById('man-exp').value = item.exp;
+            document.getElementById('man-stock').value = item.stock;
+            document.getElementById('man-reno').value = item.reno;
+        } else {
+            document.getElementById('manual-modal-title').innerText = "➕ Ajout manuel de matériel";
+            document.getElementById('man-stock').value = "Stock du centre";
+            document.getElementById('man-reno').value = "centre";
+            document.getElementById('man-sn').value = "";
+            document.getElementById('man-exp').value = "";
         }
-
-        basketItems.forEach(item => {
-            let tr = document.createElement('tr');
-            let dateFr = "N/A";
-            if(item.exp) {
-                let p = item.exp.split('-');
-                if(p.length === 3) dateFr = `${p[2]}/${p[1]}/${p[0]}`;
-            }
-
-            tr.innerHTML = `
-                <td style="font-weight:600; color: ${item.type==='SONDE'?'var(--accent)':(item.type==='PM'?'var(--warning)':'var(--danger)')}">${item.type}</td>
-                <td><strong>${item.model}</strong><br><span style="font-size:8pt; color:#666;">Stock: ${item.stock} | Flux: ${item.reno==='centre'?'Renouvellement Établissement':'Destockage direct'}</span></td>
-                <td><code>${refsMap[item.model] || ''}</code></td>
-                <td style="font-family:monospace; font-size:10.5pt; font-weight:bold;">${item.sn || 'MANQUANT'}</td>
-                <td>${dateFr}</td>
-            `;
-            body.appendChild(tr);
-        });
+        modal.style.display = "flex";
     }
 
-    function processFinalBL(mode) {
-        buildCanvasData();
+    function updateManualModelOptions() {
+        const type = document.getElementById('man-type').value;
+        const modelSel = document.getElementById('man-model');
+        modelSel.innerHTML = "";
+        
+        let targetList = listSondes;
+        if (type === "DAI") targetList = listDefis;
+        if (type === "PM") targetList = listPaces;
 
-        if (mode === 'IMAGE') {
-            const wrapper = document.getElementById('bl-wrapper');
-            const oldDisplay = wrapper.style.display;
-            wrapper.style.display = "block";
+        targetList.forEach(m => modelSel.add(new Option(m, m)));
+    }
+
+    function closeManualModal() {
+        document.getElementById('manual-modal').style.display = "none";
+    }
+
+    function saveManualItem() {
+        const idx = parseInt(document.getElementById('edit-index').value);
+        
+        const itemData = {
+            type: document.getElementById('man-type').value,
+            model: document.getElementById('man-model').value,
+            sn: document.getElementById('man-sn').value,
+            exp: document.getElementById('man-exp').value,
+            stock: document.getElementById('man-stock').value,
+            reno: document.getElementById('man-reno').value,
+            img: idx > -1 ? basketItems[idx].img : null 
+        };
+
+        if (idx > -1) {
+            basketItems[idx] = itemData;
+        } else {
+            basketItems.push(itemData);
+        }
+
+        closeManualModal();
+        renderBasket();
+    }
+
+    function initPads() {
+        ['trans', 'centre'].forEach(id => {
+            const canvas = document.getElementById(`pad-${id}`);
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 90;
+            ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
             
-            html2canvas(document.getElementById('bl-canvas'), { scale: 2.5 }).then(canvas => {
-                const container = document.getElementById('img-container');
-                container.innerHTML = '';
-                const img = new Image(); 
-                img.src = canvas.toDataURL("image/png");
-                container.appendChild(img);
-                document.getElementById('image-result').style.display = 'block';
-                wrapper.style.display = oldDisplay;
-                window.scrollTo(0, document.body.scrollHeight);
-            });
-        } 
-        else if (mode === 'PDF') {
-            const wrapper = document.getElementById('bl-wrapper');
-            const oldDisplay = wrapper.style.display;
-            wrapper.style.display = "block";
-            window.print();
-            setTimeout(() => { wrapper.style.display = oldDisplay; }, 500);
-        } 
-        else if (mode === 'EMAIL') {
-            triggerEmailDraft();
-        }
+            let drawing = false;
+            canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); const p = getPos(canvas, e); ctx.moveTo(p.x, p.y); });
+            canvas.addEventListener('touchmove', (e) => { if(!drawing) return; const p = getPos(canvas, e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+            canvas.addEventListener('touchend', () => { if(drawing) { drawing = false; sigSource[id] = 'draw'; document.getElementById(`v-sig-${id}`).src = canvas.toDataURL(); sync(); } });
+        });
+
+        mCanvas = document.getElementById('modal-canvas');
+        mCtx = mCanvas.getContext('2d');
     }
 
-    function triggerEmailDraft() {
-        const center = document.getElementById('inCentre').value;
-        const doctor = document.getElementById('inMedecin').value;
-        const patient = document.getElementById('inPatient').value || "X";
-        const codeActe = document.getElementById('inActe').value;
+    function getPos(c, e) {
+        const rect = c.getBoundingClientRect();
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
 
-        const subject = `[MicroPort CRM] Traçabilité Implantation - ${center} - ${doctor} - Patient: ${patient}`;
+    function openFullscreenSig(target) {
+        activeFullscreenTarget = target;
+        document.getElementById('sig-modal').style.display = 'flex';
+        mCanvas.width = mCanvas.parentElement.clientWidth;
+        mCanvas.height = 280;
+        mCtx.lineWidth = 3; mCtx.lineCap = 'round'; mCtx.strokeStyle = '#000';
+        clearModalPad();
+
+        let mDrawing = false;
+        mCanvas.ontouchstart = (e) => { mDrawing = true; mCtx.beginPath(); const p = getPos(mCanvas, e); mCtx.moveTo(p.x, p.y); };
+        mCanvas.ontouchmove = (e) => { if(!mDrawing) return; const p = getPos(mCanvas, e); mCtx.lineTo(p.x, p.y); mCtx.stroke(); };
+        mCanvas.ontouchend = () => { mDrawing = false; };
+    }
+
+    function clearModalPad() { mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height); }
+
+    function closeFullscreenSig(save = false) {
+        if (save && activeFullscreenTarget) {
+            const dataUrl = mCanvas.toDataURL();
+            document.getElementById(`v-sig-${activeFullscreenTarget}`).src = dataUrl;
+            sigSource[activeFullscreenTarget] = 'draw';
+            
+            const smallCanvas = document.getElementById(`pad-${activeFullscreenTarget}`);
+            const sCtx = smallCanvas.getContext('2d');
+            sCtx.clearRect(0, 0, smallCanvas.width, smallCanvas.height);
+            const img = new Image();
+            img.onload = () => { sCtx.drawImage(img, 0, 0, smallCanvas.width, smallCanvas.height); };
+            img.src = dataUrl;
+        }
+        document.getElementById('sig-modal').style.display = 'none';
+        sync();
+    }
+
+    function sync() {
+        const c = document.getElementById('inC').value;
+        if(!c || !db[c]) return;
+        
+        const act = document.getElementById('inActe').value;
+        const rawDate = document.getElementById('inDate').value;
+        const dStr = rawDate ? rawDate.split('-').reverse().join('/') : '';
+        const ing = document.getElementById('inIng').value || '';
+        const doc = document.getElementById('inD').value || '';
+        
+        document.getElementById('v-date').innerText = dStr;
+        document.getElementById('v-centre').innerText = c;
+        document.getElementById('v-adr').innerText = db[c].adr;
+        document.getElementById('v-doc').innerText = doc;
+        document.getElementById('v-ing').innerText = ing;
+        document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
+        
+        if (sigSource['trans'] === 'draw') {
+            document.getElementById('lbl-sig-ing').innerText = `${ing}\nIngénieur CRM`;
+        } else {
+            document.getElementById('lbl-sig-ing').innerText = "";
+        }
+
+        if (sigSource['centre'] === 'draw') {
+            document.getElementById('lbl-sig-doc').innerText = `${doc.toUpperCase()}\nService Cardiologie ${c}`;
+        } else {
+            document.getElementById('lbl-sig-doc').innerText = "";
+        }
+
+        const sigTransImg = document.getElementById('v-sig-trans');
+        if (sigSource['trans'] === 'none') {
+            if (ing === "Antoine LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
+            else if (ing === "Baptiste DESARMENIEN") sigTransImg.src = "assets/signature-baptiste.png";
+            else if (ing === "Valentin GARTENLAUB") sigTransImg.src = "assets/signature-valentin.png";
+            else if (ing === "Francois MAINGAULT") sigTransImg.src = "assets/signature-francois.png";
+            else if (ing === "Johann MORIN") sigTransImg.src = "assets/signature-johann.png";
+            else sigTransImg.removeAttribute('src');
+        }
+
+        const sigCentreImg = document.getElementById('v-sig-centre');
+        if (sigSource['centre'] === 'none') {
+            if (c === "CHU TOURS") sigCentreImg.src = "assets/tampon-chu-tours.png";
+            else if (c === "CHU ORLEANS") sigCentreImg.src = "assets/tampon-chu-orleans.png";
+            else if (c === "CHU LIMOGES") sigCentreImg.src = "assets/tampon-chu-limoges.png";
+            else if (c === "CHU POITIERS") sigCentreImg.src = "assets/tampon-chu-poitiers.png";
+            else if (c === "CH BLOIS") sigCentreImg.src = "assets/tampon-ch-blois.png";
+            else if (c === "CH Bourges") sigCentreImg.src = "assets/tampon-ch-bourges.png";
+            else if (c === "CH CHATEAUROUX") sigCentreImg.src = "assets/tampon-ch-chateauroux.png";
+            else if (c === "Pôle Santé Oréliance") sigCentreImg.src = "assets/tampon-oreliance.png";
+            else sigCentreImg.removeAttribute('src');
+        }
+
+        const tableBody = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
+        tableBody.innerHTML = "";
+        
+        basketItems.forEach(item => {
+            const row = tableBody.insertRow();
+            let ref = refsMap[item.model] || "N/A";
+            let formattedExp = item.exp ? item.exp.split('-').reverse().join('/') : "N/A";
+            
+            let renoLabelTarget = item.reno === 'centre' ? c : ing;
+
+            let techDetails = `
+                <b>REF :</b> ${ref}<br>
+                <b>S/N :</b> ${item.sn || 'N/A'}<br>
+                <b>EXP :</b> ${formattedExp}<br>
+                <b>Provenance :</b> ${item.stock}<br>
+                <b>Renouvellement :</b> À renouveler pour le stock de : ${renoLabelTarget}
+            `;
+            
+            row.innerHTML = `
+                <td style="font-weight:bold; font-size:11px; vertical-align:middle; text-align:center; background:#fafafa;">${item.type}<br><span style="font-weight:normal; font-size:10px; color:#555;">${item.model}</span></td>
+                <td class="row-photo-flat" style="vertical-align:middle;">${item.img ? `<img src="${item.img}">` : '<div style="text-align:center; color:#ccc; font-size:10px;">Aucun visuel</div>'}</td>
+                <td style="font-size:10px; line-height:1.4; vertical-align:middle; padding-left:10px;">${techDetails}</td>
+            `;
+        });
+
+        document.getElementById('v-total').innerText = basketItems.length;
+    }
+
+    function generateEmail() {
+        const centre = document.getElementById('inC').value || "";
+        const acte = document.getElementById('inActe').value || "";
+        const medecin = (document.getElementById('inD').value || "").toUpperCase();
+        const rawDate = document.getElementById('inDate').value;
+        const dateStr = rawDate ? rawDate.split('-').reverse().join('/') : "";
+        const ing = document.getElementById('inIng').value || "";
         
         let detailMatos = "";
-        basketItems.forEach(item => {
-            let dateFr = "N/A";
-            if(item.exp) {
-                let p = item.exp.split('-');
-                if(p.length === 3) dateFr = `${p[2]}/${p[1]}/${p[0]}`;
-            }
-            detailMatos += `- ${item.type} : ${item.model} (REF: ${refsMap[item.model] || 'N/A'}) | S/N: ${item.sn || 'MANQUANT'} | Exp: ${dateFr}\n`;
+        basketItems.forEach((item) => {
+            let ref = refsMap[item.model] || 'N/A';
+            let expFr = item.exp ? item.exp.split('-').reverse().join('/') : 'N/A';
+            let renoTxt = item.reno === 'centre' ? centre : ing;
+            
+            let typeLabel = "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑";
+            if (item.type === "PM") typeLabel = "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑";
+            if (item.type === "SONDE") typeLabel = "🔸 𝐒𝐎𝐍𝐃𝐄";
+
+            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n`;
+            detailMatos += `• S/N : ${item.sn || 'N/A'} | EXP : ${expFr}\n`;
+            detailMatos += `• Provenance : ${item.stock}\n`;
+            detailMatos += `👉 À renouveler pour le stock de : ${renoTxt}\n\n`;
         });
 
+        const subject = encodeURIComponent(`[BL MICROPORT] Matériel Implanté - ${acte} - ${centre}`);
+        
         let mailBody = `Bonjour,\n\n`;
-        mailBody += `Veuillez trouver ci-dessous les informations de traçabilité concernant l'acte de rythmologie cardiaque MicroPort CRM :\n\n`;
-        mailBody += `🏥 CENTRE : ${center}\n`;
-        mailBody += `👨‍⚕️ MÉDECIN : Dr ${doctor}\n`;
-        mailBody += `👤 PATIENT : ${patient}\n`;
-        mailBody += `⚙️ ACTE : ${codeActe}\n`;
-        mailBody += `📅 DATE : ${new Date().toLocaleDateString('fr-FR')}\n\n`;
+        mailBody += `Vous trouverez ci-joint le bon de livraison du matériel implanté.\n\n`;
+        mailBody += `---------------------------------------------\n`;
+        mailBody += `📌 INFORMATIONS COMPLÈTES\n`;
+        mailBody += `---------------------------------------------\n`;
+        mailBody += `• Acte : ${acte}\n`;
+        mailBody += `• Date : ${dateStr}\n`;
+        mailBody += `• Centre : ${centre}\n`;
+        mailBody += `• Médecin : ${medecin}\n\n`;
         mailBody += `---------------------------------------------\n`;
         mailBody += `📦 MATÉRIEL UTILISÉ\n`;
         mailBody += `---------------------------------------------\n`;
         mailBody += detailMatos;
         mailBody += `---------------------------------------------\n\n`;
-        mailBody += `Le processus administratif de renouvellement de stock a été initié.\n\n`;
-        mailBody += `Je reste à votre disposition pour toute précision.\n\n`;
-        mailBody += `Cordialement,\n\n`;
-        mailBody += `A. LECOCQ\n`;
-        mailBody += `Ingénieur de Terrain CRM - MicroPort CRM`;
+        mailBody += `Je reste à votre disposition pour de plus amples informations.\n\n`;
+        mailBody += `Cordialement,`;
 
-        window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailBody)}`, '_blank');
+        window.open(`mailto:?subject=${subject}&body=${encodeURIComponent(mailBody)}`, '_blank');
+    }
+
+    function captureImage() {
+        const wrapper = document.getElementById('bl-wrapper');
+        const oldDisplay = wrapper.style.display;
+        wrapper.style.display = "block";
+        
+        html2canvas(document.getElementById('bl-canvas'), { scale: 2.5 }).then(canvas => {
+            const container = document.getElementById('img-container');
+            container.innerHTML = '';
+            const img = new Image(); img.src = canvas.toDataURL("image/png");
+            container.appendChild(img);
+            document.getElementById('image-result').style.display = 'block';
+            wrapper.style.display = oldDisplay;
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+    }
+
+    function generatePDF() {
+        const wrapper = document.getElementById('bl-wrapper');
+        const oldDisplay = wrapper.style.display;
+        wrapper.style.display = "block";
+        window.print();
+        setTimeout(() => { wrapper.style.display = oldDisplay; }, 500);
     }
 </script>
 </body>
