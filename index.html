@@ -517,7 +517,6 @@
         "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT0200"
     };
 
-    // Complétion automatique de la refsMap manquante dans le script initial pour s'assurer que Talentia/Alizéa tournent parfaitement
     Object.assign(refsMap, {
         "Talentia VR 3240": "TDF061C", "Talentia VR 3210": "TDF059C", "Talentia DR 3540": "TDF062C", 
         "Talentia DR 3510": "TDF060C", "Talentia CRTD 3844": "TDF068C", "Talentia CRTD 3841": "TDF067C", "Talentia CRTD 3811": "TDF066C",
@@ -607,22 +606,25 @@
         statusEl.innerText = "Analyse OCR intelligente en cours... ⏳";
 
         const canvasClean = cropper.getCroppedCanvas();
-        
         const canvasOcr = document.createElement('canvas');
         canvasOcr.width = canvasClean.width;
         canvasOcr.height = canvasClean.height;
         const ctxOcr = canvasOcr.getContext('2d');
+        
+        // Amélioration agressive du contraste et nettoyage fond blanc
+        ctxOcr.fillStyle = "#ffffff";
+        ctxOcr.fillRect(0, 0, canvasOcr.width, canvasOcr.height);
         ctxOcr.drawImage(canvasClean, 0, 0);
         
         const imgData = ctxOcr.getImageData(0, 0, canvasOcr.width, canvasOcr.height);
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
             let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-            let bw = (grayscale > 115) ? 255 : 0; 
+            let bw = (grayscale > 120) ? 255 : 0; 
             data[i] = data[i+1] = data[i+2] = bw;
         }
         ctxOcr.putImageData(imgData, 0, 0);
-        const savedCleanSnapshot = canvasOcr.toDataURL('image/jpeg', 0.85);
+        const savedCleanSnapshot = canvasOcr.toDataURL('image/jpeg', 0.90);
 
         Tesseract.recognize(canvasOcr, 'eng')
         .then(({ data: { text } }) => {
@@ -640,46 +642,32 @@
         let matchedModel = "Inconnu";
         let detectedType = "SONDE"; 
         
-        let normalizedText = text.toUpperCase()
-            .replace(/[\n\r]/g, " ")
-            .replace(/[^A-Z0-9\s]/g, "")
-            .replace(/\s+/g, " ");
+        // Nettoyage textuel global
+        let cleanText = text.toUpperCase().replace(/[^A-Z0-9\(\)\.\/\-\s]/g, "").replace(/\s+/g, " ");
 
-        // Passe 1 : Recherche exacte
+        // 1. Identification Modèle via refsMap (Recherche par Code Réf ou Nom)
         for (let name in refsMap) {
-            let ref = refsMap[name].toUpperCase();
-            let uName = name.toUpperCase().replace(/[^A-Z0-9\s]/g, "").replace(/\s+/g, " ");
-            if (normalizedText.includes(ref) || normalizedText.includes(uName)) {
+            let refCode = refsMap[name].toUpperCase();
+            let normName = name.toUpperCase().replace(/[^A-Z0-9]/g, "");
+            let strippedText = cleanText.replace(/[^A-Z0-9]/g, "");
+            
+            if (cleanText.includes(refCode) || strippedText.includes(normName)) {
                 matchedModel = name;
                 break;
             }
         }
 
-        // Passe 2 : Racine + numéro (Spécifique Invicta/Vega)
+        // Complétion intelligente si modèle non trouvé (analyse de proximité sur les mots-clés)
         if (matchedModel === "Inconnu") {
-            for (let name in refsMap) {
-                let uName = name.toUpperCase();
-                let mainChunk = uName.split(' ')[0]; 
-                if (mainChunk.length > 3 && normalizedText.includes(mainChunk)) {
-                    let numbersInModel = uName.match(/\d+/);
-                    if (numbersInModel && normalizedText.includes(numbersInModel[0])) {
-                        matchedModel = name;
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Fallback
-        if (matchedModel === "Inconnu") {
-            for (let name in refsMap) {
-                let chunks = name.split(' ');
-                let lastChunk = chunks[chunks.length - 1].toUpperCase();
-                if (normalizedText.includes(lastChunk) && lastChunk.length > 2) {
-                    matchedModel = name;
-                    break;
-                }
-            }
+            if (cleanText.includes("VEGA") && cleanText.includes("52")) matchedModel = "Vega R52";
+            else if (cleanText.includes("VEGA") && cleanText.includes("58")) matchedModel = "Vega R58";
+            else if (cleanText.includes("INVICTA") && cleanText.includes("68")) matchedModel = "Invicta 1CR68";
+            else if (cleanText.includes("INVICTA") && cleanText.includes("58")) matchedModel = "Invicta 1CR58";
+            else if (cleanText.includes("ALIZEA") || cleanText.includes("1600")) matchedModel = "Alizéa DR 1600";
+            else if (cleanText.includes("3240")) matchedModel = "Talentia VR 3240";
+            else if (cleanText.includes("3540")) matchedModel = "Talentia DR 3540";
+            else if (cleanText.includes("3811")) matchedModel = "Talentia CRTD 3811";
+            else if (cleanText.includes("SONR") || cleanText.includes("55D")) matchedModel = "SonRTip PS 55D";
         }
 
         if (listDefis.includes(matchedModel)) detectedType = "DAI";
@@ -694,24 +682,23 @@
             acteSelect.value = "Changement de Sonde";
         }
 
-        let sn = ""; let exp = "";
+        let sn = ""; 
+        let exp = "";
         
-        // --- PARSEUR DE S/N EXTRA-LARGE & ROBUSTE POUR INVICTA / DATA MATRIX ---
-        // 1. Nettoyage intermédiaire conservant les parenthèses critiques du GS1-UDI
-        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
-        
-        // Tentative de capture via UDI Complet (17)YYMMDD(21)SN
-        const udiMatch = cleanText.match(/\(17\)\s*(\d{6})\s*\(21\)\s*([A-Z0-9\-]+)/i) || cleanText.match(/17(\d{6})21([A-Z0-9\-]+)/i);
+        // --- LOGIQUE D'EXTRACTION ROBUSTE MULTI-FORMATS ---
+        // Format A : GS1 DataMatrix complet (17)YYMMDD(21)SN ou variations brutes
+        const udiMatch = cleanText.match(/\(17\)\s*(\d{6})\s*\(21\)\s*([A-Z0-9\-]+)/i) || 
+                         cleanText.match(/17(\d{6})21([A-Z0-9\-]+)/i);
         
         if (udiMatch) {
-            exp = formatGs1Date(udiMatch[1]); 
+            exp = formatGs1Date(udiMatch[1].trim()); 
             sn = udiMatch[2].trim();
         } else {
-            // Analyse textuelle ciblée : captures des variations complexes de labels "S/N" ou "SN:"
+            // Format B : Recherche textuelle ciblée des étiquettes (S/N, SN, Serial, etc.)
             const regexSnList = [
-                /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,15})/i,
-                /QTY\s*\d+\s+([A-Z0-9\-]{6,12})/i, // Capture secours si le SN est collé sous la quantité
-                /(?:INV[I1]CTA.*\s+)([A-Z0-9\-]{6,12})/i // Détection directe si le SN suit le mot Invicta sans label intermédiaire
+                /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N|SERIAL|SERIE)[:\s=-]*([A-Z0-9\-]{5,15})/i,
+                /(?:INV[I1]CTA|VEGA|TALENTIA|ALIZEA).+?\s+([A-Z0-9\-]{6,12})/i, // Rescue direct
+                /\b([A-Z0-9]{2,4}\d{5,8})\b/ // Captures opportunistes (ex: codes hybrides)
             ];
 
             for (let reg of regexSnList) {
@@ -722,22 +709,22 @@
                 }
             }
 
-            // Extraction standard de la date d'expiration
-            const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
+            // Extraction Date Expiration Classique (ISO ou Fr)
+            const isoDateMatch = cleanText.match(/(\d{4})[-/.](\d{2})[-/.](\d{2})/);
             if (isoDateMatch) {
                 exp = `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
             } else {
-                const multiDateMatch = cleanText.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
-                if (multiDateMatch) exp = `${multiDateMatch[3]}-${multiDateMatch[2]}-${multiDateMatch[1]}`;
+                const frDateMatch = cleanText.match(/(\d{2})[-/.](\d{2})[-/.](\d{4})/);
+                if (frDateMatch) exp = `${frDateMatch[3]}-${frDateMatch[2]}-${frDateMatch[1]}`;
             }
         }
 
-        // Nettoyage final des résidus de lecture de caractères sur le S/N
-        if (sn) sn = sn.replace(/^[:\-\s]+/, "");
+        // Nettoyage final du S/N (retrait préfixes résiduels parasites)
+        if (sn) sn = sn.replace(/^[:\-\s\.]+/, "").trim();
 
         basketItems.push({
             type: detectedType,
-            model: matchedModel !== "Inconnu" ? matchedModel : (listSondes[0]), 
+            model: matchedModel !== "Inconnu" ? matchedModel : listSondes[0], 
             sn: sn || "",
             exp: exp || "",
             stock: "Stock du centre", 
@@ -746,7 +733,11 @@
         });
 
         renderBasket();
-        if (matchedModel === "Inconnu" || !sn) { openManualAddModal(basketItems.length - 1); }
+        
+        // Si le modèle est non reconnu ou le SN manquant, on bascule instantanément sur le modal d'ajustement
+        if (matchedModel === "Inconnu" || !sn || !exp) { 
+            openManualAddModal(basketItems.length - 1); 
+        }
     }
 
     function formatGs1Date(yymmdd) {
@@ -778,7 +769,7 @@
                     <span style="font-size:11px; font-weight:700; background:rgba(255,255,255,0.7); padding:2px 8px; border-radius:6px; border:1px solid rgba(0,0,0,0.05);">REF: ${refsMap[item.model] || '??'}</span>
                 </div>
                 <div class="detected-details">
-                    <b>S/N :</b> ${item.sn || '<span style="color:var(--danger);font-weight:bold;">A renseigner ⚠️</span>'} &nbsp;|&nbsp; <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'Non détectée'}<br>
+                    <b>S/N :</b> ${item.sn || '<span style="color:var(--danger);font-weight:bold;">A renseigner ⚠️</span>'} &nbsp;|&nbsp; <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : '<span style="color:var(--danger);font-weight:bold;">Non détectée ⚠️</span>'}<br>
                     <small style="opacity:0.85; display:block; margin-top:3px;">Stock : ${item.stock} &bull; Suivi : ${item.reno === 'centre' ? 'Stock Centre' : (item.reno === 'ing' ? 'Stock Ingé' : 'Aucun')}</small>
                 </div>
                 <div class="detected-actions">
@@ -1052,7 +1043,7 @@
         html2canvas(document.getElementById('bl-canvas'), { scale: 2.5 }).then(canvas => {
             const container = document.getElementById('img-container');
             container.innerHTML = '';
-            const img = new Image(); img.src = canvas.toDataURL("image/png");
+            const img = new Image(); img.src = canvas.toDataURL(\"image/png\");
             container.appendChild(img);
             document.getElementById('image-result').style.display = 'block';
             wrapper.style.display = oldDisplay;
