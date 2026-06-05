@@ -66,25 +66,33 @@
 
         .scan-zone {
             margin-bottom: 20px;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .btn-smart-scan {
-            background: linear-gradient(135deg, var(--blue-mp), var(--accent));
             color: white;
             border: none;
-            padding: 18px;
+            padding: 16px;
             border-radius: 16px;
             font-weight: 700;
-            font-size: 16px;
+            font-size: 15px;
             width: 100%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
-            box-shadow: 0 10px 20px rgba(0, 120, 212, 0.2);
             transition: all 0.2s ease;
+        }
+        .btn-scan-boitier {
+            background: linear-gradient(135deg, var(--blue-mp), #1e40af);
+            box-shadow: 0 6px 14px rgba(30, 64, 175, 0.2);
+        }
+        .btn-scan-sonde {
+            background: linear-gradient(135deg, var(--accent), #0369a1);
+            box-shadow: 0 6px 14px rgba(3, 105, 161, 0.2);
         }
 
         .btn-smart-scan:active { transform: scale(0.97); opacity: 0.95; }
@@ -278,8 +286,11 @@
     </header>
 
     <div class="scan-zone">
-        <button class="btn-smart-scan" onclick="triggerLabelSmartAnalysis()">
-            📷 SCANNER UNE ÉTIQUETTE BOÎTE
+        <button class="btn-smart-scan btn-scan-boitier" onclick="triggerSmartAnalysis('BOITIER')">
+            📷 SCANNER UN BOÎTIER (PM / DAI)
+        </button>
+        <button class="btn-smart-scan btn-scan-sonde" onclick="triggerSmartAnalysis('SONDE')">
+            📷 SCANNER UNE SONDE
         </button>
     </div>
 
@@ -324,7 +335,7 @@
         
         <div id="detected-items-list">
             <div id="empty-state-msg" style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px 0; line-height:1.4;">
-                Aucun matériel détecté.<br>Utilisez le bouton <b>Capture</b> ou ajoutez manuellement.
+                Aucun matériel détecté.<br>Utilisez les boutons de <b>Capture</b> ou ajoutez manuellement.
             </div>
         </div>
 
@@ -533,6 +544,7 @@
     let activeFullscreenTarget = null;
     let mCanvas, mCtx;
     let cropper = null;
+    let currentScanScope = "BOITIER"; // Portée de l'analyse : BOITIER ou SONDE
 
     window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('inDate').valueAsDate = new Date();
@@ -575,7 +587,14 @@
         }
     }
 
-    function triggerLabelSmartAnalysis() {
+    function triggerSmartAnalysis(scope) {
+        currentScanScope = scope; 
+        const statusEl = document.getElementById('ocr-status');
+        if (scope === "BOITIER") {
+            statusEl.innerText = "Cadrer les codes barres et la référence du Boîtier (TALENTIA, ALIZEA, ENO...).";
+        } else {
+            statusEl.innerText = "Cadrer les codes barres et la référence de la Sonde (VEGA, INVICTA, NAVIGO...).";
+        }
         document.getElementById('label-camera-input').click();
     }
 
@@ -603,7 +622,7 @@
     function processCroppedImage() {
         if (!cropper) return;
         const statusEl = document.getElementById('ocr-status');
-        statusEl.innerText = "Analyse OCR intelligente en cours... ⏳";
+        statusEl.innerText = "Analyse OCR en cours... ⏳";
 
         const canvasClean = cropper.getCroppedCanvas();
         
@@ -617,7 +636,7 @@
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
             let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-            let bw = (grayscale > 115) ? 255 : 0; 
+            let bw = (grayscale > 110) ? 255 : 0; 
             data[i] = data[i+1] = data[i+2] = bw;
         }
         ctxOcr.putImageData(imgData, 0, 0);
@@ -625,7 +644,11 @@
 
         Tesseract.recognize(canvasOcr, 'eng')
         .then(({ data: { text } }) => {
-            detectAndAddProductFromText(text, savedCleanSnapshot);
+            if (currentScanScope === "BOITIER") {
+                parseBoitierText(text, savedCleanSnapshot);
+            } else {
+                parseSondeText(text, savedCleanSnapshot);
+            }
             closeCropModal();
         })
         .catch(err => {
@@ -635,17 +658,20 @@
         });
     }
 
-    function detectAndAddProductFromText(text, snapshot) {
+    function parseBoitierText(text, snapshot) {
         let matchedModel = "Inconnu";
-        let detectedType = "SONDE"; 
+        let detectedType = "DAI";
         
         let normalizedText = text.toUpperCase()
             .replace(/[\n\r]/g, " ")
             .replace(/[^A-Z0-9\s]/g, "")
             .replace(/\s+/g, " ");
 
-        // Passe 1 : Recherche exacte de la référence ou du nom complet
-        for (let name in refsMap) {
+        // Recherche stricte sur les boîtiers uniquement
+        let listBoitiers = [...listDefis, ...listPaces];
+        
+        // Match exact REF ou Nom
+        for (let name of listBoitiers) {
             let ref = refsMap[name].toUpperCase();
             let uName = name.toUpperCase().replace(/[^A-Z0-9\s]/g, "").replace(/\s+/g, " ");
             if (normalizedText.includes(ref) || normalizedText.includes(uName)) {
@@ -654,9 +680,8 @@
             }
         }
 
-        // Passe 2 : Si inconnu, recherche par mot-clé racine (Priorité absolue aux Boîtiers DAI et Pacemakers d'abord)
+        // Match partiel (Chunks)
         if (matchedModel === "Inconnu") {
-            let listBoitiers = [...listDefis, ...listPaces];
             for (let name of listBoitiers) {
                 let uName = name.toUpperCase();
                 let chunks = uName.split(' ');
@@ -667,7 +692,49 @@
             }
         }
 
-        // Passe 3 : Recherche par racine + numéro pour les sondes si toujours inconnu
+        if (listPaces.includes(matchedModel)) detectedType = "PM";
+
+        // Extraction spécifique S/N Boîtiers (Format standard GS1 ou direct)
+        let sn = extractSerialNumber(text, "BOITIER");
+        let exp = extractExpirationDate(text);
+
+        const acteSelect = document.getElementById('inActe');
+        if (basketItems.filter(i => i.type === "DAI" || i.type === "PM").length === 0) {
+            acteSelect.value = "Primo-Implantation";
+        }
+
+        basketItems.push({
+            type: detectedType,
+            model: matchedModel !== "Inconnu" ? matchedModel : listDefis[0], 
+            sn: sn,
+            exp: exp,
+            stock: "Stock du centre", 
+            reno: "centre", 
+            img: snapshot
+        });
+
+        renderBasket();
+        if (matchedModel === "Inconnu" || !sn) { openManualAddModal(basketItems.length - 1); }
+    }
+
+    function parseSondeText(text, snapshot) {
+        let matchedModel = "Inconnu";
+        
+        let normalizedText = text.toUpperCase()
+            .replace(/[\n\r]/g, " ")
+            .replace(/[^A-Z0-9\s]/g, "")
+            .replace(/\s+/g, " ");
+
+        // Recherche stricte sur les sondes uniquement
+        for (let name of listSondes) {
+            let ref = refsMap[name].toUpperCase();
+            let uName = name.toUpperCase().replace(/[^A-Z0-9\s]/g, "").replace(/\s+/g, " ");
+            if (normalizedText.includes(ref) || normalizedText.includes(uName)) {
+                matchedModel = name;
+                break;
+            }
+        }
+
         if (matchedModel === "Inconnu") {
             for (let name of listSondes) {
                 let uName = name.toUpperCase();
@@ -682,71 +749,20 @@
             }
         }
 
-        // Passe 4 : Fallback de dernier recours sur le dernier chunk
-        if (matchedModel === "Inconnu") {
-            for (let name in refsMap) {
-                let chunks = name.split(' ');
-                let lastChunk = chunks[chunks.length - 1].toUpperCase();
-                if (normalizedText.includes(lastChunk) && lastChunk.length > 2) {
-                    matchedModel = name;
-                    break;
-                }
-            }
-        }
-
-        if (listDefis.includes(matchedModel)) detectedType = "DAI";
-        else if (listPaces.includes(matchedModel)) detectedType = "PM";
-        else if (listSondes.includes(matchedModel)) detectedType = "SONDE";
+        // Extraction S/N Sondes (Souvent préfixé par un pattern particulier ou INVICTA)
+        let sn = extractSerialNumber(text, "SONDE");
+        let exp = extractExpirationDate(text);
 
         const acteSelect = document.getElementById('inActe');
-        if (detectedType === "DAI" || detectedType === "PM") {
-            if(basketItems.filter(i => i.type === "DAI" || i.type === "PM").length === 0) {
-                acteSelect.value = "Primo-Implantation";
-            }
-        } else if (detectedType === "SONDE" && basketItems.length === 0) {
+        if (basketItems.length === 0) {
             acteSelect.value = "Changement de Sonde";
         }
 
-        let sn = ""; let exp = "";
-        
-        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
-        
-        const udiMatch = cleanText.match(/\(17\)\s*(\d{6})\s*\(21\)\s*([A-Z0-9\-]+)/i) || cleanText.match(/17(\d{6})21([A-Z0-9\-]+)/i);
-        
-        if (udiMatch) {
-            exp = formatGs1Date(udiMatch[1]); 
-            sn = udiMatch[2].trim();
-        } else {
-            const regexSnList = [
-                /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,15})/i,
-                /QTY\s*\d+\s+([A-Z0-9\-]{6,12})/i, 
-                /(?:INV[I1]CTA.*\s+)([A-Z0-9\-]{6,12})/i 
-            ];
-
-            for (let reg of regexSnList) {
-                let m = cleanText.match(reg);
-                if (m && m[1]) {
-                    sn = m[1].trim();
-                    break;
-                }
-            }
-
-            const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
-            if (isoDateMatch) {
-                exp = `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
-            } else {
-                const multiDateMatch = cleanText.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
-                if (multiDateMatch) exp = `${multiDateMatch[3]}-${multiDateMatch[2]}-${multiDateMatch[1]}`;
-            }
-        }
-
-        if (sn) sn = sn.replace(/^[:\-\s]+/, "");
-
         basketItems.push({
-            type: detectedType,
-            model: matchedModel !== "Inconnu" ? matchedModel : (listSondes[0]), 
-            sn: sn || "",
-            exp: exp || "",
+            type: "SONDE",
+            model: matchedModel !== "Inconnu" ? matchedModel : listSondes[0], 
+            sn: sn,
+            exp: exp,
             stock: "Stock du centre", 
             reno: "centre", 
             img: snapshot
@@ -754,6 +770,52 @@
 
         renderBasket();
         if (matchedModel === "Inconnu" || !sn) { openManualAddModal(basketItems.length - 1); }
+    }
+
+    function extractSerialNumber(text, type) {
+        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
+        
+        // Recherche DataMatrix universelle (17)YYMMDD(21)SN
+        const udiMatch = cleanText.match(/\(17\)\s*(\d{6})\s*\(21\)\s*([A-Z0-9\-]+)/i) || cleanText.match(/17(\d{6})21([A-Z0-9\-]+)/i);
+        if (udiMatch) return udiMatch[2].trim().replace(/^[:\-\s]+/, "");
+
+        // Si sonde, chercher en priorité les patterns Invicta/Vega spécifiques
+        if (type === "SONDE") {
+            const probeRegex = [
+                /(?:INV[I1]CTA|VEGA).*\s+([A-Z0-9\-]{6,12})/i,
+                /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,15})/i
+            ];
+            for (let reg of probeRegex) {
+                let m = cleanText.match(reg);
+                if (m && m[1]) return m[1].trim().replace(/^[:\-\s]+/, "");
+            }
+        }
+
+        // Fallback générique
+        const genericRegex = [
+            /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,15})/i,
+            /QTY\s*\d+\s+([A-Z0-9\-]{6,12})/i
+        ];
+        for (let reg of genericRegex) {
+            let m = cleanText.match(reg);
+            if (m && m[1]) return m[1].trim().replace(/^[:\-\s]+/, "");
+        }
+        return "";
+    }
+
+    function extractExpirationDate(text) {
+        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
+        
+        const udiMatch = cleanText.match(/\(17\)\s*(\d{6})\s*\(21\)\s*([A-Z0-9\-]+)/i) || cleanText.match(/17(\d{6})21([A-Z0-9\-]+)/i);
+        if (udiMatch) return formatGs1Date(udiMatch[1]);
+
+        const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
+        if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
+
+        const multiDateMatch = cleanText.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
+        if (multiDateMatch) return `${multiDateMatch[3]}-${multiDateMatch[2]}-${multiDateMatch[1]}`;
+
+        return "";
     }
 
     function formatGs1Date(yymmdd) {
