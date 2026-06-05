@@ -606,7 +606,6 @@
         statusEl.innerText = "Analyse OCR intelligente en cours... ⏳";
 
         const canvasClean = cropper.getCroppedCanvas();
-        
         const canvasOcr = document.createElement('canvas');
         canvasOcr.width = canvasClean.width;
         canvasOcr.height = canvasClean.height;
@@ -617,7 +616,7 @@
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
             let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-            let bw = (grayscale > 115) ? 255 : 0; 
+            let bw = (grayscale > 120) ? 255 : 0; 
             data[i] = data[i+1] = data[i+2] = bw;
         }
         ctxOcr.putImageData(imgData, 0, 0);
@@ -636,50 +635,82 @@
     }
 
     function detectAndAddProductFromText(text, snapshot) {
-        let matchedModel = "Inconnu";
-        let detectedType = "SONDE"; 
+        let cleanText = text.replace(/[\(\)\[\]\s\|\:\-\._]/g, "").toUpperCase();
         
-        let normalizedText = text.toUpperCase()
-            .replace(/[\n\r]/g, " ")
-            .replace(/[^A-Z0-9\s]/g, "")
-            .replace(/\s+/g, " ");
-
-        for (let name in refsMap) {
-            let ref = refsMap[name].toUpperCase();
-            let uName = name.toUpperCase().replace(/[^A-Z0-9\s]/g, "").replace(/\s+/g, " ");
-            if (normalizedText.includes(ref) || normalizedText.includes(uName)) {
-                matchedModel = name;
+        let matchedModel = "Inconnu";
+        let refMatched = "";
+        
+        for (let model in refsMap) {
+            let currentRef = refsMap[model].toUpperCase();
+            if (cleanText.includes(currentRef)) {
+                matchedModel = model;
+                refMatched = currentRef;
                 break;
             }
         }
 
         if (matchedModel === "Inconnu") {
-            for (let name in refsMap) {
-                let uName = name.toUpperCase();
-                let mainChunk = uName.split(' ')[0]; 
-                if (mainChunk.length > 3 && normalizedText.includes(mainChunk)) {
-                    let numbersInModel = uName.match(/\d+/);
-                    if (numbersInModel && normalizedText.includes(numbersInModel[0])) {
-                        matchedModel = name;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (matchedModel === "Inconnu") {
-            for (let name in refsMap) {
-                let chunks = name.split(' ');
-                let lastChunk = chunks[chunks.length - 1].toUpperCase();
-                if (normalizedText.includes(lastChunk) && lastChunk.length > 2) {
-                    matchedModel = name;
+            for (let model in refsMap) {
+                let modelClean = model.replace(/\s+/g, "").toUpperCase();
+                if (cleanText.includes(modelClean)) {
+                    matchedModel = model;
+                    refMatched = refsMap[model];
                     break;
                 }
             }
         }
 
+        let detectedType = "SONDE";
         if (listDefis.includes(matchedModel)) detectedType = "DAI";
         else if (listPaces.includes(matchedModel)) detectedType = "PM";
+
+        let expDateStr = "";
+        let gs1Match = cleanText.match(/17(\d{6})/);
+        if (gs1Match && gs1Match[1]) {
+            let yy = gs1Match[1].substring(0, 2);
+            let mm = gs1Match[1].substring(2, 4);
+            let dd = gs1Match[1].substring(4, 6);
+            if (parseInt(mm) >= 1 && parseInt(mm) <= 12 && parseInt(dd) >= 1 && parseInt(dd) <= 31) {
+                expDateStr = `20${yy}-${mm}-${dd}`;
+            }
+        }
+
+        if (!expDateStr) {
+            let longDateMatch = text.match(/(\d{4})[\-_/](\d{2})[\-_/](\d{2})/);
+            if (longDateMatch) {
+                expDateStr = `${longDateMatch[1]}-${longDateMatch[2]}-${longDateMatch[3]}`;
+            } else {
+                let shortDateMatch = text.match(/(\d{4})[\-_/](\d{2})/);
+                if (shortDateMatch) {
+                    expDateStr = `${shortDateMatch[1]}-${shortDateMatch[2]}-01`;
+                }
+            }
+        }
+
+        let snStr = "";
+        let textWords = text.replace(/[:\-\[\]\|]/g, " ").split(/\s+/);
+        for (let i = 0; i < textWords.length; i++) {
+            let word = textWords[i].toUpperCase();
+            if (word === "SN" && i + 1 < textWords.length) {
+                let candidate = textWords[i+1].trim();
+                if (candidate.length >= 6 && candidate.length <= 14) {
+                    snStr = candidate;
+                    break;
+                }
+            }
+        }
+
+        if (!snStr) {
+            let generalSnMatch = text.match(/(?:SN|S\.N\.|S\/N)\s*[:\-\s]*([A-Z0-9]{6,12})/i);
+            if (generalSnMatch) {
+                snStr = generalSnMatch[1].trim();
+            } else {
+                let fallbackSn = text.match(/\b([50-9]{2}[A-Z]{2}[0-9]{6}|[A-Z]{3}[0-9]{6})\b/i);
+                if (fallbackSn) {
+                    snStr = fallbackSn[1].trim();
+                }
+            }
+        }
 
         const acteSelect = document.getElementById('inActe');
         if (detectedType === "DAI" || detectedType === "PM") {
@@ -690,56 +721,20 @@
             acteSelect.value = "Changement de Sonde";
         }
 
-        let sn = ""; let exp = "";
-        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
-        
-        const udiMatch = cleanText.match(/\(17\)\s*(\d{6})\s*\(21\)\s*([A-Z0-9\-]+)/i) || cleanText.match(/17(\d{6})21([A-Z0-9\-]+)/i);
-        
-        if (udiMatch) {
-            exp = formatGs1Date(udiMatch[1]); 
-            sn = udiMatch[2].trim();
-        } else {
-            const regexSnList = [
-                /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,15})/i,
-                /QTY\s*\d+\s+([A-Z0-9\-]{6,12})/i, 
-                /(?:INV[I1]CTA.*\s+)([A-Z0-9\-]{6,12})/i 
-            ];
-
-            for (let reg of regexSnList) {
-                let m = cleanText.match(reg);
-                if (m && m[1]) {
-                    sn = m[1].trim();
-                    break;
-                }
-            }
-
-            const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
-            if (isoDateMatch) {
-                exp = `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
-            } else {
-                const multiDateMatch = cleanText.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
-                if (multiDateMatch) exp = `${multiDateMatch[3]}-${multiDateMatch[2]}-${multiDateMatch[1]}`;
-            }
-        }
-
-        if (sn) sn = sn.replace(/^[:\-\s]+/, "");
-
         basketItems.push({
             type: detectedType,
-            model: matchedModel !== "Inconnu" ? matchedModel : (listSondes[0]), 
-            sn: sn || "",
-            exp: exp || "",
+            model: matchedModel !== "Inconnu" ? matchedModel : listSondes[0], 
+            sn: snStr.toUpperCase(),
+            exp: expDateStr,
             stock: "Stock du centre", 
             reno: "centre", 
             img: snapshot
         });
 
         renderBasket();
-        if (matchedModel === "Inconnu" || !sn) { openManualAddModal(basketItems.length - 1); }
-    }
-
-    function formatGs1Date(yymmdd) {
-        return `20${yymmdd.substring(0, 2)}-${yymmdd.substring(2, 4)}-${yymmdd.substring(4, 6)}`;
+        if (matchedModel === "Inconnu" || !snStr || !expDateStr) { 
+            openManualAddModal(basketItems.length - 1); 
+        }
     }
 
     function renderBasket() {
@@ -767,7 +762,7 @@
                     <span style="font-size:11px; font-weight:700; background:rgba(255,255,255,0.7); padding:2px 8px; border-radius:6px; border:1px solid rgba(0,0,0,0.05);">REF: ${refsMap[item.model] || '??'}</span>
                 </div>
                 <div class="detected-details">
-                    <b>S/N :</b> ${item.sn || '<span style="color:var(--danger);font-weight:bold;">A renseigner ⚠️</span>'} &nbsp;|&nbsp; <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'Non détectée'}<br>
+                    <b>S/N :</b> ${item.sn || '<span style="color:var(--danger);font-weight:bold;">A renseigner ⚠️</span>'} &nbsp;|&nbsp; <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : '<span style="color:var(--danger);font-weight:bold;">A renseigner ⚠️</span>'}<br>
                     <small style="opacity:0.85; display:block; margin-top:3px;">Stock : ${item.stock} &bull; Suivi : ${item.reno === 'centre' ? 'Stock Centre' : (item.reno === 'ing' ? 'Stock Ingé' : 'Aucun')}</small>
                 </div>
                 <div class="detected-actions">
@@ -834,7 +829,7 @@
         const itemData = {
             type: document.getElementById('man-type').value,
             model: document.getElementById('man-model').value,
-            sn: document.getElementById('man-sn').value,
+            sn: document.getElementById('man-sn').value.toUpperCase(),
             exp: document.getElementById('man-exp').value,
             stock: document.getElementById('man-stock').value,
             reno: document.getElementById('man-reno').value,
@@ -1003,7 +998,7 @@
             
             let typeLabel = "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑";
             if (item.type === "PM") typeLabel = "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑";
-            if (item.type === "SONDE") typeLabel = "🔸 𝐒𝐎𝐍𝐃𝐄";
+            if (item.type === "SONDE") typeLabel = "🔸 𝐒𝐎𝐍default𝐃𝐄";
 
             detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n`;
             detailMatos += `• S/N : ${item.sn || 'N/A'} | EXP : ${expFr}\n`;
