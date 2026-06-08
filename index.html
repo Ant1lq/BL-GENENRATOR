@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BL Pro App - Palette & iOS Optimisé</title>
+    <title>BL Pro App - Cardioflow</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -12,25 +12,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
 
     <style>
-        /* Intégration de la palette de couleurs issue de Capture d’écran 2026-06-05 144135.png */
+        /* Intégration de la palette de couleurs issue de votre capture d’écran */
         :root { 
             --ui-blue-dark: #121c2c;     /* Case 1 : Bleu Nuit Profond */
             --ui-white: #ffffff;        /* Case 2 : Blanc Pur */
             --ui-grey-dark: #848484;    /* Case 3 : Gris Foncé Slate */
             --ui-grey-light: #e3e3e3;   /* Case 4 : Gris Clair Satiné */
-            --ui-red-coral: #ff1c43;    /* Case 5 : Rouge Corail (Attribué aux DAI) */
-            --ui-fuchsia: #c32673;      /* Case 6 : Fuchsia / Magenta (Attribué aux PM) */
+            --ui-red-coral: #ff1c43;    /* Case 5 : Rouge Corail (Matériel DAI) */
+            --ui-fuchsia: #c32673;      /* Case 6 : Fuchsia / Magenta (Matériel PM) */
             --ui-purple: #7d2ae8;       /* Case 7 : Violet Intense */
-            --ui-cyan: #00d5ff;         /* Case 8 : Bleu Cyan Éclatant (Attribué aux Sondes) */
+            --ui-cyan: #00d5ff;         /* Case 8 : Bleu Cyan Éclatant (Sondes) */
             --ui-blue-royal: #426eff;   /* Case 9 : Bleu Royal */
             --ui-blue-navy: #04297a;    /* Case 10 : Bleu Marine */
             
-            /* Variables structurelles adaptées à l'iPhone 11 */
+            /* Variables structurelles iPhone 11 */
             --text-main: #1f2937;
             --text-muted: #6b7280;
-            --border-ui: #b0c2d4;       /* Style de bordure fine bleutée de vos menus déroulants */
+            --border-ui: #b0c2d4;       
             --ios-radius: 12px;
-            --bl-scale: 1;              /* Ajusté dynamiquement par le JS */
+            --bl-scale: 1;              
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -63,12 +63,13 @@
         }
         header p {
             margin: 4px 0 0 0;
-            font-size: 12px;
-            color: var(--text-muted);
-            font-weight: 500;
+            font-size: 13px;
+            color: var(--ui-blue-royal);
+            font-weight: 700;
+            letter-spacing: 0.2px;
         }
 
-        /* Boutons de Scan en haut de l'écran iPhone */
+        /* Boutons de Scan supérieurs */
         .scan-zone {
             margin-bottom: 16px;
             display: flex;
@@ -96,7 +97,7 @@
         .btn-scan-sonde { background: var(--ui-blue-royal); }
         .btn-smart-scan:active { transform: scale(0.97); opacity: 0.9; }
 
-        /* Style des Boîtes / Cartes de Catégories de l'application */
+        /* Cartes de sections */
         .app-card {
             background: var(--ui-white);
             border-radius: var(--ios-radius);
@@ -132,7 +133,6 @@
             color: var(--ui-grey-dark); 
         }
         
-        /* Alignement des inputs sur le style des sélecteurs de votre capture */
         input, select { 
             width: 100%; 
             height: 44px; 
@@ -172,7 +172,6 @@
             gap: 6px;
         }
 
-        /* Cartes du matériel détecté aux couleurs de la palette demandée */
         .detected-item-card {
             background: var(--ui-white);
             border-radius: 10px;
@@ -196,7 +195,7 @@
         .signature-box { border: 1px dashed var(--border-ui); border-radius: 10px; padding: 10px; text-align: center; background: #fafafa; }
         .sig-canvas { width: 100%; height: 80px; background: #fff; border-radius: 6px; border: 1px solid var(--ui-grey-light); touch-action: none; }
 
-        /* Modaux Écran iPhone de style Bottom Sheet */
+        /* Modaux de style Bottom Sheet iOS */
         .ios-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
@@ -219,9 +218,7 @@
         .btn-mail-ios { background: #0fa36b; color: white; border: none; padding: 14px; border-radius: var(--ios-radius); font-weight: 700; font-size: 14px; cursor: pointer; text-align: center; width: 100%; }
         .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active { opacity: 0.85; transform: scale(0.99); }
 
-        /* =========================================================================
-           CADRAGE DE LA PRÉVISUALISATION DU BL POUR L'ÉCRAN DE VOTRE IPHONE 11
-           ========================================================================= */
+        /* Conteneur d'affichage A4 proportionnel pour iPhone 11 */
         #bl-wrapper { 
             background: #576574; 
             padding: 12px 0; 
@@ -233,7 +230,6 @@
             align-items: center;
         }
         
-        /* Permet de forcer l'affichage A4 à l'échelle de l'iPhone tout en restant net */
         .bl-scaler-box {
             width: 100%;
             overflow: visible;
@@ -283,7 +279,7 @@
 <div class="app-container">
     <header>
         <h1>⚡ BL PRO APP</h1>
-        <p>MicroPort CRM Logistics Suite</p>
+        <p>MicroPort Cardioflow</p>
     </header>
 
     <div class="scan-zone">
@@ -291,11 +287,10 @@
             📷 CAPTURE BOÎTIER (PM / DAI)
         </button>
         <button class="btn-smart-scan btn-scan-sonde" onclick="triggerSmartAnalysis('SONDE')">
-            📷 CAPTURE SONDE LOGISTIQUE
+            📷 CAPTURE SONDE
         </button>
     </div>
 
-    <!-- Section 1 : Logistique Réseau -->
     <div class="app-card">
         <div class="card-title">1️⃣ Logistique Interne</div>
         <div class="form-group">
@@ -329,7 +324,6 @@
         </div>
     </div>
 
-    <!-- Section 2 : Éléments du Bon de Livraison -->
     <div class="app-card">
         <div class="card-title">
             2️⃣ Liste Matériels au BL
@@ -345,7 +339,6 @@
         <button class="btn-action-block" onclick="openManualAddModal()">➕ INJECTER UN ÉLÉMENT MANUELLEMENT</button>
     </div>
 
-    <!-- Section 3 : Recueil Émargements tactiles -->
     <div class="app-card">
         <div class="card-title">3️⃣ Signatures Écran</div>
         <div class="grid-2">
@@ -362,7 +355,6 @@
         </div>
     </div>
 
-    <!-- Boutons d'Action Bas de page iPhone -->
     <div class="sticky-actions">
         <button class="btn-mail-ios" onclick="generateEmail()">📧 TRANSFÉRER COMPTE-RENDU OUTLOOK</button>
         <div class="grid-2">
@@ -376,7 +368,6 @@
         <div id="img-container"></div>
     </div>
 
-    <!-- ZONE DE RENDU : LE BON DE LIVRAISON CADRÉ POUR IPHONE 11 -->
     <div id="bl-wrapper">
         <div class="bl-scaler-box">
             <div id="bl-canvas">
@@ -440,7 +431,6 @@
 
 <input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
 
-<!-- Modal iOS : Recadrage Image -->
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
         <h3 style="margin-top:0; color:var(--ui-blue-dark); font-size:16px; text-align:center; font-weight:bold;">AJUSTEMENT PHOTO ÉTIQUETTE</h3>
@@ -455,7 +445,6 @@
     </div>
 </div>
 
-<!-- Modal iOS : Ajustement Manuel Matériel -->
 <div id="manual-modal" class="ios-modal">
     <div class="ios-modal-content">
         <h3 id="manual-modal-title" style="margin-top:0; color:var(--ui-blue-dark); font-size:16px; font-weight:bold;">Données Technique Produit</h3>
@@ -506,7 +495,6 @@
     </div>
 </div>
 
-<!-- Modal iOS : Grand Écran de Signature -->
 <div id="sig-modal" class="ios-modal">
     <div class="ios-modal-content" style="max-width:100%;">
         <h3 style="margin-top:0; text-align:center; font-size:14px; color:var(--ui-blue-dark);">ÉMARGEMENT TACTILE NATIVE iOS</h3>
@@ -542,7 +530,7 @@
     let listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
     let listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
     let listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
-    let listIngs = ["A. LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
+    let listIngs = ["Antoine LECOQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
     
     let basketItems = []; 
     let sigSource = { trans: 'none', centre: 'none' };
@@ -560,7 +548,6 @@
         sync();
     });
 
-    // Échelle adaptative dynamique pour l'affichage de l'iPhone 11
     function adjustBLScale() {
         const wrapper = document.getElementById('bl-wrapper');
         if (!wrapper) return;
@@ -882,10 +869,12 @@
         document.getElementById('lbl-sig-ing').innerText = (sigSource['trans'] === 'draw') ? `${ing}\nExpert CRM` : "";
         document.getElementById('lbl-sig-doc').innerText = (sigSource['centre'] === 'draw') ? `${doc.toUpperCase()}\nCardiologie ${c}` : "";
 
+        // Gestion de l'affichage initial et des signatures par défaut depuis assets/
         ['trans', 'centre'].forEach(t => {
             const el = document.getElementById(`v-sig-${t}`);
             if (sigSource[t] === 'none') {
-                let path = (t === 'trans') ? `assets/signature-${ing.toLowerCase().split(' ')[1] || 'antoine'}.png` : `assets/tampon-${c.toLowerCase().replace(/ /g, '-')}.png`;
+                let lastName = ing.split(' ')[1] || 'lecoq';
+                let path = (t === 'trans') ? `assets/signature-${lastName.toLowerCase()}.png` : `assets/tampon-${c.toLowerCase().replace(/ /g, '-')}.png`;
                 el.src = path;
             }
         });
@@ -938,13 +927,13 @@
 
     function captureImage() {
         const root = document.documentElement; const savedScale = root.style.getPropertyValue('--bl-scale');
-        root.style.setProperty('--bl-scale', '1'); // Capture en taille réelle A4 native pour la netteté
+        root.style.setProperty('--bl-scale', '1'); 
         
         html2canvas(document.getElementById('bl-canvas'), { scale: 2.2 }).then(canvas => {
             const container = document.getElementById('img-container'); container.innerHTML = '';
             const img = new Image(); img.src = canvas.toDataURL("image/png"); container.appendChild(img);
             document.getElementById('image-result').style.display = 'block';
-            root.style.setProperty('--bl-scale', savedScale); // Restaure l'affichage bridé iPhone
+            root.style.setProperty('--bl-scale', savedScale); 
             window.scrollTo(0, document.body.scrollHeight);
         });
     }
