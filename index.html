@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BL Pro App - Cardioflow</title>
+    <title>BL Pro App - Expert MicroPort</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -12,304 +12,307 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
 
     <style>
-        /* Intégration de la palette de couleurs issue de votre capture d’écran */
         :root { 
-            --ui-blue-dark: #121c2c;     /* Case 1 : Bleu Nuit Profond */
-            --ui-white: #ffffff;        /* Case 2 : Blanc Pur */
-            --ui-grey-dark: #848484;    /* Case 3 : Gris Foncé Slate */
-            --ui-grey-light: #e3e3e3;   /* Case 4 : Gris Clair Satiné */
-            --ui-red-coral: #ff1c43;    /* Case 5 : Rouge Corail (Matériel DAI) */
-            --ui-fuchsia: #c32673;      /* Case 6 : Fuchsia / Magenta (Matériel PM) */
-            --ui-purple: #7d2ae8;       /* Case 7 : Violet Intense */
-            --ui-cyan: #00d5ff;         /* Case 8 : Bleu Cyan Éclatant (Sondes) */
-            --ui-blue-royal: #426eff;   /* Case 9 : Bleu Royal */
-            --ui-blue-navy: #04297a;    /* Case 10 : Bleu Marine */
-            
-            /* Variables structurelles iPhone 11 */
-            --text-main: #1f2937;
-            --text-muted: #6b7280;
-            --border-ui: #b0c2d4;       
-            --ios-radius: 12px;
-            --bl-scale: 1;              
+            --blue-mp: #002e6d; 
+            --blue-light: #f0f5fa;
+            --accent: #0078d4;
+            --accent-light: #e1f0fe;
+            --success: #2e7d32;
+            --success-light: #e8f5e9;
+            --warning: #f57c00;
+            --warning-light: #fff3e0;
+            --danger: #d32f2f;
+            --danger-light: #ffebee;
+            --neutral-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif; 
-            background: #f7f9fc; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--neutral-bg); 
             margin: 0; 
             padding: 0; 
             color: var(--text-main);
-            padding-bottom: 30px;
+            padding-bottom: 60px;
         }
 
         .app-container {
             max-width: 440px; 
             margin: 0 auto;
-            padding: 14px;
+            padding: 16px;
         }
 
         header {
             text-align: center;
-            padding: 16px 0 8px 0;
+            padding: 16px 0;
+            margin-bottom: 8px;
         }
         header h1 {
-            font-size: 21px;
-            color: var(--ui-blue-dark);
+            font-size: 22px;
+            color: var(--blue-mp);
             margin: 0;
             font-weight: 800;
             letter-spacing: -0.5px;
-        }
-        header p {
-            margin: 4px 0 0 0;
-            font-size: 13px;
-            color: var(--ui-blue-royal);
-            font-weight: 700;
-            letter-spacing: 0.2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        /* Boutons de Scan supérieurs */
         .scan-zone {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
 
         .btn-smart-scan {
-            color: var(--ui-white);
+            color: white;
             border: none;
             padding: 16px;
-            border-radius: var(--ios-radius);
+            border-radius: 16px;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 15px;
             width: 100%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-            transition: transform 0.1s ease;
+            gap: 12px;
+            transition: all 0.2s ease;
         }
-        .btn-scan-boitier { background: var(--ui-blue-navy); }
-        .btn-scan-sonde { background: var(--ui-blue-royal); }
-        .btn-smart-scan:active { transform: scale(0.97); opacity: 0.9; }
+        .btn-scan-boitier {
+            background: linear-gradient(135deg, var(--blue-mp), #1e40af);
+            box-shadow: 0 6px 14px rgba(30, 64, 175, 0.2);
+        }
+        .btn-scan-sonde {
+            background: linear-gradient(135deg, var(--accent), #0369a1);
+            box-shadow: 0 6px 14px rgba(3, 105, 161, 0.2);
+        }
 
-        /* Cartes de sections */
+        .btn-smart-scan:active { transform: scale(0.97); opacity: 0.95; }
+
         .app-card {
-            background: var(--ui-white);
-            border-radius: var(--ios-radius);
-            padding: 16px;
-            margin-bottom: 14px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
-            border: 1px solid var(--border-ui);
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+            border: 1px solid rgba(226, 232, 240, 0.8);
         }
 
         .card-title {
-            font-size: 13px;
-            font-weight: 800;
-            color: var(--ui-blue-dark);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--blue-mp);
             text-transform: uppercase;
             margin-top: 0;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             letter-spacing: 0.5px;
-            border-bottom: 1px solid var(--ui-grey-light);
-            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
         }
 
-        .form-group { margin-bottom: 12px; }
-        .form-group:last-child { margin-bottom: 0; }
-        
+        .form-group { margin-bottom: 14px; }
         label { 
             display: block; 
-            font-size: 11px; 
+            font-size: 12px; 
             font-weight: 600; 
-            margin-bottom: 4px; 
-            color: var(--ui-grey-dark); 
+            margin-bottom: 6px; 
+            color: var(--text-muted); 
         }
-        
-        input, select { 
+        input, select, textarea { 
             width: 100%; 
-            height: 44px; 
-            padding: 0 12px; 
-            border: 1.5px solid var(--border-ui); 
-            border-radius: 8px; 
-            font-size: 14px; 
-            background: var(--ui-white); 
+            height: 48px; 
+            padding: 0 14px; 
+            border: 1.5px solid var(--border-color); 
+            border-radius: 12px; 
+            font-size: 15px; 
+            background: #fff; 
             color: var(--text-main);
+            transition: all 0.2s;
             -webkit-appearance: none; 
         }
         select {
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23848484' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 10px center;
-            background-size: 14px;
-            padding-right: 34px;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
         }
-        input:focus, select:focus { outline: none; border-color: var(--ui-blue-royal); }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
+        }
 
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
         .btn-action-block {
-            background: #f1f5f9;
-            border: 1px dashed var(--ui-grey-dark);
-            color: var(--ui-blue-dark);
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 13px;
+            background: var(--blue-light);
+            border: 1.5px dashed var(--accent);
+            color: var(--accent);
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 14px;
             font-weight: 600;
             width: 100%;
             cursor: pointer;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
+            margin-top: 10px;
+            transition: background 0.2s;
         }
 
         .detected-item-card {
-            background: var(--ui-white);
-            border-radius: 10px;
-            padding: 12px;
+            background: #fdfdfd;
+            border-radius: 14px;
+            padding: 14px;
             margin-top: 10px;
-            border: 1px solid var(--ui-grey-light);
-            border-left: 6px solid var(--ui-grey-dark);
+            border: 1px solid var(--border-color);
+            position: relative;
         }
-        .detected-item-card.DAI { border-left-color: var(--ui-red-coral); background: rgba(255, 28, 67, 0.03); }
-        .detected-item-card.PM { border-left-color: var(--ui-fuchsia); background: rgba(195, 38, 115, 0.03); }
-        .detected-item-card.SONDE { border-left-color: var(--ui-cyan); background: rgba(0, 213, 255, 0.03); }
+        .detected-item-card.DAI { background: var(--warning-light); border-left: 5px solid var(--warning); }
+        .detected-item-card.PM { background: var(--success-light); border-left: 5px solid var(--success); }
+        .detected-item-card.SONDE { background: var(--accent-light); border-left: 5px solid var(--accent); }
 
-        .detected-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; margin-bottom: 4px; }
-        .detected-details { font-size: 12px; color: #374151; line-height: 1.4; }
-        .detected-actions { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; }
+        .detected-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+        .detected-details { font-size: 12px; color: #334155; line-height: 1.5; }
+        .detected-actions { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
         
-        .btn-mini { padding: 6px 12px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; }
-        .btn-mini.edit { background: var(--ui-grey-light); color: var(--ui-blue-dark); }
-        .btn-mini.delete { background: rgba(255, 114, 114, 0.15); color: #dc2626; }
+        .btn-mini {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-mini.edit { background: #e2e8f0; color: var(--text-main); }
+        .btn-mini.delete { background: var(--danger-light); color: var(--danger); }
 
-        .signature-box { border: 1px dashed var(--border-ui); border-radius: 10px; padding: 10px; text-align: center; background: #fafafa; }
-        .sig-canvas { width: 100%; height: 80px; background: #fff; border-radius: 6px; border: 1px solid var(--ui-grey-light); touch-action: none; }
+        .signature-box {
+            border: 1.5px dashed var(--border-color);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .sig-canvas {
+            width: 100%;
+            height: 90px;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            touch-action: none;
+        }
 
-        /* Modaux de style Bottom Sheet iOS */
         .ios-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-            z-index: 9999; justify-content: center; align-items: flex-end; 
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(6px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: flex-end; 
         }
         .ios-modal-content {
-            background: var(--ui-white); width: 100%; max-width: 440px;
-            border-top-left-radius: 16px; border-top-right-radius: 16px; padding: 20px;
-            max-height: 90vh; overflow-y: auto; box-shadow: 0 -6px 20px rgba(0,0,0,0.1);
-            animation: slideUp 0.25s cubic-bezier(0.15, 0.85, 0.45, 1);
+            background: white;
+            width: 100%;
+            max-width: 440px;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            padding: 24px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .crop-wrapper { width: 100%; max-height: 35vh; overflow: hidden; background: #000; border-radius: 10px; margin-bottom: 14px; }
+        .crop-wrapper { width: 100%; max-height: 40vh; overflow: hidden; background: #000; border-radius: 14px; margin-bottom: 16px; }
         #crop-preview { max-width: 100%; display: block; }
 
-        .sticky-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
-        .btn-primary-ios { background: var(--ui-blue-navy); color: white; border: none; padding: 14px; border-radius: var(--ios-radius); font-weight: 700; font-size: 14px; cursor: pointer; text-align: center; width: 100%; }
-        .btn-secondary-ios { background: var(--ui-grey-dark); color: white; border: none; padding: 14px; border-radius: var(--ios-radius); font-weight: 700; font-size: 14px; cursor: pointer; text-align: center; width: 100%; }
-        .btn-mail-ios { background: #0fa36b; color: white; border: none; padding: 14px; border-radius: var(--ios-radius); font-weight: 700; font-size: 14px; cursor: pointer; text-align: center; width: 100%; }
-        .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active { opacity: 0.85; transform: scale(0.99); }
+        .sticky-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .btn-primary-ios { background: var(--blue-mp); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; font-size: 15px; cursor: pointer; text-align: center; width: 100%; }
+        .btn-secondary-ios { background: #1e293b; color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; font-size: 15px; cursor: pointer; text-align: center; width: 100%; }
+        .btn-mail-ios { background: var(--success); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; font-size: 15px; cursor: pointer; text-align: center; width: 100%; }
 
-        /* Conteneur d'affichage A4 proportionnel pour iPhone 11 */
-        #bl-wrapper { 
-            background: #576574; 
-            padding: 12px 0; 
-            overflow: hidden; 
-            margin-top: 20px; 
-            border-radius: var(--ios-radius);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+        #bl-wrapper { background: #525659; padding: 30px 0; overflow-x: auto; margin-top: 25px; }
+        #bl-canvas { width: 210mm; min-height: 297mm; background: white; margin: 0 auto; padding: 20mm 15mm; box-sizing: border-box; color: black; font-family: Arial, sans-serif; }
         
-        .bl-scaler-box {
-            width: 100%;
-            overflow: visible;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: calc(297mm * var(--bl-scale));
-        }
-
-        #bl-canvas { 
-            width: 210mm; 
-            min-height: 297mm; 
-            background: white; 
-            padding: 18mm 12mm; 
-            box-sizing: border-box; 
-            color: black; 
-            font-family: Arial, sans-serif; 
-            transform: scale(var(--bl-scale));
-            transform-origin: center center;
-            flex-shrink: 0;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-        }
+        .bl-title-block { font-size: 12px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 5px; }
         
-        .bl-title-block { font-size: 11px; font-weight: bold; margin-bottom: 12px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 4px; }
-        .bl-header-table { width: 100%; margin-bottom: 16px; border-collapse: collapse; }
-        .bl-header-table td { border: 1px solid #000; padding: 5px 8px; font-size: 10.5px; }
+        .bl-header-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+        .bl-header-table td { border: 1px solid #000; padding: 6px 10px; font-size: 11px; }
         .bl-header-table .bg-light { background-color: #e6e6e6; font-weight: bold; width: 25%; }
         
-        .objet-container { margin: 12px 0; padding: 6px; background: #f2f2f2; font-size: 11px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; }
+        .objet-container { margin: 15px 0; padding: 8px; background: #f2f2f2; font-size: 12px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; }
         
-        table.main-bl-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        table.main-bl-table th { border: 1px solid #000; padding: 8px; font-size: 10.5px; background-color: #e6e6e6; text-transform: uppercase; text-align: center; }
-        table.main-bl-table td { border: 1px solid #000; padding: 6px; font-size: 10.5px; vertical-align: middle; }
+        table.main-bl-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table.main-bl-table th { border: 1px solid #000; padding: 10px; font-size: 11px; background-color: #e6e6e6; text-transform: uppercase; text-align: center; }
+        table.main-bl-table td { border: 1px solid #000; padding: 8px; font-size: 11px; vertical-align: middle; }
         
-        .row-photo-flat { padding: 6px !important; text-align: center; background: #ffffff; }
-        .row-photo-flat img { max-width: 100%; height: auto; max-height: 100px; display: block; margin: 0 auto; filter: grayscale(1) contrast(1.6) brightness(0.96); }
+        .row-photo-flat { padding: 8px !important; text-align: center; background: #ffffff; }
+        .row-photo-flat img { max-width: 100%; height: auto; max-height: 115px; display: block; margin: 0 auto; filter: grayscale(1) contrast(1.7) brightness(0.95); }
         
-        .bl-sig-img { max-height: 60px; max-width: 100%; display: block; margin: 4px auto; }
-        .legal-text { font-size: 9px; line-height: 1.3; color: #000; margin-top: 4px; font-family: Arial, sans-serif; }
+        .bl-sig-img { max-height: 65px; max-width: 100%; display: block; margin: 5px auto; }
+        
+        .legal-text { font-size: 9.5px; line-height: 1.4; color: #000; margin-top: 5px; font-family: Arial, sans-serif; }
 
-        #image-result { background: #ecfdf5; padding: 14px; border-radius: var(--ios-radius); margin-top: 14px; text-align: center; display: none; border: 2px solid #10b981; }
-        #image-result img { max-width: 100%; border-radius: 6px; }
+        #image-result { background: #e8f5e9; padding: 16px; border-radius: 14px; margin-top: 16px; text-align: center; display: none; border: 2px solid var(--success); }
+        #image-result img { max-width: 100%; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     </style>
 </head>
 <body>
 
 <div class="app-container">
     <header>
-        <h1>⚡ BL PRO APP</h1>
-        <p>MicroPort Cardioflow</p>
+        <h1>⚡ BL PRO SMART LOG</h1>
     </header>
 
     <div class="scan-zone">
         <button class="btn-smart-scan btn-scan-boitier" onclick="triggerSmartAnalysis('BOITIER')">
-            📷 CAPTURE BOÎTIER (PM / DAI)
+            📷 SCANNER UN BOÎTIER (PM / DAI)
         </button>
         <button class="btn-smart-scan btn-scan-sonde" onclick="triggerSmartAnalysis('SONDE')">
-            📷 CAPTURE SONDE
+            📷 SCANNER UNE SONDE
         </button>
     </div>
 
     <div class="app-card">
-        <div class="card-title">1️⃣ Logistique Interne</div>
+        <div class="card-title">1️⃣ Logistique & Contextes</div>
         <div class="form-group">
-            <label>Établissement Hospitalier</label>
+            <label>Établissement</label>
             <select id="inC" onchange="initDocs()"></select>
         </div>
         <div class="grid-2">
             <div class="form-group">
-                <label>Opérateur Implanteur</label>
+                <label>Médecin Implanteur</label>
                 <select id="inD" onchange="sync()"></select>
             </div>
             <div class="form-group">
-                <label>Ingénieur Responsable</label>
+                <label>Ingénieur d'App.</label>
                 <select id="inIng" onchange="updateDynamicStocks()"></select>
             </div>
         </div>
         <div class="grid-2">
             <div class="form-group">
-                <label>Type d'Intervention</label>
+                <label>Acte / Objet du BL</label>
                 <select id="inActe" onchange="sync()">
                     <option value="Primo-Implantation">Primo-Implantation</option>
                     <option value="Changement de Boitier">Changement de Boitier</option>
@@ -318,7 +321,7 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Date Session</label>
+                <label>Date de l'Acte</label>
                 <input type="date" id="inDate" onchange="sync()">
             </div>
         </div>
@@ -326,106 +329,46 @@
 
     <div class="app-card">
         <div class="card-title">
-            2️⃣ Liste Matériels au BL
-            <span id="badge-total" style="background:var(--ui-blue-dark); color:white; font-size:11px; padding:2px 8px; border-radius:12px; font-weight:bold;">0</span>
+            2️⃣ Matériels scannés au BL
+            <span id="badge-total" style="background:var(--blue-mp); color:white; font-size:12px; padding:3px 10px; border-radius:20px; font-weight:bold;">0</span>
         </div>
         
         <div id="detected-items-list">
-            <div id="empty-state-msg" style="text-align:center; color:var(--text-muted); font-size:12px; padding:16px 0;">
-                Aucune étiquette enregistrée pour le moment.
+            <div id="empty-state-msg" style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px 0; line-height:1.4;">
+                Aucun matériel détecté.<br>Utilisez les boutons de <b>Capture</b> ou ajoutez manuellement.
             </div>
         </div>
 
-        <button class="btn-action-block" onclick="openManualAddModal()">➕ INJECTER UN ÉLÉMENT MANUELLEMENT</button>
+        <button class="btn-action-block" onclick="openManualAddModal()">➕ AJOUT MANUEL OU AJUSTEMENT</button>
     </div>
 
     <div class="app-card">
-        <div class="card-title">3️⃣ Signatures Écran</div>
+        <div class="card-title">3️⃣ Signatures & Émargements</div>
         <div class="grid-2">
             <div class="signature-box">
-                <label>Ingénieur (Transport)</label>
+                <label>Transporteur</label>
                 <canvas id="pad-trans" class="sig-canvas"></canvas>
-                <button class="btn-mini edit" style="margin-top:4px; width:100%;" onclick="openFullscreenSig('trans')">Signer</button>
+                <button class="btn-mini edit" style="margin-top:6px; width:100%; justify-content:center;" onclick="openFullscreenSig('trans')">Agrandir</button>
             </div>
             <div class="signature-box">
-                <label>Tampon / Centre</label>
+                <label>Centre / Tampon</label>
                 <canvas id="pad-centre" class="sig-canvas"></canvas>
-                <button class="btn-mini edit" style="margin-top:4px; width:100%;" onclick="openFullscreenSig('centre')">Signer</button>
+                <button class="btn-mini edit" style="margin-top:6px; width:100%; justify-content:center;" onclick="openFullscreenSig('centre')">Agrandir</button>
             </div>
         </div>
     </div>
 
     <div class="sticky-actions">
-        <button class="btn-mail-ios" onclick="generateEmail()">📧 TRANSFÉRER COMPTE-RENDU OUTLOOK</button>
+        <button class="btn-mail-ios" onclick="generateEmail()">📧 COMPTE-RENDU OUTLOOK DIRECT</button>
         <div class="grid-2">
-            <button class="btn-primary-ios" onclick="generatePDF()">🖨️ IMPRIMER / PDF</button>
-            <button class="btn-secondary-ios" onclick="captureImage()">📸 COPIER COMME IMAGE</button>
+            <button class="btn-primary-ios" onclick="generatePDF()">🖨️ EXPORT PDF</button>
+            <button class="btn-secondary-ios" onclick="captureImage()">📸 COPIE IMAGE</button>
         </div>
     </div>
 
     <div id="image-result">
-        <p style="font-weight: bold; color: #047857; font-size: 12px; margin:0 0 8px 0;">✅ Image générée ! Restez appuyé pour la copier sur iOS.</p>
+        <p style="font-weight: bold; color: #2e7d32; font-size: 13px; margin:0 0 10px 0;">✅ Image générée prête ! Restez appuyé pour copier.</p>
         <div id="img-container"></div>
-    </div>
-
-    <div id="bl-wrapper">
-        <div class="bl-scaler-box">
-            <div id="bl-canvas">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div style="width: 55%;">
-                        <img id="v-logo-img" src="assets/logo-microport.png" style="max-width:180px; max-height:50px; display:block; margin-bottom: 6px;">
-                        <div class="legal-text">
-                            <b>BON DE LIVRAISON / DELIVERY NOTE</b><br>
-                            <b>MICROPORT CRM France SAS</b><br>
-                            Parc d'Affaires NOVEOS &bull; 4, avenue Réaumur<br>
-                            92140 CLAMART Cedex - France<br>
-                            Tél: 01 46 01 89 89 - Fax: 01 46 01 89 60<br>
-                            SAS au capital de 82 200 000 € &bull; R.C.S Nanterre 477 828 412
-                        </div>
-                    </div>
-                    <div style="width:43%">
-                        <div class="bl-title-block">DELIVERY NOTE / BON DE LIVRAISON</div>
-                        <table class="bl-header-table">
-                            <tr><td class="bg-light">DATE ACTE</td><td id="v-date"></td></tr>
-                            <tr><td class="bg-light">CENTRE</td><td id="v-centre"></td></tr>
-                            <tr><td class="bg-light">ADRESSE</td><td id="v-adr"></td></tr>
-                            <tr><td class="bg-light">MEDECIN</td><td id="v-doc"></td></tr>
-                            <tr><td class="bg-light">INGENIEUR</td><td id="v-ing"></td></tr>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="objet-container" id="v-objet">OBJET : LIVRAISON MATÉRIEL CARDIAQUE</div>
-                
-                <table id="v-main-table" class="main-bl-table">
-                    <thead>
-                        <tr>
-                            <th width="25%">DISPOSITIF / MODÈLE</th>
-                            <th width="40%">TRAÇABILITÉ ÉTIQUETTE</th>
-                            <th width="35%">SUIVI LOGISTIQUE</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                
-                <div style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 14px; margin-top: 25px;">
-                    <div style="border:1px solid #000; text-align:center; padding:12px; background:#f9f9f9;">
-                        <span style="font-size:9px; font-weight:bold; display:block; text-transform:uppercase;">TOTAL ÉLÉMENTS</span>
-                        <span id="v-total" style="font-size:24px; font-weight:bold; display:block; margin-top:4px;">0</span>
-                    </div>
-                    <div style="border:1px solid #000; padding:8px; font-size:10px;">
-                        <b>Visa / Signature Transporteur :</b>
-                        <div id="lbl-sig-ing" style="font-size:9px; color:#374151; font-weight:bold; margin: 3px 0;"></div>
-                        <img id="v-sig-trans" class="bl-sig-img">
-                    </div>
-                    <div style="border:1px solid #000; padding:8px; font-size:10px;">
-                        <b>Tampon / Visa Centre Hospitalier :</b>
-                        <div id="lbl-sig-doc" style="font-size:9px; color:#374151; font-weight:bold; margin: 3px 0;"></div>
-                        <img id="v-sig-centre" class="bl-sig-img">
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -433,21 +376,21 @@
 
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
-        <h3 style="margin-top:0; color:var(--ui-blue-dark); font-size:16px; text-align:center; font-weight:bold;">AJUSTEMENT PHOTO ÉTIQUETTE</h3>
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
         <div class="crop-wrapper">
             <img id="crop-preview">
         </div>
-        <div id="ocr-status" style="font-size:12px; text-align:center; font-weight:bold; color:var(--ui-blue-royal); margin-bottom:12px;">Cadrer les codes-barres de la boîte.</div>
+        <div id="ocr-status" style="font-size:13px; text-align:center; font-weight:bold; color:var(--accent); margin-bottom:16px;">Cadrer les codes barres et références de la boîte.</div>
         <div class="grid-2">
-            <button class="btn-mini edit" style="padding:12px;" onclick="closeCropModal()">ANNULER</button>
-            <button class="btn-primary-ios" id="btn-validate-crop" style="padding:12px;" onclick="processCroppedImage()">ANALYSER</button>
+            <button class="btn-mini edit" style="padding:14px; justify-content:center;" onclick="closeCropModal()">ANNULER</button>
+            <button class="btn-primary-ios" id="btn-validate-crop" style="padding:14px;" onclick="processCroppedImage()">ANALYSER 🔍</button>
         </div>
     </div>
 </div>
 
 <div id="manual-modal" class="ios-modal">
     <div class="ios-modal-content">
-        <h3 id="manual-modal-title" style="margin-top:0; color:var(--ui-blue-dark); font-size:16px; font-weight:bold;">Données Technique Produit</h3>
+        <h3 id="manual-modal-title" style="margin-top:0; color:var(--blue-mp); font-size:16px; font-weight:bold;">Ajustement Matériel</h3>
         <input type="hidden" id="edit-index" value="-1">
         
         <div class="form-group">
@@ -459,28 +402,28 @@
             </select>
         </div>
         <div class="form-group">
-            <label>Modèle Référence</label>
+            <label>Modèle / Référence</label>
             <select id="man-model"></select>
         </div>
         <div class="grid-2">
             <div class="form-group">
-                <label>Numéro de Série (S/N)</label>
+                <label>Numéro de Série (SN)</label>
                 <input type="text" id="man-sn">
             </div>
             <div class="form-group">
-                <label>Date Péremption</label>
+                <label>Date Expiration</label>
                 <input type="date" id="man-exp">
             </div>
         </div>
         <div class="form-group">
-            <label>Origine Matériel</label>
+            <label>Provenance Stock</label>
             <select id="man-stock" onchange="autoAlignRenewalOption()">
                 <option value="Stock du centre">Stock du centre</option>
                 <option value="Stock MICROPORT CRM" id="man-dynamic-stock">Stock MICROPORT CRM</option>
             </select>
         </div>
         <div class="form-group">
-            <label>Remplacement / Suivi</label>
+            <label>Suivi / Renouvellement</label>
             <select id="man-reno">
                 <option value="centre">À renouveler pour le stock du centre</option>
                 <option value="ing">À renouveler pour le stock de l'ingénieur</option>
@@ -488,25 +431,87 @@
             </select>
         </div>
         
-        <div class="grid-2" style="margin-top:16px;">
-            <button class="btn-mini edit" style="padding:12px;" onclick="closeManualModal()">FERMER</button>
-            <button class="btn-primary-ios" style="padding:12px;" onclick="saveManualItem()">CONFIRMER AU BL</button>
+        <div class="grid-2" style="margin-top:20px;">
+            <button class="btn-mini edit" style="padding:14px; justify-content:center;" onclick="closeManualModal()">FERMER</button>
+            <button class="btn-primary-ios" style="padding:14px;" onclick="saveManualItem()">VALIDER AU BL</button>
         </div>
     </div>
 </div>
 
 <div id="sig-modal" class="ios-modal">
-    <div class="ios-modal-content" style="max-width:100%;">
-        <h3 style="margin-top:0; text-align:center; font-size:14px; color:var(--ui-blue-dark);">ÉMARGEMENT TACTILE NATIVE iOS</h3>
-        <canvas id="modal-canvas" style="width:100%; height:260px; background:#fafafa; border:2px dashed var(--ui-grey-dark); border-radius:10px; touch-action:none;"></canvas>
-        <div class="grid-2" style="margin-top:16px;">
-            <button class="btn-mini edit" style="padding:12px;" onclick="clearModalPad()">EFFACER</button>
-            <button class="btn-primary-ios" style="padding:12px;" onclick="closeFullscreenSig(true)">VALIDER</button>
+    <div class="ios-modal-content" style="max-width:100%; border-radius:24px 24px 0 0;">
+        <h3 id="sig-modal-title" style="margin-top:0; text-align:center; font-size:15px; color:var(--blue-mp); font-weight:bold;">ÉMARGEMENT ÉCRAN</h3>
+        <canvas id="modal-canvas" style="width:100%; height:280px; background:#fafafa; border:2px dashed var(--accent); border-radius:14px; touch-action:none;"></canvas>
+        <div class="grid-2" style="margin-top:20px;">
+            <button class="btn-mini edit" style="padding:14px; justify-content:center;" onclick="clearModalPad()">EFFACER</button>
+            <button class="btn-primary-ios" style="padding:14px;" onclick="closeFullscreenSig(true)">VALIDER ✅</button>
+        </div>
+    </div>
+</div>
+
+<div id="bl-wrapper">
+    <div id="bl-canvas">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="width: 55%;">
+                <img id="v-logo-img" src="assets/logo-microport.png" style="max-width:200px; max-height:60px; display:block; margin-bottom: 8px;">
+                <div class="legal-text">
+                    <b>BON DE LIVRAISON / DELIVERY NOTE</b><br>
+                    <b>MICROPORT CRM France SAS</b><br>
+                    Parc d'Affaires NOVEOS<br>
+                    4, avenue Réaumur<br>
+                    92140 CLAMART Cedex - France<br>
+                    Tél: 01 46 01 89 89 - Fax: 01 46 01 89 60<br>
+                    SAS au capital de 82 200 000 euros<br>
+                    R.C.S. Nanterre 477 828 412<br>
+                    Siret nº 477 828 412 00072
+                </div>
+            </div>
+            <div style="width:42%">
+                <div class="bl-title-block">BON DE LIVRAISON / DELIVERY NOTE</div>
+                <table class="bl-header-table">
+                    <tr><td class="bg-light">DATE BL</td><td id="v-date"></td></tr>
+                    <tr><td class="bg-light">CENTRE</td><td id="v-centre"></td></tr>
+                    <tr><td class="bg-light">ADRESSE</td><td id="v-adr"></td></tr>
+                    <tr><td class="bg-light">IMPLANTEUR</td><td id="v-doc"></td></tr>
+                    <tr><td class="bg-light">INGENIEUR</td><td id="v-ing"></td></tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="objet-container" id="v-objet">OBJET : LIVRAISON MATÉRIEL</div>
+        
+        <table id="v-main-table" class="main-bl-table">
+            <thead>
+                <tr>
+                    <th width="22%">PRODUIT / TYPE</th>
+                    <th width="43%">ETIQUETTE</th>
+                    <th width="35%">SPÉCIFICATIONS LOGISTIQUES</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        
+        <div style="display: grid; grid-template-columns: 140px 1fr 1fr; gap: 20px; margin-top: 30px;">
+            <div style="border:1px solid #000; text-align:center; padding:15px; background:#f9f9f9;">
+                <span style="font-size:10px; font-weight:bold; display:block; text-transform:uppercase;">TOTAL ÉLÉMENTS</span>
+                <span id="v-total" style="font-size:28px; font-weight:bold; display:block; margin-top:5px;">0</span>
+            </div>
+            <div style="border:1px solid #000; padding:10px; font-size:11px;">
+                <b>Visa / Signature Transporteur :</b>
+                <div id="lbl-sig-ing" style="font-size:10px; color:#1e293b; font-weight:bold; margin-top:4px; margin-bottom:4px; line-height:1.2;"></div>
+                <img id="v-sig-trans" class="bl-sig-img">
+            </div>
+            <div style="border:1px solid #000; padding:10px; font-size:11px;">
+                <b>Tampon & Signature Centre :</b>
+                <div id="lbl-sig-doc" style="font-size:10px; color:#1e293b; font-weight:bold; margin-top:4px; margin-bottom:4px; line-height:1.2;"></div>
+                <img id="v-sig-centre" class="bl-sig-img">
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    // BASE DE DONNÉES CENTRES ET MÉDECINS INTEGRALE RECONSTITUÉE
     let db = {
         "CHU TOURS": { adr: "Av. de la République, 37170 Chambray-lès-Tours", docs: ["Dr Bodin", "Dr Pierre", "Dr Bisson", "Dr Lemrini", "Dr Lenormand", "Dr Nasarre"] },
         "CHU ORLEANS": { adr: "14 Av. de l'Hôpital, 45100 Orléans", docs: ["Dr Domain", "Dr Jacobs", "Dr Spiesser", "Dr Lenormand"] },
@@ -521,16 +526,19 @@
     let refsMap = {
         "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M", 
         "Invicta 1CR58": "TLT001C", "Invicta 1CR68": "TLT005C", "Navigo ARC78": "TLT021C", "Navigo ARC88": "TLT022C", 
-        "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT0200",
+        "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT0200"
+    };
+
+    Object.assign(refsMap, {
         "Talentia VR 3240": "TDF061C", "Talentia VR 3210": "TDF059C", "Talentia DR 3540": "TDF062C", 
         "Talentia DR 3510": "TDF060C", "Talentia CRTD 3844": "TDF068C", "Talentia CRTD 3841": "TDF067C", "Talentia CRTD 3811": "TDF066C",
         "Alizéa DR 1600": "TPM020C", "Alizéa SR 1300": "TPM021C", "ENO SR": "TPM015C", "ENO DR": "TPM014C"
-    };
+    });
 
     let listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
     let listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
     let listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
-    let listIngs = ["Antoine LECOQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
+    let listIngs = ["A. LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
     
     let basketItems = []; 
     let sigSource = { trans: 'none', centre: 'none' };
@@ -543,19 +551,8 @@
         document.getElementById('inDate').valueAsDate = new Date();
         buildLogistiqueMenus();
         initPads();
-        adjustBLScale(); 
-        window.addEventListener('resize', adjustBLScale); 
         sync();
     });
-
-    function adjustBLScale() {
-        const wrapper = document.getElementById('bl-wrapper');
-        if (!wrapper) return;
-        const targetWidth = wrapper.clientWidth - 8; 
-        const a4WidthPx = 793.7; 
-        const scale = targetWidth / a4WidthPx;
-        document.documentElement.style.setProperty('--bl-scale', scale);
-    }
 
     function buildLogistiqueMenus() {
         const cSel = document.getElementById('inC'); cSel.innerHTML = ""; 
@@ -584,12 +581,21 @@
     function autoAlignRenewalOption() {
         const stockProv = document.getElementById('man-stock').value;
         const renoSel = document.getElementById('man-reno');
-        renoSel.value = (stockProv === "Stock du centre") ? "centre" : "ing";
+        if (stockProv === "Stock du centre") {
+            renoSel.value = "centre";
+        } else {
+            renoSel.value = "ing";
+        }
     }
 
     function triggerSmartAnalysis(scope) {
         currentScanScope = scope; 
-        document.getElementById('ocr-status').innerText = (scope === "BOITIER") ? "Cadrer le sticker de la boîte Boîtier (TALENTIA, ALIZEA, ENO...)." : "Cadrer le sticker de la boîte Sonde (VEGA, INVICTA, NAVIGO...).";
+        const statusEl = document.getElementById('ocr-status');
+        if (scope === "BOITIER") {
+            statusEl.innerText = "Cadrer les codes barres et la référence du Boîtier (TALENTIA, ALIZEA, ENO...).";
+        } else {
+            statusEl.innerText = "Cadrer les codes barres et la référence de la Sonde (VEGA, INVICTA, NAVIGO...).";
+        }
         document.getElementById('label-camera-input').click();
     }
 
@@ -616,11 +622,14 @@
 
     function processCroppedImage() {
         if (!cropper) return;
-        document.getElementById('ocr-status').innerText = "OCR Intelligence... ⏳";
+        const statusEl = document.getElementById('ocr-status');
+        statusEl.innerText = "Analyse OCR en cours... ⏳";
+
         const canvasClean = cropper.getCroppedCanvas();
         
         const canvasOcr = document.createElement('canvas');
-        canvasOcr.width = canvasClean.width; canvasOcr.height = canvasClean.height;
+        canvasOcr.width = canvasClean.width;
+        canvasOcr.height = canvasClean.height;
         const ctxOcr = canvasOcr.getContext('2d');
         ctxOcr.drawImage(canvasClean, 0, 0);
         
@@ -632,77 +641,131 @@
             data[i] = data[i+1] = data[i+2] = bw;
         }
         ctxOcr.putImageData(imgData, 0, 0);
-        const savedSnapshot = canvasOcr.toDataURL('image/jpeg', 0.85);
+        const savedCleanSnapshot = canvasOcr.toDataURL('image/jpeg', 0.85);
 
-        Tesseract.recognize(canvasOcr, 'eng').then(({ data: { text } }) => {
-            if (currentScanScope === "BOITIER") parseBoitierText(text, savedSnapshot);
-            else parseSondeText(text, savedSnapshot);
+        Tesseract.recognize(canvasOcr, 'eng')
+        .then(({ data: { text } }) => {
+            if (currentScanScope === "BOITIER") {
+                parseBoitierText(text, savedCleanSnapshot);
+            } else {
+                parseSondeText(text, savedCleanSnapshot);
+            }
             closeCropModal();
-        }).catch(err => {
-            closeCropModal(); openManualAddModal();
+        })
+        .catch(err => {
+            console.error(err);
+            closeCropModal();
+            openManualAddModal();
         });
     }
 
     function extractSerialNumber(text, type) {
         let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
+        
         const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{6,12})/i) || cleanText.match(/21([A-Z0-9]{8})\b/i);
         if (udiMatch) return udiMatch[1].trim();
 
         if (type === "SONDE") {
-            let vegaMatch = cleanText.match(/\b([A-Z]{3}\d{6})\b/i);
+            const vegaSondeRegex = /\b([A-Z]{3}\d{6})\b/i;
+            let vegaMatch = cleanText.match(vegaSondeRegex);
             if (vegaMatch) return vegaMatch[1].trim();
-            let mpMatch = cleanText.match(/\b(\d{2}[A-Z][A-Z0-9][A-Z0-9]{4,8})\b/i);
+
+            const microportSondeRegex = /\b(\d{2}[A-Z][A-Z0-9][A-Z0-9]{4,8})\b/i;
+            let mpMatch = cleanText.match(microportSondeRegex);
             if (mpMatch) return mpMatch[1].trim();
-        } else {
-            let mpBoxMatch = cleanText.match(/\b(\d{3}[A-Z]{2}\d{3})\b/i);
+        }
+
+        if (type === "BOITIER") {
+            const microportBoitierRegex = /\b(\d{3}[A-Z]{2}\d{3})\b/i;
+            let mpBoxMatch = cleanText.match(microportBoitierRegex);
             if (mpBoxMatch) return mpBoxMatch[1].trim();
         }
-        let m = cleanText.match(/(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,12})/i);
-        return (m && m[1]) ? m[1].trim() : "";
+
+        const genericRegex = /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,12})/i;
+        let m = cleanText.match(genericRegex);
+        if (m && m[1]) return m[1].trim();
+        
+        return "";
     }
 
     function extractExpirationDate(text) {
         let cleanText = text.replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
-        const isoMatch = cleanText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
-        if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-        const frMatch = cleanText.match(/\b(\d{2})[-/](\d{2})[-/](\d{4})\b/);
-        if (frMatch) return `${frMatch[3]}-${frMatch[2]}-${frMatch[1]}`;
         
-        let udiText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
-        const udiExp = udiText.match(/\(17\)\s*(\d{6})/i) || udiText.match(/\b17(\d{6})\d{2}21/i);
-        if (udiExp) {
-            let r = udiExp[1];
-            return `20${r.substring(0,2)}-${r.substring(2,4)}-${r.substring(4,6)}`;
+        const isoDateMatch = cleanText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
+        if (isoDateMatch) {
+            return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
         }
+
+        const frDateMatch = cleanText.match(/\b(\d{2})[-/](\d{2})[-/](\d{4})\b/);
+        if (frDateMatch) {
+            return `${frDateMatch[3]}-${frDateMatch[2]}-${frDateMatch[1]}`;
+        }
+
+        let udiCleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
+        const udiExpMatch = udiCleanText.match(/\(17\)\s*(\d{6})/i) || udiCleanText.match(/\b17(\d{6})\d{2}21/i);
+        if (udiExpMatch) {
+            let rawDate = udiExpMatch[1]; 
+            let year = "20" + rawDate.substring(0, 2);
+            let month = rawDate.substring(2, 4);
+            let day = rawDate.substring(4, 6);
+            return `${year}-${month}-${day}`;
+        }
+
         return "";
     }
 
     function parseBoitierText(text, snapshot) {
-        let matchedModel = "Inconnu"; let detectedType = "DAI";
-        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        let matchedModel = "Inconnu";
+        let detectedType = "DAI";
         
-        for (let name of [...listDefis, ...listPaces]) {
-            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
-        }
-        if (matchedModel === "Inconnu") {
-            if (/TALENTIA/i.test(normalizedText)) {
-                if (/VR/i.test(normalizedText)) matchedModel = "Talentia VR 3240";
-                else if (/CRTD/i.test(normalizedText)) matchedModel = "Talentia CRTD 3844";
-                else matchedModel = "Talentia DR 3540";
-            } else if (/ALIZEA|ALIZÉA/i.test(normalizedText)) {
-                matchedModel = /SR/i.test(normalizedText) ? "Alizéa SR 1300" : "Alizéa DR 1600";
-            } else if (/ENO/i.test(normalizedText)) {
-                matchedModel = /SR/i.test(normalizedText) ? "ENO SR" : "ENO DR";
+        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        let listBoitiers = [...listDefis, ...listPaces];
+        
+        for (let name of listBoitiers) {
+            let ref = refsMap[name].toUpperCase();
+            if (normalizedText.includes(ref)) {
+                matchedModel = name;
+                break;
             }
         }
+
+        if (matchedModel === "Inconnu") {
+            if (/TALENTIA/i.test(normalizedText)) {
+                if (/VR/i.test(normalizedText) || /3240/i.test(normalizedText)) matchedModel = "Talentia VR 3240";
+                else if (/DR/i.test(normalizedText) || /3540/i.test(normalizedText)) matchedModel = "Talentia DR 3540";
+                else if (/CRTD/i.test(normalizedText) || /3844/i.test(normalizedText)) matchedModel = "Talentia CRTD 3844";
+                else matchedModel = "Talentia DR 3540";
+            } else if (/ALIZEA|ALIZÉA/i.test(normalizedText)) {
+                if (/SR/i.test(normalizedText) || /1300/i.test(normalizedText)) matchedModel = "Alizéa SR 1300";
+                else matchedModel = "Alizéa DR 1600";
+            } else if (/ENO/i.test(normalizedText)) {
+                if (/SR/i.test(normalizedText)) matchedModel = "ENO SR";
+                else matchedModel = "ENO DR";
+            }
+        }
+
         if (listPaces.includes(matchedModel)) detectedType = "PM";
 
         let sn = extractSerialNumber(text, "BOITIER");
         let exp = extractExpirationDate(text);
 
-        basketItems.push({ type: detectedType, model: matchedModel !== "Inconnu" ? matchedModel : listDefis[0], sn: sn, exp: exp, stock: "Stock du centre", reno: "centre", img: snapshot });
+        const acteSelect = document.getElementById('inActe');
+        if (basketItems.filter(i => i.type === "DAI" || i.type === "PM").length === 0) {
+            acteSelect.value = "Primo-Implantation"; 
+        }
+
+        basketItems.push({
+            type: detectedType,
+            model: matchedModel !== "Inconnu" ? matchedModel : listDefis[0], 
+            sn: sn,
+            exp: exp,
+            stock: "Stock du centre", 
+            reno: "centre", 
+            img: snapshot
+        });
+
         renderBasket();
-        if (matchedModel === "Inconnu" || !sn || !exp) openManualAddModal(basketItems.length - 1);
+        if (matchedModel === "Inconnu" || !sn || !exp) { openManualAddModal(basketItems.length - 1); }
     }
 
     function parseSondeText(text, snapshot) {
@@ -710,33 +773,72 @@
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
 
         for (let name of listSondes) {
-            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
+            let ref = refsMap[name].toUpperCase();
+            if (normalizedText.includes(ref)) {
+                matchedModel = name;
+                break;
+            }
         }
+
         if (matchedModel === "Inconnu") {
-            if (/INVICTA/i.test(normalizedText)) matchedModel = normalizedText.includes("68") ? "Invicta 1CR68" : "Invicta 1CR58";
-            else if (/NAVIGO/i.test(normalizedText)) matchedModel = normalizedText.includes("88") ? "Navigo ARC88" : "Navigo ARC78";
-            else if (/VEGA/i.test(normalizedText)) matchedModel = normalizedText.includes("M58") ? "Vega M58" : "Vega R58";
-            else if (/SONR/i.test(normalizedText)) matchedModel = "SonRTip PS 55D";
+            if (/(INV|1NV|LNV)TA/i.test(normalizedText) || /INVICTA/i.test(normalizedText)) {
+                if (normalizedText.includes("68")) matchedModel = "Invicta 1CR68";
+                else matchedModel = "Invicta 1CR58";
+            } else if (/(NAV|N4V)(I|1)?(G|6)O/i.test(normalizedText) || /NAVIGO/i.test(normalizedText)) {
+                if (normalizedText.includes("88")) {
+                    if (/ARC/i.test(normalizedText)) matchedModel = "Navigo ARC88";
+                    else if (/2D/i.test(normalizedText) || /20/i.test(normalizedText)) matchedModel = "Navigo 2D88";
+                    else matchedModel = "Navigo ARC88";
+                } else if (normalizedText.includes("78")) {
+                    if (/ARC/i.test(normalizedText)) matchedModel = "Navigo ARC78";
+                    else if (/2D/i.test(normalizedText) || /20/i.test(normalizedText)) matchedModel = "Navigo 2D78";
+                    else matchedModel = "Navigo ARC78";
+                }
+            } else if (/(VEG|WEG|VÉG)A/i.test(normalizedText) || /VEGA/i.test(normalizedText)) {
+                if (normalizedText.includes("M58") || normalizedText.includes("M 58")) matchedModel = "Vega M58";
+                else if (normalizedText.includes("52")) matchedModel = "Vega R52";
+                else matchedModel = "Vega R58";
+            } else if (/SONR/i.test(normalizedText) || /RTIP/i.test(normalizedText)) {
+                matchedModel = "SonRTip PS 55D";
+            }
         }
 
         let sn = extractSerialNumber(text, "SONDE");
         let exp = extractExpirationDate(text);
 
-        basketItems.push({ type: "SONDE", model: matchedModel !== "Inconnu" ? matchedModel : listSondes[0], sn: sn, exp: exp, stock: "Stock du centre", reno: "centre", img: snapshot });
+        const acteSelect = document.getElementById('inActe');
+        if (basketItems.length === 0) {
+            acteSelect.value = "Changement de Sonde";
+        }
+
+        basketItems.push({
+            type: "SONDE",
+            model: matchedModel !== "Inconnu" ? matchedModel : listSondes[0], 
+            sn: sn,
+            exp: exp,
+            stock: "Stock du centre", 
+            reno: "centre", 
+            img: snapshot
+        });
+
         renderBasket();
-        if (matchedModel === "Inconnu" || !sn || !exp) openManualAddModal(basketItems.length - 1);
+        if (matchedModel === "Inconnu" || !sn || !exp) { openManualAddModal(basketItems.length - 1); }
     }
 
     function renderBasket() {
         const container = document.getElementById('detected-items-list');
-        container.querySelectorAll('.detected-item-card').forEach(c => c.remove());
+        const emptyState = document.getElementById('empty-state-msg');
         
+        const oldCards = container.querySelectorAll('.detected-item-card');
+        oldCards.forEach(c => c.remove());
+
         if (basketItems.length === 0) {
-            document.getElementById('empty-state-msg').style.display = "block";
+            emptyState.style.display = "block";
             document.getElementById('badge-total').innerText = "0";
-            sync(); return;
+            sync();
+            return;
         }
-        document.getElementById('empty-state-msg').style.display = "none";
+        emptyState.style.display = "none";
         document.getElementById('badge-total').innerText = basketItems.length;
 
         basketItems.forEach((item, index) => {
@@ -744,28 +846,33 @@
             div.className = `detected-item-card ${item.type}`;
             div.innerHTML = `
                 <div class="detected-header">
-                    <span style="font-weight:800; color:var(--ui-blue-dark);">${item.type} &bull; ${item.model}</span>
-                    <span style="font-size:10px; font-weight:700; background:#fff; padding:2px 6px; border-radius:4px; border:1px solid var(--border-ui);">REF: ${refsMap[item.model] || '??'}</span>
+                    <span style="font-weight:800;">${item.type} &bull; ${item.model}</span>
+                    <span style="font-size:11px; font-weight:700; background:rgba(255,255,255,0.7); padding:2px 8px; border-radius:6px; border:1px solid rgba(0,0,0,0.05);">REF: ${refsMap[item.model] || '??'}</span>
                 </div>
                 <div class="detected-details">
-                    <b>S/N :</b> ${item.sn || '<span style="color:red;">Manquant ⚠️</span>'} &nbsp;|&nbsp; <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}<br>
-                    <small style="color:var(--ui-grey-dark);">Stock : ${item.stock} &bull; Remplacement : ${item.reno}</small>
+                    <b>S/N :</b> ${item.sn || '<span style="color:var(--danger);font-weight:bold;">A renseigner ⚠️</span>'} &nbsp;|&nbsp; <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'Non détectée'}<br>
+                    <small style="opacity:0.85; display:block; margin-top:3px;">Stock : ${item.stock} &bull; Suivi : ${item.reno === 'centre' ? 'Stock Centre' : (item.reno === 'ing' ? 'Stock Ingé' : 'Aucun')}</small>
                 </div>
                 <div class="detected-actions">
-                    <button class="btn-mini edit" onclick="openManualAddModal(${index})">✏️ Éditer</button>
+                    <button class="btn-mini edit" onclick="openManualAddModal(${index})">✏️ Ajuster / Backup</button>
                     <button class="btn-mini delete" onclick="deleteBasketItem(${index})">🗑️ Retirer</button>
                 </div>
             `;
             container.appendChild(div);
         });
+
         sync();
     }
 
-    function deleteBasketItem(index) { basketItems.splice(index, 1); renderBasket(); }
+    function deleteBasketItem(index) {
+        basketItems.splice(index, 1);
+        renderBasket();
+    }
 
     function openManualAddModal(index = -1) {
         const modal = document.getElementById('manual-modal');
         document.getElementById('edit-index').value = index;
+        
         updateManualModelOptions();
 
         if (index > -1) {
@@ -779,7 +886,7 @@
             document.getElementById('man-stock').value = item.stock;
             document.getElementById('man-reno').value = item.reno;
         } else {
-            document.getElementById('manual-modal-title').innerText = "➕ Insertion Manuel Dispositif";
+            document.getElementById('manual-modal-title').innerText = "➕ Ajout manuel de matériel";
             document.getElementById('man-stock').value = "Stock du centre";
             document.getElementById('man-reno').value = "centre";
             document.getElementById('man-sn').value = "";
@@ -790,48 +897,75 @@
 
     function updateManualModelOptions() {
         const type = document.getElementById('man-type').value;
-        const modelSel = document.getElementById('man-model'); modelSel.innerHTML = "";
+        const modelSel = document.getElementById('man-model');
+        modelSel.innerHTML = "";
+        
         let targetList = listSondes;
         if (type === "DAI") targetList = listDefis;
         if (type === "PM") targetList = listPaces;
+
         targetList.forEach(m => modelSel.add(new Option(m, m)));
     }
 
-    function closeManualModal() { document.getElementById('manual-modal').style.display = "none"; }
+    function closeManualModal() {
+        document.getElementById('manual-modal').style.display = "none";
+    }
 
     function saveManualItem() {
         const idx = parseInt(document.getElementById('edit-index').value);
+        
         const itemData = {
-            type: document.getElementById('man-type').value, model: document.getElementById('man-model').value,
-            sn: document.getElementById('man-sn').value, exp: document.getElementById('man-exp').value,
-            stock: document.getElementById('man-stock').value, reno: document.getElementById('man-reno').value,
+            type: document.getElementById('man-type').value,
+            model: document.getElementById('man-model').value,
+            sn: document.getElementById('man-sn').value,
+            exp: document.getElementById('man-exp').value,
+            stock: document.getElementById('man-stock').value,
+            reno: document.getElementById('man-reno').value,
             img: idx > -1 ? basketItems[idx].img : null 
         };
-        if (idx > -1) basketItems[idx] = itemData; else basketItems.push(itemData);
-        closeManualModal(); renderBasket();
+
+        if (idx > -1) {
+            basketItems[idx] = itemData;
+        } else {
+            basketItems.push(itemData);
+        }
+
+        closeManualModal();
+        renderBasket();
     }
 
     function initPads() {
+        // Redimensionnement initial des petits aperçus sans attacher de listeners de tracé direct
         ['trans', 'centre'].forEach(id => {
-            const canvas = document.getElementById(`pad-${id}`); if(!canvas) return;
-            canvas.width = canvas.parentElement.clientWidth; canvas.height = 80;
+            const canvas = document.getElementById(`pad-${id}`);
+            if(!canvas) return;
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 90;
         });
-        mCanvas = document.getElementById('modal-canvas'); if(mCanvas) mCtx = mCanvas.getContext('2d');
+
+        mCanvas = document.getElementById('modal-canvas');
+        if(mCanvas) mCtx = mCanvas.getContext('2d');
+    }
+
+    function getPos(c, e) {
+        const rect = c.getBoundingClientRect();
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
     }
 
     function openFullscreenSig(target) {
         activeFullscreenTarget = target;
         document.getElementById('sig-modal').style.display = 'flex';
-        mCanvas.width = mCanvas.parentElement.clientWidth; mCanvas.height = 260;
+        mCanvas.width = mCanvas.parentElement.clientWidth;
+        mCanvas.height = 280;
         mCtx.lineWidth = 3; mCtx.lineCap = 'round'; mCtx.strokeStyle = '#000';
         clearModalPad();
 
-        let drawing = false;
-        mCanvas.ontouchstart = (e) => { drawing = true; mCtx.beginPath(); const p = getPos(mCanvas, e); mCtx.moveTo(p.x, p.y); };
-        mCanvas.ontouchmove = (e) => { if(!drawing) return; const p = getPos(mCanvas, e); mCtx.lineTo(p.x, p.y); mCtx.stroke(); };
-        mCanvas.ontouchend = () => { drawing = false; };
+        let mDrawing = false;
+        mCanvas.ontouchstart = (e) => { mDrawing = true; mCtx.beginPath(); const p = getPos(mCanvas, e); mCtx.moveTo(p.x, p.y); };
+        mCanvas.ontouchmove = (e) => { if(!mDrawing) return; const p = getPos(mCanvas, e); mCtx.lineTo(p.x, p.y); mCtx.stroke(); };
+        mCanvas.ontouchend = () => { mDrawing = false; };
     }
-    function getPos(c, e) { const r = c.getBoundingClientRect(); return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top }; }
+
     function clearModalPad() { mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height); }
 
     function closeFullscreenSig(save = false) {
@@ -844,7 +978,7 @@
             const sCtx = smallCanvas.getContext('2d');
             sCtx.clearRect(0, 0, smallCanvas.width, smallCanvas.height);
             const img = new Image();
-            img.onload = () => sCtx.drawImage(img, 0, 0, smallCanvas.width, smallCanvas.height);
+            img.onload = () => { sCtx.drawImage(img, 0, 0, smallCanvas.width, smallCanvas.height); };
             img.src = dataUrl;
         }
         document.getElementById('sig-modal').style.display = 'none';
@@ -852,7 +986,9 @@
     }
 
     function sync() {
-        const c = document.getElementById('inC').value; if(!c || !db[c]) return;
+        const c = document.getElementById('inC').value;
+        if(!c || !db[c]) return;
+        
         const act = document.getElementById('inActe').value;
         const rawDate = document.getElementById('inDate').value;
         const dStr = rawDate ? rawDate.split('-').reverse().join('/') : '';
@@ -864,20 +1000,42 @@
         document.getElementById('v-adr').innerText = db[c].adr;
         document.getElementById('v-doc').innerText = doc;
         document.getElementById('v-ing').innerText = ing;
-        document.getElementById('v-objet').innerText = `OBJET : LOGISTIQUE CRM - LIVRAISON ${act.toUpperCase()} - ${c.toUpperCase()}`;
+        document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
         
-        document.getElementById('lbl-sig-ing').innerText = (sigSource['trans'] === 'draw') ? `${ing}\nExpert CRM` : "";
-        document.getElementById('lbl-sig-doc').innerText = (sigSource['centre'] === 'draw') ? `${doc.toUpperCase()}\nCardiologie ${c}` : "";
+        if (sigSource['trans'] === 'draw') {
+            document.getElementById('lbl-sig-ing').innerText = `${ing}\nIngénieur CRM`;
+        } else {
+            document.getElementById('lbl-sig-ing').innerText = "";
+        }
 
-        // Gestion de l'affichage initial et des signatures par défaut depuis assets/
-        ['trans', 'centre'].forEach(t => {
-            const el = document.getElementById(`v-sig-${t}`);
-            if (sigSource[t] === 'none') {
-                let lastName = ing.split(' ')[1] || 'lecoq';
-                let path = (t === 'trans') ? `assets/signature-${lastName.toLowerCase()}.png` : `assets/tampon-${c.toLowerCase().replace(/ /g, '-')}.png`;
-                el.src = path;
-            }
-        });
+        if (sigSource['centre'] === 'draw') {
+            document.getElementById('lbl-sig-doc').innerText = `${doc.toUpperCase()}\nService Cardiologie ${c}`;
+        } else {
+            document.getElementById('lbl-sig-doc').innerText = "";
+        }
+
+        const sigTransImg = document.getElementById('v-sig-trans');
+        if (sigSource['trans'] === 'none') {
+            if (ing === "A. LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
+            else if (ing === "Baptiste DESARMENIEN") sigTransImg.src = "assets/signature-baptiste.png";
+            else if (ing === "Valentin GARTENLAUB") sigTransImg.src = "assets/signature-valentin.png";
+            else if (ing === "Francois MAINGAULT") sigTransImg.src = "assets/signature-francois.png";
+            else if (ing === "Johann MORIN") sigTransImg.src = "assets/signature-johann.png";
+            else sigTransImg.removeAttribute('src');
+        }
+
+        const sigCentreImg = document.getElementById('v-sig-centre');
+        if (sigSource['centre'] === 'none') {
+            if (c === "CHU TOURS") sigCentreImg.src = "assets/tampon-chu-tours.png";
+            else if (c === "CHU ORLEANS") sigCentreImg.src = "assets/tampon-chu-orleans.png";
+            else if (c === "CHU LIMOGES") sigCentreImg.src = "assets/tampon-chu-limoges.png";
+            else if (c === "CHU POITIERS") sigCentreImg.src = "assets/tampon-chu-poitiers.png";
+            else if (c === "CH BLOIS") sigCentreImg.src = "assets/tampon-ch-blois.png";
+            else if (c === "CH Bourges") sigCentreImg.src = "assets/tampon-ch-bourges.png";
+            else if (c === "CH CHATEAUROUX") sigCentreImg.src = "assets/tampon-ch-chateauroux.png";
+            else if (c === "Pôle Santé Oréliance") sigCentreImg.src = "assets/tampon-oreliance.png";
+            else sigCentreImg.removeAttribute('src');
+        }
 
         const tableBody = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
         tableBody.innerHTML = "";
@@ -886,17 +1044,24 @@
             const row = tableBody.insertRow();
             let ref = refsMap[item.model] || "N/A";
             let formattedExp = item.exp ? item.exp.split('-').reverse().join('/') : "N/A";
-            let renoTxt = item.reno === 'centre' ? c : ing;
+            
+            let renoLabelTarget = item.reno === 'centre' ? c : ing;
 
+            let techDetails = `
+                <b>REF :</b> ${ref}<br>
+                <b>S/N :</b> ${item.sn || 'N/A'}<br>
+                <b>EXP :</b> ${formattedExp}<br>
+                <b>Provenance :</b> ${item.stock}<br>
+                <b>Renouvellement :</b> À renouveler pour le stock de : ${renoLabelTarget}
+            `;
+            
             row.innerHTML = `
-                <td style="font-weight:bold; text-align:center; background:#fafafa;">${item.type}<br><span style="font-weight:normal; font-size:9.5px; color:#444;">${item.model}</span></td>
-                <td class="row-photo-flat">${item.img ? `<img src="${item.img}">` : '<div style="color:#aaa; font-size:10px;">Aucun visuel boîte</div>'}</td>
-                <td style="font-size:9.5px; line-height:1.35; padding-left:6px;">
-                    <b>REF :</b> ${ref}<br><b>S/N :</b> ${item.sn || 'N/A'}<br><b>EXP :</b> ${formattedExp}<br>
-                    <b>Stock :</b> ${item.stock}<br><b>Suivi :</b> Réapprovisionner pour : ${renoTxt}
-                </td>
+                <td style="font-weight:bold; font-size:11px; vertical-align:middle; text-align:center; background:#fafafa;">${item.type}<br><span style="font-weight:normal; font-size:10px; color:#555;">${item.model}</span></td>
+                <td class="row-photo-flat" style="vertical-align:middle;">${item.img ? `<img src="${item.img}">` : '<div style="text-align:center; color:#ccc; font-size:10px;">Aucun visuel</div>'}</td>
+                <td style="font-size:10px; line-height:1.4; vertical-align:middle; padding-left:10px;">${techDetails}</td>
             `;
         });
+
         document.getElementById('v-total').innerText = basketItems.length;
     }
 
@@ -913,32 +1078,62 @@
             let ref = refsMap[item.model] || 'N/A';
             let expFr = item.exp ? item.exp.split('-').reverse().join('/') : 'N/A';
             let renoTxt = item.reno === 'centre' ? centre : ing;
-            detailMatos += `• ${item.type} [${item.model}] - REF: ${ref} - S/N: ${item.sn || 'N/A'} (EXP: ${expFr})\n  Stock source: ${item.stock} -> Demande Renouvellement: ${renoTxt}\n\n`;
+            
+            let typeLabel = "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑";
+            if (item.type === "PM") typeLabel = "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑";
+            if (item.type === "SONDE") typeLabel = "🔸 𝐒𝐎𝐍𝐃𝐄";
+
+            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n`;
+            detailMatos += `• S/N : ${item.sn || 'N/A'} | EXP : ${expFr}\n`;
+            detailMatos += `• Provenance : ${item.stock}\n`;
+            detailMatos += `👉 À renouveler pour le stock de : ${renoTxt}\n\n`;
         });
 
-        const subject = encodeURIComponent(`[LOGISTIQUE BL] Matériel Implanté - ${acte} - ${centre}`);
-        let mailBody = `Bonjour,\n\nCompte-rendu logistique de l'intervention :\n\n`;
-        mailBody += `• Type d'Acte : ${acte}\n• Date : ${dateStr}\n• Établissement : ${centre}\n• Praticien : ${medecin}\n• Suivi par : ${ing}\n\n`;
-        mailBody += `📦 SPÉCIFICATIONS DES DISPOSITIFS LIVRÉS :\n\n${detailMatos}`;
-        mailBody += `Le bon de livraison signé a été archivé.\n\nCordialement,\n${ing}`;
+        const subject = encodeURIComponent(`[BL MICROPORT] Matériel Implanté - ${acte} - ${centre}`);
+        
+        let mailBody = `Bonjour,\n\n`;
+        mailBody += `Vous trouverez ci-joint le bon de livraison du matériel implanté.\n\n`;
+        mailBody += `---------------------------------------------\n`;
+        mailBody += `📌 INFORMATIONS COMPLÈTES\n`;
+        mailBody += `---------------------------------------------\n`;
+        mailBody += `• Acte : ${acte}\n`;
+        mailBody += `• Date : ${dateStr}\n`;
+        mailBody += `• Centre : ${centre}\n`;
+        mailBody += `• Médecin : ${medecin}\n\n`;
+        mailBody += `---------------------------------------------\n`;
+        mailBody += `📦 MATÉRIEL UTILISÉ\n`;
+        mailBody += `---------------------------------------------\n`;
+        mailBody += detailMatos;
+        mailBody += `---------------------------------------------\n\n`;
+        mailBody += `Je reste à votre disposition pour de plus amples informations.\n\n`;
+        mailBody += `Cordialement,`;
 
         window.open(`mailto:?subject=${subject}&body=${encodeURIComponent(mailBody)}`, '_blank');
     }
 
     function captureImage() {
-        const root = document.documentElement; const savedScale = root.style.getPropertyValue('--bl-scale');
-        root.style.setProperty('--bl-scale', '1'); 
+        const wrapper = document.getElementById('bl-wrapper');
+        const oldDisplay = wrapper.style.display;
+        wrapper.style.display = "block";
         
-        html2canvas(document.getElementById('bl-canvas'), { scale: 2.2 }).then(canvas => {
-            const container = document.getElementById('img-container'); container.innerHTML = '';
-            const img = new Image(); img.src = canvas.toDataURL("image/png"); container.appendChild(img);
+        html2canvas(document.getElementById('bl-canvas'), { scale: 2.5 }).then(canvas => {
+            const container = document.getElementById('img-container');
+            container.innerHTML = '';
+            const img = new Image(); img.src = canvas.toDataURL("image/png");
+            container.appendChild(img);
             document.getElementById('image-result').style.display = 'block';
-            root.style.setProperty('--bl-scale', savedScale); 
+            wrapper.style.display = oldDisplay;
             window.scrollTo(0, document.body.scrollHeight);
         });
     }
 
-    function generatePDF() { window.print(); }
+    function generatePDF() {
+        const wrapper = document.getElementById('bl-wrapper');
+        const oldDisplay = wrapper.style.display;
+        wrapper.style.display = "block";
+        window.print();
+        setTimeout(() => { wrapper.style.display = oldDisplay; }, 500);
+    }
 </script>
 </body>
 </html>
