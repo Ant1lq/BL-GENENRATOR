@@ -331,10 +331,10 @@
 
     <div class="scan-zone">
         <button class="btn-smart-scan btn-scan-boitier" onclick="triggerSmartAnalysis('BOITIER')">
-            📷 SCANNER UN BOÎTIER (PM / DAI)
+            📷 SCANNER / IMPORTER UN BOÎTIER
         </button>
         <button class="btn-smart-scan btn-scan-sonde" onclick="triggerSmartAnalysis('SONDE')">
-            📷 SCANNER UNE SONDE
+            📷 SCANNER / IMPORTER UNE SONDE
         </button>
     </div>
 
@@ -392,12 +392,20 @@
             <div class="signature-box">
                 <label>Transporteur</label>
                 <canvas id="pad-trans" class="sig-canvas"></canvas>
-                <button class="btn-mini edit" style="margin-top:8px; width:100%; justify-content:center;" onclick="openFullscreenSig('trans')">Agrandir</button>
+                <div style="display:flex; gap:4px; margin-top:8px;">
+                    <button class="btn-mini edit" style="flex:1; justify-content:center;" onclick="openFullscreenSig('trans')">Signer</button>
+                    <button class="btn-mini edit" style="flex:1; justify-content:center; font-size:11px;" onclick="document.getElementById('import-sig-trans').click()">Image</button>
+                </div>
+                <input type="file" id="import-sig-trans" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'trans')">
             </div>
             <div class="signature-box">
                 <label>Centre / Tampon</label>
                 <canvas id="pad-centre" class="sig-canvas"></canvas>
-                <button class="btn-mini edit" style="margin-top:8px; width:100%; justify-content:center;" onclick="openFullscreenSig('centre')">Agrandir</button>
+                <div style="display:flex; gap:4px; margin-top:8px;">
+                    <button class="btn-mini edit" style="flex:1; justify-content:center;" onclick="openFullscreenSig('centre')">Signer</button>
+                    <button class="btn-mini edit" style="flex:1; justify-content:center; font-size:11px;" onclick="document.getElementById('import-sig-centre').click()">Image</button>
+                </div>
+                <input type="file" id="import-sig-centre" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
             </div>
         </div>
     </div>
@@ -416,7 +424,7 @@
     </div>
 </div>
 
-<input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
+<input type="file" id="label-camera-input" accept="image/*" style="display: none;" onchange="handleLabelFile(this)">
 
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
@@ -585,7 +593,7 @@
     let listIngs = ["A. LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
     
     let basketItems = []; 
-    let sigSource = { trans: 'none', centre: 'none' };
+    let sigSource = { trans: 'none', centre: 'none' }; // 'none', 'draw', ou 'imported'
     let activeFullscreenTarget = null;
     let mCanvas, mCtx;
     let cropper = null;
@@ -653,6 +661,32 @@
                 modal.style.display = 'flex';
                 if (cropper) { cropper.destroy(); }
                 cropper = new Cropper(image, { viewMode: 1, autoCropArea: 0.95 });
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function handleSignatureImport(input, target) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                
+                // Mettre à jour la source et le rendu final sur le BL
+                sigSource[target] = 'imported';
+                document.getElementById(`v-sig-${target}`).src = dataUrl;
+
+                // Dessiner l'aperçu réduit dans le canvas de l'application
+                const smallCanvas = document.getElementById(`pad-${target}`);
+                const sCtx = smallCanvas.getContext('2d');
+                sCtx.clearRect(0, 0, smallCanvas.width, smallCanvas.height);
+                const img = new Image();
+                img.onload = () => {
+                    sCtx.drawImage(img, 0, 0, smallCanvas.width, smallCanvas.height);
+                };
+                img.src = dataUrl;
+                
+                sync();
             };
             reader.readAsDataURL(input.files[0]);
         }
@@ -1045,19 +1079,21 @@
         document.getElementById('v-ing').innerText = ing;
         document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
         
-        if (sigSource['trans'] === 'draw') {
+        if (sigSource['trans'] !== 'none') {
             document.getElementById('lbl-sig-ing').innerText = `${ing}\nIngénieur CRM`;
         } else {
             document.getElementById('lbl-sig-ing').innerText = "";
         }
 
-        if (sigSource['centre'] === 'draw') {
+        if (sigSource['centre'] !== 'none') {
             document.getElementById('lbl-sig-doc').innerText = `${doc.toUpperCase()}\nService Cardiologie ${c}`;
         } else {
             document.getElementById('lbl-sig-doc').innerText = "";
         }
 
+        // --- GESTION ET PRIORITÉ DES RENDER DES IMAGES DE SIGNATURE ---
         const sigTransImg = document.getElementById('v-sig-trans');
+        // On n'applique l'image automatique des assets que si l'utilisateur n'a rien dessiné ET rien importé.
         if (sigSource['trans'] === 'none') {
             if (ing === "A. LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
             else if (ing === "Baptiste DESARMENIEN") sigTransImg.src = "assets/signature-baptiste.png";
@@ -1068,6 +1104,7 @@
         }
 
         const sigCentreImg = document.getElementById('v-sig-centre');
+        // Règle de priorité similaire pour le centre : Dossier assets/ ou Image importée > dessin manuscrit
         if (sigSource['centre'] === 'none') {
             if (c === "CHU TOURS") sigCentreImg.src = "assets/tampon-chu-tours.png";
             else if (c === "CHU ORLEANS") sigCentreImg.src = "assets/tampon-chu-orleans.png";
