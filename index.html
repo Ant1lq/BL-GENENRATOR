@@ -315,7 +315,7 @@
         
         .legal-text { font-size: 9.5px; line-height: 1.4; color: #000; margin-top: 5px; font-family: Arial, sans-serif; }
 
-        /* ZONE DE PRÉVISUALISATION AJUSTÉE POUR IPHONE 11 */
+        /* AJUSTEMENT STRICT IPHONE 11 POUR LA PRÉVISUALISATION IMAGES */
         #image-result { 
             background: #f0fdf4; 
             padding: 14px; 
@@ -324,13 +324,22 @@
             text-align: center; 
             display: none; 
             border: 2px dashed #bbf7d0;
+            width: 100%;
             max-width: 100%;
             box-sizing: border-box;
             overflow: hidden;
         }
-        #image-result img { 
-            width: 100%; 
-            height: auto;
+        #img-container {
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        #img-container img { 
+            width: 100% !important;
+            max-width: 100% !important; 
+            height: auto !important;
+            object-fit: contain;
             border-radius: 12px; 
             box-shadow: 0 4px 16px rgba(0,0,0,0.06); 
             display: block;
@@ -1049,7 +1058,7 @@
         mCanvas.width = mCanvas.parentElement.clientWidth;
         mCanvas.height = 280;
         mCtx.lineWidth = 3; mCtx.lineCap = 'round'; mCtx.strokeStyle = '#000';
-        clearModalPad();
+        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
 
         let mDrawing = false;
         mCanvas.ontouchstart = (e) => { mDrawing = true; mCtx.beginPath(); const p = getPos(mCanvas, e); mCtx.moveTo(p.x, p.y); };
@@ -1057,13 +1066,24 @@
         mCanvas.ontouchend = () => { mDrawing = false; };
     }
 
-    function clearModalPad() { mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height); }
+    /* FIX : RÉINITIALISATION ET RESTAURATION DU TAMPON PAR DÉFAUT */
+    function clearModalPad() { 
+        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height); 
+        if (activeFullscreenTarget) {
+            sigSource[activeFullscreenTarget] = 'none'; // Réinitialise l'état vers automatique/défaut
+            
+            // Efface également le mini canvas de prévisualisation
+            const smallCanvas = document.getElementById(`pad-${activeFullscreenTarget}`);
+            const sCtx = smallCanvas.getContext('2d');
+            sCtx.clearRect(0, 0, smallCanvas.width, smallCanvas.height);
+        }
+        sync(); // Recalcule immédiatement le BL pour réinjecter le tampon/signature png par défaut
+    }
 
     function closeFullscreenSig(save = false) {
-        if (save && activeFullscreenTarget) {
+        if (save && activeFullscreenTarget && sigSource[activeFullscreenTarget] !== 'none') {
             const dataUrl = mCanvas.toDataURL();
             document.getElementById(`v-sig-${activeFullscreenTarget}`).src = dataUrl;
-            sigSource[activeFullscreenTarget] = 'draw';
             
             const smallCanvas = document.getElementById(`pad-${activeFullscreenTarget}`);
             const sCtx = smallCanvas.getContext('2d');
@@ -1071,6 +1091,10 @@
             const img = new Image();
             img.onload = () => { sCtx.drawImage(img, 0, 0, smallCanvas.width, smallCanvas.height); };
             img.src = dataUrl;
+        }
+        // Si l'utilisateur clique sur valider alors qu'il a cliqué sur Effacer juste avant
+        if(save && activeFullscreenTarget && sigSource[activeFullscreenTarget] === 'none') {
+            document.getElementById(`v-sig-${activeFullscreenTarget}`).removeAttribute('src');
         }
         document.getElementById('sig-modal').style.display = 'none';
         sync();
@@ -1218,10 +1242,9 @@
         });
     }
 
-    /* FONCTION DE RAFRAÎCHISSEMENT DIRECT DE L'IMAGE */
     function refreshLiveCapture() {
-        sync(); // Force la synchronisation des données vers le BL caché
-        captureImage(); // Régénère la capture html2canvas
+        sync(); 
+        captureImage(); 
     }
 
     function generatePDF() {
