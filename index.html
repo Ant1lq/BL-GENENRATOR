@@ -293,34 +293,34 @@
         
         .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active { transform: scale(0.98); opacity: 0.95; }
 
-        /* --- FORCE LA PRÉVISUALISATION TEMPS RÉEL À RESTER DEZOOMÉE (ÉCHELLE MINIATURE SUR IPHONE) --- */
+        /* --- CONTENEUR ET APPARENCE APPAREIL DE LA PRÉVISUALISATION TEMPS RÉEL (VRAI FORMAT A4 NON DEFORMÉ) --- */
         #bl-wrapper { 
             background: #475569; 
-            padding: 10px 0; 
-            overflow: hidden; 
+            padding: 16px; 
             margin-top: 30px; 
             border-radius: 20px; 
             width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            /* La hauteur max négocie le dézoom pour éviter un espace vide infini sous le document */
-            height: 520px; 
+            overflow: hidden;
+            display: block;
         }
         
         #bl-canvas { 
-            width: 210mm; 
-            min-height: 297mm; 
+            width: 100%;
+            /* Verrouille strictement les proportions au ratio A4 (210x297mm) */
+            aspect-ratio: 1 / 1.4142; 
             background: white; 
-            padding: 20mm 15mm; 
+            padding: 6% 5%; 
             box-sizing: border-box; 
             color: black; 
             font-family: Arial, sans-serif; 
             
-            /* C'est ici qu'on applique le dézoom visuel global sur le vrai BL */
-            transform: scale(0.42); 
-            transform-origin: top center; 
-            margin-bottom: -180mm; /* Compense la réduction de taille pour le flux HTML */
+            /* Utilisation du zoom CSS natif qui préserve le ratio global à 100% sans écraser */
+            zoom: 0.44;
+            -moz-transform: scale(0.44); /* Fallback Firefox au cas où */
+            -moz-transform-origin: top left;
+            margin: 0 auto;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         }
         
         .bl-title-block { font-size: 12px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 5px; }
@@ -370,8 +370,8 @@
         @media print {
             body { background: white; color: black; padding-bottom: 0; }
             .app-container, .sticky-actions, #image-result, .ios-modal { display: none !important; }
-            #bl-wrapper { background: transparent; padding: 0; margin: 0; height: auto !important; overflow: visible !important; }
-            #bl-canvas { transform: none !important; margin: 0 !important; width: 100% !important; }
+            #bl-wrapper { background: transparent; padding: 0; margin: 0; display: block !important; }
+            #bl-canvas { zoom: 1 !important; -moz-transform: none !important; width: 210mm !important; height: 297mm !important; aspect-ratio: auto !important; box-shadow: none !important; }
         }
     </style>
 </head>
@@ -1199,7 +1199,7 @@
                 <b>S/N :</b> ${item.sn || 'N/A'}<br>
                 <b>EXP :</b> ${formattedExp}<br>
                 <b>Provenance :</b> ${item.stock}<br>
-                <b>Renouvellement :</b> À renouveler pour le stock de : ${renoLabelTarget}
+                <b>Renouvellement :</b> À renouveler pour : ${renoLabelTarget}
             `;
             
             row.innerHTML = `
@@ -1263,10 +1263,17 @@
         const oldDisplay = wrapper.style.display;
         wrapper.style.display = "block";
         
-        // On sauvegarde temporairement la transformation pour que la photo html2canvas ne soit pas dézoomée
         const canvasEl = document.getElementById('bl-canvas');
+        const oldZoom = canvasEl.style.zoom;
         const oldTransform = canvasEl.style.transform;
+        
+        // On désactive temporairement le zoom de prévisualisation écran pour html2canvas
+        canvasEl.style.zoom = "1";
         canvasEl.style.transform = "none";
+
+        // Fixation d'une largeur stricte A4 en pixel pour forcer html2canvas à travailler sur un ratio parfait
+        const oldWidth = canvasEl.style.width;
+        canvasEl.style.width = "794px"; 
 
         html2canvas(canvasEl, { scale: 2.2 }).then(canvas => {
             const container = document.getElementById('img-container');
@@ -1278,8 +1285,10 @@
             container.appendChild(img);
             document.getElementById('image-result').style.display = 'block';
             
-            // On remet la transformation pour l'écran
+            // Restauration de la configuration d'affichage écran
+            canvasEl.style.zoom = oldZoom;
             canvasEl.style.transform = oldTransform;
+            canvasEl.style.width = oldWidth;
             wrapper.style.display = oldDisplay;
             window.scrollTo(0, document.body.scrollHeight);
         });
