@@ -293,8 +293,35 @@
         
         .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active { transform: scale(0.98); opacity: 0.95; }
 
-        #bl-wrapper { background: #475569; padding: 40px 0; overflow-x: auto; margin-top: 30px; border-radius: 12px; }
-        #bl-canvas { width: 210mm; min-height: 297mm; background: white; margin: 0 auto; padding: 20mm 15mm; box-sizing: border-box; color: black; font-family: Arial, sans-serif; }
+        /* --- FORCE LA PRÉVISUALISATION TEMPS RÉEL À RESTER DEZOOMÉE (ÉCHELLE MINIATURE SUR IPHONE) --- */
+        #bl-wrapper { 
+            background: #475569; 
+            padding: 10px 0; 
+            overflow: hidden; 
+            margin-top: 30px; 
+            border-radius: 20px; 
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            /* La hauteur max négocie le dézoom pour éviter un espace vide infini sous le document */
+            height: 520px; 
+        }
+        
+        #bl-canvas { 
+            width: 210mm; 
+            min-height: 297mm; 
+            background: white; 
+            padding: 20mm 15mm; 
+            box-sizing: border-box; 
+            color: black; 
+            font-family: Arial, sans-serif; 
+            
+            /* C'est ici qu'on applique le dézoom visuel global sur le vrai BL */
+            transform: scale(0.42); 
+            transform-origin: top center; 
+            margin-bottom: -180mm; /* Compense la réduction de taille pour le flux HTML */
+        }
         
         .bl-title-block { font-size: 12px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 5px; }
         
@@ -315,7 +342,6 @@
         
         .legal-text { font-size: 9.5px; line-height: 1.4; color: #000; margin-top: 5px; font-family: Arial, sans-serif; }
 
-        /* ZONE CORRECTIVE POUR LE "DÉZOOM" DE L'APERÇU DU BL SUR IPHONE 11 */
         #image-result { 
             background: #f0fdf4; 
             padding: 14px; 
@@ -324,31 +350,28 @@
             text-align: center; 
             display: none; 
             border: 2px dashed #bbf7d0;
-            width: 100% !important;
-            max-width: 100% !important;
-            box-sizing: border-box !important;
+            width: 100%;
         }
         #img-container {
-            width: 100% !important;
-            max-width: 100% !important;
-            overflow: hidden !important;
-            box-sizing: border-box !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            padding: 5px 0;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
         }
         #img-container img { 
-            display: block !important;
-            width: 90% !important; /* Réduit l'image pour un effet global non-étiré */
-            max-width: 100vw !important; 
-            height: auto !important;
-            object-fit: contain !important;
+            display: block;
+            width: 100%; 
+            height: auto;
             border-radius: 10px; 
-            box-shadow: 0 5px 20px rgba(0,0,0,0.12); 
-            margin: 0 auto !important;
-            /* L'application d'un léger scale simule un dézoom parfait et propret sur mobile */
-            transform: scale(0.95);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1); 
+        }
+
+        /* --- STYLES COMPATIBLES IMPRESSION --- */
+        @media print {
+            body { background: white; color: black; padding-bottom: 0; }
+            .app-container, .sticky-actions, #image-result, .ios-modal { display: none !important; }
+            #bl-wrapper { background: transparent; padding: 0; margin: 0; height: auto !important; overflow: visible !important; }
+            #bl-canvas { transform: none !important; margin: 0 !important; width: 100% !important; }
         }
     </style>
 </head>
@@ -449,8 +472,7 @@
     </div>
 
     <div id="image-result">
-        <p style="font-weight: bold; color: var(--palette-plum-magenta); font-size: 13px; margin:0 0 10px 0;">✅ Aperçu global (BL Dézoomé). Restez appuyé pour copier.</p>
-        <button class="btn-mini edit" style="width:100%; margin-bottom:12px; padding:10px; background:#e2e8f0; justify-content:center; font-weight:bold; color:var(--blue-mp); border-radius:10px;" onclick="refreshLiveCapture()">🔄 ACTUALISER L'IMAGE / BL</button>
+        <p style="font-weight: bold; color: var(--palette-plum-magenta); font-size: 13px; margin:0 0 10px 0;">✅ Image générée. Restez appuyé pour copier.</p>
         <div id="img-container"></div>
     </div>
 </div>
@@ -1241,35 +1263,30 @@
         const oldDisplay = wrapper.style.display;
         wrapper.style.display = "block";
         
-        html2canvas(document.getElementById('bl-canvas'), { scale: 2.2 }).then(canvas => {
+        // On sauvegarde temporairement la transformation pour que la photo html2canvas ne soit pas dézoomée
+        const canvasEl = document.getElementById('bl-canvas');
+        const oldTransform = canvasEl.style.transform;
+        canvasEl.style.transform = "none";
+
+        html2canvas(canvasEl, { scale: 2.2 }).then(canvas => {
             const container = document.getElementById('img-container');
             container.innerHTML = '';
             
             const img = new Image(); 
             img.src = canvas.toDataURL("image/png");
             
-            img.style.maxWidth = "100%";
-            img.style.width = "100%";
-            img.style.height = "auto";
-            
             container.appendChild(img);
             document.getElementById('image-result').style.display = 'block';
+            
+            // On remet la transformation pour l'écran
+            canvasEl.style.transform = oldTransform;
             wrapper.style.display = oldDisplay;
             window.scrollTo(0, document.body.scrollHeight);
         });
     }
 
-    function refreshLiveCapture() {
-        sync(); 
-        captureImage(); 
-    }
-
     function generatePDF() {
-        const wrapper = document.getElementById('bl-wrapper');
-        const oldDisplay = wrapper.style.display;
-        wrapper.style.display = "block";
         window.print();
-        setTimeout(() => { wrapper.style.display = oldDisplay; }, 500);
     }
 </script>
 </body>
