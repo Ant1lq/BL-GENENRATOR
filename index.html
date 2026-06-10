@@ -296,7 +296,7 @@
 
         /* --- CONTROLE DE PRÉVISUALISATION ET STRUCTURE DU BL --- */
         #container-preview-zone {
-            display: block; /* Visible par défaut au chargement */
+            display: block; 
         }
 
         .bl-preview-header {
@@ -429,6 +429,20 @@
             height: auto;
             border-radius: 10px; 
             box-shadow: 0 5px 20px rgba(0,0,0,0.1); 
+        }
+
+        /* Indicateur de chargement OCR intégré dans la fenêtre manuelle */
+        .ocr-inline-loading {
+            display: none;
+            background: #eff6ff;
+            color: var(--palette-royal-blue);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+            border: 1px dashed var(--palette-royal-blue);
         }
 
         @media print {
@@ -637,8 +651,15 @@
         <h3 id="manual-modal-title" style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; padding-bottom:10px; border-bottom:1px solid #e2e8f0;">Ajustement Matériel</h3>
         <input type="hidden" id="edit-index" value="-1">
         
+        <div id="manual-ocr-loading" class="ocr-inline-loading">Analyse intelligente en cours... ⏳</div>
+
         <div class="form-group" style="margin-top:14px;">
-            <label>Type de Matériel</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="margin: 0;">Type de Matériel</label>
+                <button class="btn-mini edit" style="padding: 4px 10px; font-size: 11px; background: #f0f7ff; color: var(--palette-royal-blue); border: 1px dashed var(--palette-royal-blue);" onclick="triggerInlineModalScanner()">
+                    🖼️ Galerie (Photo)
+                </button>
+            </div>
             <select id="man-type" onchange="updateManualModelOptions()">
                 <option value="DAI">Défibrillateur (DAI)</option>
                 <option value="PM">Pacemaker (PM)</option>
@@ -675,6 +696,8 @@
             </select>
         </div>
         
+        <div id="manual-photo-status" style="font-size: 11px; color: var(--text-muted); font-style: italic; margin-bottom: 10px; text-align: center;"></div>
+
         <div class="grid-2" style="margin-top:24px;">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px; border-radius:14px;" onclick="closeManualModal()">FERMER</button>
             <button class="btn-primary-ios" style="padding:14px; font-size:14px;" onclick="saveManualItem()">VALIDER AU BL</button>
@@ -729,6 +752,8 @@
     let cropper = null;
     let currentScanScope = "BOITIER"; 
     let isUserZooming = false;
+    let modalScannerActive = false; // Flag pour savoir d'où vient l'image
+    let temporaryModalSnapshot = null; // Stocke l'image temporaire pour l'élément en cours d'édition
 
     window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('inDate').valueAsDate = new Date();
@@ -809,6 +834,7 @@
     }
 
     function triggerSmartAnalysis(scope) {
+        modalScannerActive = false;
         currentScanScope = scope; 
         const statusEl = document.getElementById('ocr-status');
         if (scope === "BOITIER") {
@@ -819,10 +845,27 @@
         document.getElementById('label-camera-input').click();
     }
 
+    // Déclencheur depuis la fenêtre d'ajout manuel
+    function triggerInlineModalScanner() {
+        modalScannerActive = true;
+        currentScanScope = document.getElementById('man-type').value; // S'aligne sur le type déjà sélectionné
+        const statusEl = document.getElementById('ocr-status');
+        if (currentScanScope === "SONDE") {
+            statusEl.innerText = "Cadrer les codes barres et la référence de la Sonde.";
+        } else {
+            statusEl.innerText = "Cadrer les codes barres et la référence du Boîtier.";
+        }
+        document.getElementById('label-camera-input').click();
+    }
+
     function handleLabelFile(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
+                // Masque temporairement le modal manuel si l'importation vient de là pour ne pas superposer
+                if (modalScannerActive) {
+                    document.getElementById('manual-modal').style.display = 'none';
+                }
                 const modal = document.getElementById('crop-modal');
                 const image = document.getElementById('crop-preview');
                 image.src = e.target.result;
@@ -858,6 +901,11 @@
         document.getElementById('crop-modal').style.display = 'none';
         if (cropper) { cropper.destroy(); cropper = null; }
         document.getElementById('label-camera-input').value = "";
+        
+        // Si l'action a été annulée et qu'on venait du modal manuel, on le réaffiche
+        if (modalScannerActive) {
+            document.getElementById('manual-modal').style.display = 'flex';
+        }
     }
 
     function processCroppedImage() {
@@ -884,18 +932,80 @@
 
         Tesseract.recognize(canvasOcr, 'eng')
         .then(({ data: { text } }) => {
-            if (currentScanScope === "BOITIER") {
-                parseBoitierText(text, savedCleanSnapshot);
+            if (modalScannerActive) {
+                // Routage interne sans injecter de nouvelle carte immédiatement
+                processInlineModalOCR(text, savedCleanSnapshot);
             } else {
-                parseSondeText(text, savedCleanSnapshot);
+                // Routage classique global
+                if (currentScanScope === "BOITIER") {
+                    parseBoitierText(text, savedCleanSnapshot);
+                } else {
+                    parseSondeText(text, savedCleanSnapshot);
+                }
             }
-            closeCropModal();
+            document.getElementById('crop-modal').style.display = 'none';
+            if (cropper) { cropper.destroy(); cropper = null; }
+            document.getElementById('label-camera-input').value = "";
         })
         .catch(err => {
             console.error(err);
             closeCropModal();
-            openManualAddModal();
+            if (!modalScannerActive) openManualAddModal();
         });
+    }
+
+    // Traitement OCR injecté de manière transparente directement dans les champs ouverts du modal manuel
+    function processInlineModalOCR(text, snapshot) {
+        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        let currentType = document.getElementById('man-type').value;
+        let matchedModel = "Inconnu";
+
+        let targetList = listSondes;
+        if (currentType === "DAI") targetList = listDefis;
+        if (currentType === "PM") targetList = listPaces;
+
+        for (let name of targetList) {
+            let ref = refsMap[name].toUpperCase();
+            if (normalizedText.includes(ref)) {
+                matchedModel = name;
+                break;
+            }
+        }
+
+        // Fallbacks intelligents si la ref stricte manque
+        if (matchedModel === "Inconnu") {
+            if (currentType === "SONDE") {
+                if (/INVICTA/i.test(normalizedText)) matchedModel = "Invicta 1CR58";
+                else if (/NAVIGO/i.test(normalizedText)) matchedModel = "Navigo ARC78";
+                else if (/VEGA/i.test(normalizedText)) matchedModel = "Vega R58";
+            } else {
+                if (/TALENTIA/i.test(normalizedText)) {
+                    if (/VR/i.test(normalizedText)) matchedModel = "Talentia VR 3240";
+                    else if (/CRTD/i.test(normalizedText)) matchedModel = "Talentia CRTD 3844";
+                    else matchedModel = "Talentia DR 3540";
+                } else if (/ALIZEA|ALIZÉA/i.test(normalizedText)) {
+                    matchedModel = "Alizéa DR 1600";
+                } else if (/ENO/i.test(normalizedText)) {
+                    matchedModel = "ENO DR";
+                }
+            }
+        }
+
+        let sn = extractSerialNumber(text, currentType);
+        let exp = extractExpirationDate(text);
+
+        // Réinjection ergonomique
+        if (matchedModel !== "Inconnu") {
+            document.getElementById('man-model').value = matchedModel;
+        }
+        if (sn) document.getElementById('man-sn').value = sn;
+        if (exp) document.getElementById('man-exp').value = exp;
+        
+        temporaryModalSnapshot = snapshot;
+        document.getElementById('manual-photo-status').innerText = "📸 Une photo d'étiquette est associée à ce matériel.";
+        
+        // Réaffiche la fenêtre d'ajustement mise à jour
+        document.getElementById('manual-modal').style.display = 'flex';
     }
 
     function extractSerialNumber(text, type) {
@@ -913,7 +1023,7 @@
             if (mpMatch) return mpMatch[1].trim();
         }
 
-        if (type === "BOITIER") {
+        if (type === "BOITIER" || type === "DAI" || type === "PM") {
             const microportBoitierRegex = /\b(\d{3}[A-Z]{2}\d{3})\b/i;
             let mpBoxMatch = cleanText.match(microportBoitierRegex);
             if (mpBoxMatch) return mpBoxMatch[1].trim();
@@ -1101,6 +1211,7 @@
         const modal = document.getElementById('manual-modal');
         document.getElementById('edit-index').value = index;
         updateManualModelOptions();
+        temporaryModalSnapshot = null; // Reset
 
         if (index > -1) {
             const item = basketItems[index];
@@ -1112,12 +1223,20 @@
             document.getElementById('man-exp').value = item.exp;
             document.getElementById('man-stock').value = item.stock;
             document.getElementById('man-reno').value = item.reno;
+            
+            if (item.img) {
+                temporaryModalSnapshot = item.img;
+                document.getElementById('manual-photo-status').innerText = "📸 Une photo d'étiquette est associée à ce matériel.";
+            } else {
+                document.getElementById('manual-photo-status').innerText = "Aucun visuel associé.";
+            }
         } else {
             document.getElementById('manual-modal-title').innerText = "➕ Ajout manuel de matériel";
             document.getElementById('man-stock').value = "Stock du centre";
             document.getElementById('man-reno').value = "centre";
             document.getElementById('man-sn').value = "";
             document.getElementById('man-exp').value = "";
+            document.getElementById('manual-photo-status').innerText = "";
         }
         modal.style.display = "flex";
     }
@@ -1136,6 +1255,7 @@
 
     function closeManualModal() {
         document.getElementById('manual-modal').style.display = "none";
+        temporaryModalSnapshot = null;
     }
 
     function saveManualItem() {
@@ -1147,7 +1267,7 @@
             exp: document.getElementById('man-exp').value,
             stock: document.getElementById('man-stock').value,
             reno: document.getElementById('man-reno').value,
-            img: idx > -1 ? basketItems[idx].img : null 
+            img: temporaryModalSnapshot // Conserve ou ajoute l'image importée de manière fluide
         };
 
         if (idx > -1) {
@@ -1353,16 +1473,13 @@
         window.open(`mailto:?subject=${subject}&body=${encodeURIComponent(mailBody)}`, '_blank');
     }
 
-    /* --- COMPORTEMENT EXCLUSIF : RÉSULTAT IMAGE --- */
     function captureFinalImage() {
         const previewZone = document.getElementById('container-preview-zone');
         const scaler = document.getElementById('bl-scaler-container');
         
-        // Sauvegarde de l'état de zoom actuel et de l'affichage
         const oldTransform = scaler.style.transform;
         const originalVisibility = previewZone.style.display;
 
-        // Force l'affichage temporaire du bloc A4 à sa taille native 100% pour la capture html2canvas
         previewZone.style.display = "block";
         scaler.style.transform = "none";
 
@@ -1374,39 +1491,27 @@
             img.src = canvas.toDataURL("image/png");
             container.appendChild(img);
             
-            // Étape 1 : Fait apparaître la zone de résultat verte
             document.getElementById('image-result').style.display = 'block';
-            
-            // Étape 2 : Masque entièrement la prévisualisation A4 en temps réel
             previewZone.style.display = "none";
-            
-            // Étape 3 : Restaure la configuration de zoom interne en arrière-plan
             scaler.style.transform = oldTransform;
             
-            // Scrolling fluide vers le bas de la page pour cibler l'image générée
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         });
     }
 
-    /* --- COMPORTEMENT EXCLUSIF : RESSURRECTION DE LA PRÉVISUALISATION --- */
     function reactivateLivePreview() {
-        // Étape 1 : Masque la partie image générée (le bloc vert)
         document.getElementById('image-result').style.display = 'none';
         document.getElementById('img-container').innerHTML = '';
 
-        // Étape 2 : Réaffiche la zone de prévisualisation A4 en direct
         const previewZone = document.getElementById('container-preview-zone');
         previewZone.style.display = "block";
 
-        // Étape 3 : Recalcule les alignements graphiques à jour
         sync();
 
-        // Étape 4 : Resynchronise l'échelle pour l'écran de l'iPhone
         if (!isUserZooming) {
             initDefaultScale();
         }
 
-        // Scrolling fluide vers la prévisualisation réactivée
         previewZone.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 </script>
