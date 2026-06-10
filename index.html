@@ -294,7 +294,6 @@
         
         .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active, .btn-refresh-ios:active { transform: scale(0.98); opacity: 0.95; }
 
-        /* --- CONTROLE DE PRÉVISUALISATION ET STRUCTURE DU BL --- */
         #container-preview-zone {
             display: block; 
         }
@@ -431,7 +430,6 @@
             box-shadow: 0 5px 20px rgba(0,0,0,0.1); 
         }
 
-        /* Indicateur de chargement OCR intégré dans la fenêtre manuelle */
         .ocr-inline-loading {
             display: none;
             background: #eff6ff;
@@ -463,10 +461,10 @@
 
     <div class="scan-zone">
         <button class="btn-smart-scan btn-scan-boitier" onclick="triggerSmartAnalysis('BOITIER')">
-            📷 SCANNER / IMPORTER UN BOÎTIER
+            📷 SCANNER UN BOÎTIER
         </button>
         <button class="btn-smart-scan btn-scan-sonde" onclick="triggerSmartAnalysis('SONDE')">
-            📷 SCANNER / IMPORTER UNE SONDE
+            📷 SCANNER UNE SONDE
         </button>
     </div>
 
@@ -511,7 +509,7 @@
         
         <div id="detected-items-list">
             <div id="empty-state-msg" style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px 0; line-height:1.4;">
-                Aucun matériel détecté.<br>Utilisez les boutons de <b>Capture</b> ou ajoutez manuellement.
+                Aucun matériel détecté.<br>Utilisez les boutons de <b>Scan</b> ou ajoutez manuellement.
             </div>
         </div>
 
@@ -630,7 +628,9 @@
     </div>
 </div>
 
-<input type="file" id="label-camera-input" accept="image/*" style="display: none;" onchange="handleLabelFile(this)">
+<input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
+
+<input type="file" id="label-gallery-input" accept="image/*" style="display: none;" onchange="handleLabelFile(this)">
 
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
@@ -752,8 +752,8 @@
     let cropper = null;
     let currentScanScope = "BOITIER"; 
     let isUserZooming = false;
-    let modalScannerActive = false; // Flag pour savoir d'où vient l'image
-    let temporaryModalSnapshot = null; // Stocke l'image temporaire pour l'élément en cours d'édition
+    let modalScannerActive = false; 
+    let temporaryModalSnapshot = null; 
 
     window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('inDate').valueAsDate = new Date();
@@ -842,27 +842,27 @@
         } else {
             statusEl.innerText = "Cadrer les codes barres et la référence de la Sonde (VEGA, INVICTA, NAVIGO...).";
         }
+        // Active l'input avec capture="environment" pour ouvrir directement l'appareil photo
         document.getElementById('label-camera-input').click();
     }
 
-    // Déclencheur depuis la fenêtre d'ajout manuel
     function triggerInlineModalScanner() {
         modalScannerActive = true;
-        currentScanScope = document.getElementById('man-type').value; // S'aligne sur le type déjà sélectionné
+        currentScanScope = document.getElementById('man-type').value; 
         const statusEl = document.getElementById('ocr-status');
         if (currentScanScope === "SONDE") {
             statusEl.innerText = "Cadrer les codes barres et la référence de la Sonde.";
         } else {
             statusEl.innerText = "Cadrer les codes barres et la référence du Boîtier.";
         }
-        document.getElementById('label-camera-input').click();
+        // Ouvre l'input sans restriction "capture" pour laisser le choix d'importer depuis la galerie
+        document.getElementById('label-gallery-input').click();
     }
 
     function handleLabelFile(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                // Masque temporairement le modal manuel si l'importation vient de là pour ne pas superposer
                 if (modalScannerActive) {
                     document.getElementById('manual-modal').style.display = 'none';
                 }
@@ -901,8 +901,8 @@
         document.getElementById('crop-modal').style.display = 'none';
         if (cropper) { cropper.destroy(); cropper = null; }
         document.getElementById('label-camera-input').value = "";
+        document.getElementById('label-gallery-input').value = "";
         
-        // Si l'action a été annulée et qu'on venait du modal manuel, on le réaffiche
         if (modalScannerActive) {
             document.getElementById('manual-modal').style.display = 'flex';
         }
@@ -933,10 +933,8 @@
         Tesseract.recognize(canvasOcr, 'eng')
         .then(({ data: { text } }) => {
             if (modalScannerActive) {
-                // Routage interne sans injecter de nouvelle carte immédiatement
                 processInlineModalOCR(text, savedCleanSnapshot);
             } else {
-                // Routage classique global
                 if (currentScanScope === "BOITIER") {
                     parseBoitierText(text, savedCleanSnapshot);
                 } else {
@@ -946,6 +944,7 @@
             document.getElementById('crop-modal').style.display = 'none';
             if (cropper) { cropper.destroy(); cropper = null; }
             document.getElementById('label-camera-input').value = "";
+            document.getElementById('label-gallery-input').value = "";
         })
         .catch(err => {
             console.error(err);
@@ -954,7 +953,6 @@
         });
     }
 
-    // Traitement OCR injecté de manière transparente directement dans les champs ouverts du modal manuel
     function processInlineModalOCR(text, snapshot) {
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         let currentType = document.getElementById('man-type').value;
@@ -972,7 +970,6 @@
             }
         }
 
-        // Fallbacks intelligents si la ref stricte manque
         if (matchedModel === "Inconnu") {
             if (currentType === "SONDE") {
                 if (/INVICTA/i.test(normalizedText)) matchedModel = "Invicta 1CR58";
@@ -994,7 +991,6 @@
         let sn = extractSerialNumber(text, currentType);
         let exp = extractExpirationDate(text);
 
-        // Réinjection ergonomique
         if (matchedModel !== "Inconnu") {
             document.getElementById('man-model').value = matchedModel;
         }
@@ -1004,7 +1000,6 @@
         temporaryModalSnapshot = snapshot;
         document.getElementById('manual-photo-status').innerText = "📸 Une photo d'étiquette est associée à ce matériel.";
         
-        // Réaffiche la fenêtre d'ajustement mise à jour
         document.getElementById('manual-modal').style.display = 'flex';
     }
 
@@ -1211,7 +1206,7 @@
         const modal = document.getElementById('manual-modal');
         document.getElementById('edit-index').value = index;
         updateManualModelOptions();
-        temporaryModalSnapshot = null; // Reset
+        temporaryModalSnapshot = null; 
 
         if (index > -1) {
             const item = basketItems[index];
@@ -1267,7 +1262,7 @@
             exp: document.getElementById('man-exp').value,
             stock: document.getElementById('man-stock').value,
             reno: document.getElementById('man-reno').value,
-            img: temporaryModalSnapshot // Conserve ou ajoute l'image importée de manière fluide
+            img: temporaryModalSnapshot 
         };
 
         if (idx > -1) {
