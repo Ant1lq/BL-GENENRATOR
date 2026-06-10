@@ -272,7 +272,7 @@
 
         .sticky-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
         
-        .btn-primary-ios, .btn-secondary-ios, .btn-mail-ios {
+        .btn-primary-ios, .btn-secondary-ios, .btn-mail-ios, .btn-refresh-ios {
             border: none; 
             padding: 16px; 
             border-radius: 16px; 
@@ -289,17 +289,18 @@
         }
         .btn-primary-ios { background: var(--blue-mp); color: white; box-shadow: 0 4px 12px rgba(3,43,105,0.15); }
         .btn-secondary-ios { background: #334155; color: white; }
+        .btn-refresh-ios { background: #e2e8f0; color: #1e293b; border: 1.5px solid #cbd5e1; }
         .btn-mail-ios { background: linear-gradient(135deg, #1e3a8a, var(--palette-royal-blue)); color: white; box-shadow: 0 4px 12px rgba(30,58,138,0.15); }
         
-        .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active { transform: scale(0.98); opacity: 0.95; }
+        .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active, .btn-refresh-ios:active { transform: scale(0.98); opacity: 0.95; }
 
-        /* --- SYSTÈME DE PRÉVISUALISATION DIRECTE INTÉGRALE SANS DÉFORMATION --- */
+        /* --- CONTROLE DE PRÉVISUALISATION RESPONSIVE AVEC ZOOM INTERACTIF --- */
         .bl-preview-header {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 10px;
             margin-top: 30px;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             padding: 0 4px;
         }
         .bl-preview-title {
@@ -309,37 +310,68 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .btn-refresh-preview {
+        
+        /* Contrôleur de Zoom */
+        .zoom-controls-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             background: #e2e8f0;
+            padding: 8px 14px;
+            border-radius: 12px;
+        }
+        .zoom-controls-wrapper label {
+            margin: 0;
+            font-size: 11px;
             color: #334155;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 700;
+            white-space: nowrap;
+        }
+        .zoom-slider {
+            flex: 1;
+            height: 24px;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        .zoom-slider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: var(--blue-mp);
+            margin-top: -6px;
             cursor: pointer;
         }
-        .btn-refresh-preview:active { opacity: 0.8; }
+        .zoom-badge {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--blue-mp);
+            min-width: 35px;
+            text-align: right;
+        }
 
         #bl-wrapper { 
             background: #475569; 
             padding: 12px; 
             border-radius: 20px; 
             width: 100%;
-            overflow: hidden;
+            overflow-x: auto; /* Permet le défilement horizontal si zoomé */
+            overflow-y: hidden;
             display: block;
-            
-            /* Conteneur fluide utilisant des variables CSS basées sur l'échelle écran */
             box-sizing: border-box;
+            -webkit-overflow-scrolling: touch;
         }
         
-        /* Conteneur de mise à l'échelle responsive préservant le ratio exact à 100% */
         .bl-scaler {
-            width: 794px; /* Largeur A4 fixe standard pour un rendu de texte fluide */
-            height: 1123px; /* Hauteur A4 fixe standard */
+            width: 794px; /* Largeur A4 native fixe */
+            height: 1123px; /* Hauteur A4 native fixe */
             transform-origin: top left;
-            /* Le JS adaptera dynamiquement ce scale pour coller parfaitement à la largeur de l'iPhone */
-            transform: scale(0.44); 
+            transition: transform 0.1s ease-out;
         }
 
         #bl-canvas { 
@@ -396,11 +428,10 @@
             box-shadow: 0 5px 20px rgba(0,0,0,0.1); 
         }
 
-        /* --- STYLES COMPATIBLES IMPRESSION --- */
         @media print {
             body { background: white; color: black; padding-bottom: 0; }
             .app-container, .sticky-actions, #image-result, .ios-modal, .bl-preview-header { display: none !important; }
-            #bl-wrapper { background: transparent; padding: 0; margin: 0; display: block !important; height: auto !important; }
+            #bl-wrapper { background: transparent; padding: 0; margin: 0; display: block !important; height: auto !important; overflow: visible !important; }
             .bl-scaler { transform: none !important; width: 210mm !important; height: 297mm !important; }
             #bl-canvas { box-shadow: none !important; padding: 0; }
         }
@@ -497,8 +528,8 @@
     <div class="sticky-actions">
         <button class="btn-mail-ios" onclick="generateEmail()">📧 COMPTE-RENDU OUTLOOK DIRECT</button>
         <div class="grid-2">
-            <button class="btn-primary-ios" onclick="generatePDF()">🖨️ EXPORT PDF</button>
-            <button class="btn-secondary-ios" onclick="captureImage()">📸 GENERER BL (IMAGE)</button>
+            <button class="btn-refresh-ios" onclick="captureImage()">🔄 ACTUALISER LE BL</button>
+            <button class="btn-primary-ios" onclick="captureImage()">📸 GÉNERER BL (IMAGE)</button>
         </div>
     </div>
 
@@ -509,7 +540,11 @@
 
     <div class="bl-preview-header">
         <span class="bl-preview-title">📋 Prévisualisation en temps réel (Format A4)</span>
-        <button class="btn-refresh-preview" onclick="sync()">🔄 Actualiser</button>
+        <div class="zoom-controls-wrapper">
+            <label>Zoom écran :</label>
+            <input type="range" id="preview-zoom-slider" class="zoom-slider" min="0.4" max="2.0" step="0.05" value="0.45" oninput="adjustPreviewScale(this.value)">
+            <span id="zoom-val-badge" class="zoom-badge">100%</span>
+        </div>
     </div>
 
     <div id="bl-wrapper">
@@ -688,28 +723,55 @@
     let mCanvas, mCtx;
     let cropper = null;
     let currentScanScope = "BOITIER"; 
+    let isUserZooming = false;
 
     window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('inDate').valueAsDate = new Date();
         buildLogistiqueMenus();
         initPads();
-        adjustPreviewScale();
-        window.addEventListener('resize', adjustPreviewScale);
+        initDefaultScale();
+        window.addEventListener('resize', () => { if(!isUserZooming) initDefaultScale(); });
         sync();
     });
 
-    /* RECALCUL DIRECT DU COMPORTEMENT RIGIDE SUR IPHONE POUR ÉVITER LES DISTORSIONS MULTIPLES */
-    function adjustPreviewScale() {
+    /* RECALCUL DE L'ÉCHELLE DU BL */
+    function initDefaultScale() {
+        const wrapper = document.getElementById('bl-wrapper');
+        if (!wrapper) return;
+        let availableWidth = wrapper.clientWidth - 24; 
+        let defaultScale = availableWidth / 794; 
+        
+        const slider = document.getElementById('preview-zoom-slider');
+        slider.min = (defaultScale * 0.8).toFixed(2);
+        slider.max = "2.0";
+        slider.value = defaultScale.toFixed(2);
+        
+        adjustPreviewScale(defaultScale);
+    }
+
+    function adjustPreviewScale(scaleValue) {
         const wrapper = document.getElementById('bl-wrapper');
         const scaler = document.getElementById('bl-scaler-container');
+        const badge = document.getElementById('zoom-val-badge');
         if (!wrapper || !scaler) return;
         
-        let availableWidth = wrapper.clientWidth - 24; 
-        let currentScale = availableWidth / 794; 
+        let val = parseFloat(scaleValue);
+        scaler.style.transform = `scale(${val})`;
         
-        scaler.style.transform = `scale(${currentScale})`;
-        wrapper.style.height = `${1123 * currentScale + 24}px`;
+        // Calcule le ratio par rapport à la taille idéale automatique
+        let autoWidth = wrapper.clientWidth - 24;
+        let baseScale = autoWidth / 794;
+        let percent = Math.round((val / baseScale) * 100);
+        badge.innerText = `${percent}%`;
+
+        // Ajuste dynamiquement la hauteur occupée par le conteneur scanné
+        wrapper.style.height = `${(1123 * val) + 24}px`;
     }
+
+    // Détecte si l'utilisateur change le slider manuellement
+    document.getElementById('preview-zoom-slider')?.addEventListener('input', () => {
+        isUserZooming = true;
+    });
 
     function buildLogistiqueMenus() {
         const cSel = document.getElementById('inC'); cSel.innerHTML = ""; 
@@ -807,7 +869,6 @@
         statusEl.innerText = "Analyse OCR en cours... ⏳";
 
         const canvasClean = cropper.getCroppedCanvas();
-        
         const canvasOcr = document.createElement('canvas');
         canvasOcr.width = canvasClean.width;
         canvasOcr.height = canvasClean.height;
@@ -842,7 +903,6 @@
 
     function extractSerialNumber(text, type) {
         let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
-        
         const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{6,12})/i) || cleanText.match(/21([A-Z0-9]{8})\b/i);
         if (udiMatch) return udiMatch[1].trim();
 
@@ -865,22 +925,16 @@
         const genericRegex = /(?:S\s*[\|\/\-_.]?\s*N|S\.N|SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,12})/i;
         let m = cleanText.match(genericRegex);
         if (m && m[1]) return m[1].trim();
-        
         return "";
     }
 
     function extractExpirationDate(text) {
         let cleanText = text.replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
-        
         const isoDateMatch = cleanText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
-        if (isoDateMatch) {
-            return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
-        }
+        if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
 
         const frDateMatch = cleanText.match(/\b(\d{2})[-/](\d{2})[-/](\d{4})\b/);
-        if (frDateMatch) {
-            return `${frDateMatch[3]}-${frDateMatch[2]}-${frDateMatch[1]}`;
-        }
+        if (frDateMatch) return `${frDateMatch[3]}-${frDateMatch[2]}-${frDateMatch[1]}`;
 
         let udiCleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
         const udiExpMatch = udiCleanText.match(/\(17\)\s*(\d{6})/i) || udiCleanText.match(/\b17(\d{6})\d{2}21/i);
@@ -891,14 +945,12 @@
             let day = rawDate.substring(4, 6);
             return `${year}-${month}-${day}`;
         }
-
         return "";
     }
 
     function parseBoitierText(text, snapshot) {
         let matchedModel = "Inconnu";
         let detectedType = "DAI";
-        
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         let listBoitiers = [...listDefis, ...listPaces];
         
@@ -930,9 +982,8 @@
         let sn = extractSerialNumber(text, "BOITIER");
         let exp = extractExpirationDate(text);
 
-        const acteSelect = document.getElementById('inActe');
         if (basketItems.filter(i => i.type === "DAI" || i.type === "PM").length === 0) {
-            acteSelect.value = "Primo-Implantation"; 
+            document.getElementById('inActe').value = "Primo-Implantation"; 
         }
 
         basketItems.push({
@@ -987,9 +1038,8 @@
         let sn = extractSerialNumber(text, "SONDE");
         let exp = extractExpirationDate(text);
 
-        const acteSelect = document.getElementById('inActe');
         if (basketItems.length === 0) {
-            acteSelect.value = "Changement de Sonde";
+            document.getElementById('inActe').value = "Changement de Sonde";
         }
 
         basketItems.push({
@@ -1053,7 +1103,6 @@
     function openManualAddModal(index = -1) {
         const modal = document.getElementById('manual-modal');
         document.getElementById('edit-index').value = index;
-        
         updateManualModelOptions();
 
         if (index > -1) {
@@ -1094,7 +1143,6 @@
 
     function saveManualItem() {
         const idx = parseInt(document.getElementById('edit-index').value);
-        
         const itemData = {
             type: document.getElementById('man-type').value,
             model: document.getElementById('man-model').value,
@@ -1122,7 +1170,6 @@
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = 90;
         });
-
         mCanvas = document.getElementById('modal-canvas');
         if(mCanvas) mCtx = mCanvas.getContext('2d');
     }
@@ -1158,7 +1205,6 @@
         mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height); 
         if (activeFullscreenTarget) {
             sigSource[activeFullscreenTarget] = 'none'; 
-            
             const smallCanvas = document.getElementById(`pad-${activeFullscreenTarget}`);
             const sCtx = smallCanvas.getContext('2d');
             sCtx.clearRect(0, 0, smallCanvas.width, smallCanvas.height);
@@ -1244,7 +1290,6 @@
             const row = tableBody.insertRow();
             let ref = refsMap[item.model] || "N/A";
             let formattedExp = item.exp ? item.exp.split('-').reverse().join('/') : "N/A";
-            
             let renoLabelTarget = item.reno === 'centre' ? c : ing;
 
             let techDetails = `
@@ -1315,10 +1360,10 @@
         const scaler = document.getElementById('bl-scaler-container');
         const oldTransform = scaler.style.transform;
         
-        // Bloque l'échelle à 1 pour la génération haute définition de html2canvas
+        // Force l'échelle native (100% / sans zoom écran) pour la capture html2canvas
         scaler.style.transform = "none";
 
-        html2canvas(document.getElementById('bl-canvas'), { scale: 2.2 }).then(canvas => {
+        html2canvas(document.getElementById('bl-canvas'), { scale: 2.3 }).then(canvas => {
             const container = document.getElementById('img-container');
             container.innerHTML = '';
             
@@ -1328,14 +1373,10 @@
             
             document.getElementById('image-result').style.display = 'block';
             
-            // Remet la prévisualisation à l'échelle de l'iPhone
+            // Restaure la configuration de zoom choisie par l'utilisateur à l'écran
             scaler.style.transform = oldTransform;
             window.scrollTo(0, document.body.scrollHeight);
         });
-    }
-
-    function generatePDF() {
-        window.print();
     }
 </script>
 </body>
