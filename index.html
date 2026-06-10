@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BL Pro App - Expert MicroPort</title>
+    <title>MicroPort Cardioflow</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -13,19 +13,17 @@
 
     <style>
         :root { 
-            /* Palette de couleurs reconstituée d'après votre capture */
-            --palette-dark-navy: #0f172a;       /* Bloc 1 : Anthracite / Navy très sombre */
-            --palette-white: #ffffff;           /* Bloc 2 : Blanc pur */
-            --palette-muted-gray: #6b7280;      /* Bloc 3 : Gris intermédiaire */
-            --palette-light-gray: #f3f4f6;      /* Bloc 4 : Gris clair de fond */
-            --palette-vibrant-red: #ef4444;     /* Bloc 5 : Rouge vif */
-            --palette-plum-magenta: #be185d;    /* Bloc 6 : Magenta foncé / Prune */
-            --palette-purple: #7c3aed;          /* Bloc 7 : Violet électrique */
-            --palette-cyan: #06b6d4;            /* Bloc 8 : Cyan / Turquoise clair */
-            --palette-royal-blue: #3b82f6;      /* Bloc 9 : Bleu roi éclatant */
-            --palette-deep-blue: #032b69;       /* Bloc 10 : Bleu MicroPort historique */
+            --palette-dark-navy: #0f172a;       
+            --palette-white: #ffffff;           
+            --palette-muted-gray: #6b7280;      
+            --palette-light-gray: #f3f4f6;      
+            --palette-vibrant-red: #ef4444;     
+            --palette-plum-magenta: #be185d;    
+            --palette-purple: #7c3aed;          
+            --palette-cyan: #06b6d4;            
+            --palette-royal-blue: #3b82f6;      
+            --palette-deep-blue: #032b69;       
 
-            /* Assignations fonctionnelles de l'interface */
             --blue-mp: var(--palette-deep-blue);
             --accent: var(--palette-royal-blue);
             --neutral-bg: #f8fafc;
@@ -34,7 +32,6 @@
             --text-muted: var(--palette-muted-gray);
             --border-color: #e2e8f0;
 
-            /* Couleurs dynamiques du matériel basées sur la palette */
             --dai-color: var(--palette-plum-magenta);
             --dai-light: #fdf2f8;
             --pm-color: var(--palette-purple);
@@ -55,7 +52,7 @@
         }
 
         .app-container {
-            max-width: 440px; 
+            max-width: 100%; 
             margin: 0 auto;
             padding: 16px;
         }
@@ -318,15 +315,34 @@
         
         .legal-text { font-size: 9.5px; line-height: 1.4; color: #000; margin-top: 5px; font-family: Arial, sans-serif; }
 
-        #image-result { background: #f0fdf4; padding: 18px; border-radius: 20px; margin-top: 20px; text-align: center; display: none; border: 2px dashed #bbf7d0; }
-        #image-result img { max-width: 100%; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+        /* ZONE DE PRÉVISUALISATION AJUSTÉE POUR IPHONE 11 */
+        #image-result { 
+            background: #f0fdf4; 
+            padding: 14px; 
+            border-radius: 20px; 
+            margin-top: 20px; 
+            text-align: center; 
+            display: none; 
+            border: 2px dashed #bbf7d0;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        #image-result img { 
+            width: 100%; 
+            height: auto;
+            border-radius: 12px; 
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06); 
+            display: block;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
 
 <div class="app-container">
     <header>
-        <h1>⚡ BL PRO SMART LOG</h1>
+        <h1>⚡ MicroPort Cardioflow</h1>
     </header>
 
     <div class="scan-zone">
@@ -420,6 +436,7 @@
 
     <div id="image-result">
         <p style="font-weight: bold; color: var(--palette-plum-magenta); font-size: 13px; margin:0 0 10px 0;">✅ Image générée prête ! Restez appuyé pour copier.</p>
+        <button class="btn-mini edit" style="width:100%; margin-bottom:12px; padding:10px; background:#e2e8f0; justify-content:center; font-weight:bold; color:var(--blue-mp); border-radius:10px;" onclick="refreshLiveCapture()">🔄 ACTUALISER L'IMAGE / BL</button>
         <div id="img-container"></div>
     </div>
 </div>
@@ -563,7 +580,6 @@
 </div>
 
 <script>
-    // BASE DE DONNÉES CENTRES ET MÉDECINS INTEGRALE RECONSTITUÉE
     let db = {
         "CHU TOURS": { adr: "Av. de la République, 37170 Chambray-lès-Tours", docs: ["Dr Bodin", "Dr Pierre", "Dr Bisson", "Dr Lemrini", "Dr Lenormand", "Dr Nasarre"] },
         "CHU ORLEANS": { adr: "14 Av. de l'Hôpital, 45100 Orléans", docs: ["Dr Domain", "Dr Jacobs", "Dr Spiesser", "Dr Lenormand"] },
@@ -590,10 +606,10 @@
     let listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
     let listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
     let listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
-    let listIngs = ["A. LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
+    let listIngs = ["Antoine LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
     
     let basketItems = []; 
-    let sigSource = { trans: 'none', centre: 'none' }; // 'none', 'draw', ou 'imported'
+    let sigSource = { trans: 'none', centre: 'none' }; 
     let activeFullscreenTarget = null;
     let mCanvas, mCtx;
     let cropper = null;
@@ -672,11 +688,9 @@
             reader.onload = function(e) {
                 const dataUrl = e.target.result;
                 
-                // Mettre à jour la source et le rendu final sur le BL
                 sigSource[target] = 'imported';
                 document.getElementById(`v-sig-${target}`).src = dataUrl;
 
-                // Dessiner l'aperçu réduit dans le canvas de l'application
                 const smallCanvas = document.getElementById(`pad-${target}`);
                 const sCtx = smallCanvas.getContext('2d');
                 sCtx.clearRect(0, 0, smallCanvas.width, smallCanvas.height);
@@ -1091,11 +1105,9 @@
             document.getElementById('lbl-sig-doc').innerText = "";
         }
 
-        // --- GESTION ET PRIORITÉ DES RENDER DES IMAGES DE SIGNATURE ---
         const sigTransImg = document.getElementById('v-sig-trans');
-        // On n'applique l'image automatique des assets que si l'utilisateur n'a rien dessiné ET rien importé.
         if (sigSource['trans'] === 'none') {
-            if (ing === "A. LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
+            if (ing === "Antoine LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
             else if (ing === "Baptiste DESARMENIEN") sigTransImg.src = "assets/signature-baptiste.png";
             else if (ing === "Valentin GARTENLAUB") sigTransImg.src = "assets/signature-valentin.png";
             else if (ing === "Francois MAINGAULT") sigTransImg.src = "assets/signature-francois.png";
@@ -1104,7 +1116,6 @@
         }
 
         const sigCentreImg = document.getElementById('v-sig-centre');
-        // Règle de priorité similaire pour le centre : Dossier assets/ ou Image importée > dessin manuscrit
         if (sigSource['centre'] === 'none') {
             if (c === "CHU TOURS") sigCentreImg.src = "assets/tampon-chu-tours.png";
             else if (c === "CHU ORLEANS") sigCentreImg.src = "assets/tampon-chu-orleans.png";
@@ -1205,6 +1216,12 @@
             wrapper.style.display = oldDisplay;
             window.scrollTo(0, document.body.scrollHeight);
         });
+    }
+
+    /* FONCTION DE RAFRAÎCHISSEMENT DIRECT DE L'IMAGE */
+    function refreshLiveCapture() {
+        sync(); // Force la synchronisation des données vers le BL caché
+        captureImage(); // Régénère la capture html2canvas
     }
 
     function generatePDF() {
