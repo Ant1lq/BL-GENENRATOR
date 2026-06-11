@@ -86,45 +86,41 @@
             margin: 0 0 20px 0;
         }
 
-        #app-content {
-            display: none; 
-        }
+        #app-content { display: none; }
 
-        .app-container {
-            max-width: 100%; 
-            margin: 0 auto;
-            padding: 16px;
-        }
+        .app-container { max-width: 100%; margin: 0 auto; padding: 16px; }
 
         header {
-            text-align: center;
-            padding: 20px 0 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 4px 10px 4px;
             margin-bottom: 8px;
-            position: relative;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
         }
         header h1 {
-            font-size: 20px;
+            font-size: 18px;
             color: var(--blue-mp);
             margin: 0;
             font-weight: 850;
             letter-spacing: -0.5px;
+        }
+        
+        /* BOUTONS DISCRETS DU HEADER */
+        .btn-header-icon {
+            background: #f1f5f9;
+            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-        }
-        .btn-logout {
-            position: absolute;
-            right: 4px; top: 18px;
-            background: #ffe4e6;
-            color: var(--palette-vibrant-red);
-            border: none;
-            padding: 6px 12px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: bold;
             cursor: pointer;
+            transition: background 0.2s;
         }
+        .btn-header-icon:active { background: #e2e8f0; }
 
         .scan-zone {
             margin-bottom: 20px;
@@ -157,7 +153,6 @@
             background: linear-gradient(135deg, var(--palette-royal-blue), var(--palette-cyan));
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
         }
-
         .btn-smart-scan:active { transform: scale(0.98); opacity: 0.95; }
 
         .app-card {
@@ -325,25 +320,13 @@
         .sticky-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
         
         .btn-primary-ios, .btn-secondary-ios, .btn-mail-ios, .btn-refresh-ios {
-            border: none; 
-            padding: 16px; 
-            border-radius: 16px; 
-            font-weight: 750; 
-            font-size: 15px; 
-            cursor: pointer; 
-            text-align: center; 
-            width: 100%;
-            transition: transform 0.15s ease, opacity 0.15s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            border: none; padding: 16px; border-radius: 16px; font-weight: 750; font-size: 15px; cursor: pointer; text-align: center; width: 100%;
+            transition: transform 0.15s ease, opacity 0.15s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .btn-primary-ios { background: var(--blue-mp); color: white; box-shadow: 0 4px 12px rgba(3,43,105,0.15); }
         .btn-secondary-ios { background: #334155; color: white; }
         .btn-refresh-ios { background: #e2e8f0; color: #1e293b; border: 1.5px solid #cbd5e1; }
         .btn-mail-ios { background: linear-gradient(135deg, #1e3a8a, var(--palette-royal-blue)); color: white; box-shadow: 0 4px 12px rgba(30,58,138,0.15); }
-        
         .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active, .btn-refresh-ios:active { transform: scale(0.98); opacity: 0.95; }
 
         #container-preview-zone { display: block; }
@@ -356,22 +339,9 @@
             margin-bottom: 12px;
             padding: 0 4px;
         }
-        .bl-preview-title {
-            font-size: 13px;
-            font-weight: 800;
-            color: #475569;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        .bl-preview-title { font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .zoom-controls-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #e2e8f0;
-            padding: 8px 14px;
-            border-radius: 12px;
-        }
+        .zoom-controls-wrapper { display: flex; align-items: center; gap: 12px; background: #e2e8f0; padding: 8px 14px; border-radius: 12px; }
         .zoom-controls-wrapper label { margin: 0; font-size: 11px; color: #334155; white-space: nowrap; }
         .zoom-slider { flex: 1; height: 24px; -webkit-appearance: none; background: transparent; }
         .zoom-slider::-webkit-slider-runnable-track { width: 100%; height: 6px; background: #cbd5e1; border-radius: 3px; }
@@ -379,15 +349,7 @@
         .zoom-badge { font-size: 12px; font-weight: bold; color: var(--blue-mp); min-width: 35px; text-align: right; }
 
         #bl-wrapper { 
-            background: #475569; 
-            padding: 12px; 
-            border-radius: 20px; 
-            width: 100%;
-            overflow-x: auto; 
-            overflow-y: hidden;
-            display: block;
-            box-sizing: border-box;
-            -webkit-overflow-scrolling: touch;
+            background: #475569; padding: 12px; border-radius: 20px; width: 100%; overflow-x: auto; overflow-y: hidden; display: block; box-sizing: border-box; -webkit-overflow-scrolling: touch;
         }
         
         .bl-scaler { width: 794px; height: 1123px; transform-origin: top left; transition: transform 0.1s ease-out; }
@@ -408,7 +370,7 @@
         .row-photo-flat { padding: 6px !important; text-align: center; background: #ffffff; }
         .row-photo-flat img { max-width: 100%; height: auto; max-height: 110px; display: block; margin: 0 auto; filter: grayscale(1) contrast(1.7) brightness(0.95); }
         
-        .bl-sig-img { max-height: 65px; max-width: 100%; display: block; margin: 5px auto; }
+        .bl-sig-img { max-height: 65px; max-width: 100%; display: block; margin: 5px auto; object-fit: contain; }
         .legal-text { font-size: 9.5px; line-height: 1.4; color: #000; margin-top: 5px; font-family: Arial, sans-serif; }
 
         #image-result { background: #f0fdf4; padding: 14px; border-radius: 20px; margin-top: 20px; text-align: center; display: none; border: 2px dashed #bbf7d0; width: 100%; }
@@ -418,7 +380,7 @@
         .ocr-inline-loading { display: none; background: #eff6ff; color: var(--palette-royal-blue); padding: 10px; border-radius: 10px; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 10px; border: 1px dashed var(--palette-royal-blue); }
         .admin-section-title { background: #e2e8f0; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-top: 15px; margin-bottom: 10px; color: #334155; }
 
-        /* ÉLÉMENTS DE MENU ET DESIGN POUR LES FICHES DE GESTION */
+        /* ÉLÉMENTS DE MENU POUR LES FICHES DE GESTION */
         .admin-tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
         .admin-tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: none; font-size: 12px; font-weight: bold; background: #f1f5f9; color: #64748b; cursor: pointer; }
         .admin-tab-btn.active { background: var(--blue-mp); color: white; }
@@ -429,7 +391,7 @@
         
         .doc-tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; margin: 4px 4px 0 0; }
         .tampon-preview-box { background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; text-align: center; margin-top: 10px; }
-        .tampon-preview-box img { max-height: 80px; max-width: 100%; object-fit: contain; }
+        .tampon-preview-box img { max-height: 100px; max-width: 100%; object-fit: contain; display: block; margin: 0 auto; }
 
         @media print {
             body { background: white; color: black; padding-bottom: 0; }
@@ -462,11 +424,12 @@
 <div id="app-content">
     <div class="app-container">
         <header>
+            <button class="btn-header-icon" onclick="openAdminModal()">⚙️</button>
             <h1>⚡ MicroPort Cardioflow</h1>
-            <button class="btn-logout" onclick="handleLogout()">Déconnexion 🔓</button>
+            <button class="btn-header-icon" onclick="handleLogout()">🔒</button>
         </header>
 
-        <div class="scan-zone">
+        <div class="scan-zone" style="margin-top: 15px;">
             <button class="btn-smart-scan btn-scan-boitier" onclick="triggerSmartAnalysis('BOITIER')">
                 📷 SCANNER UN BOÎTIER
             </button>
@@ -545,12 +508,6 @@
                     <input type="file" id="import-sig-centre" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
                 </div>
             </div>
-        </div>
-
-        <div class="app-card" style="border: 2px dashed var(--palette-royal-blue); background: #f0f7ff;">
-            <div class="card-title" style="color: var(--palette-royal-blue);">⚙️ Espace Gestion Équipes & Fiches</div>
-            <p style="font-size: 12px; color: #334155; margin: 0 0 12px 0;">Consultez ou modifiez vos hôpitaux, médecins et tampons officiels sauvegardés dans le Cloud.</p>
-            <button class="btn-primary-ios" style="background: var(--palette-royal-blue);" onclick="openAdminModal()">OUVRIR L'ESPACE DE GESTION</button>
         </div>
 
         <div class="sticky-actions">
@@ -725,8 +682,7 @@
                 <select id="admin-view-centre-select" onchange="renderCenterCardDetails()"></select>
             </div>
             
-            <div id="center-details-card-target">
-                </div>
+            <div id="center-details-card-target"></div>
         </div>
 
         <div id="admin-tab-content-edit" style="display:none;">
@@ -850,7 +806,8 @@
 
     async function synchroniserDonneesDepuisCloud() {
         try {
-            let { data: centres, error: errC } = await _supabase.from('centres').select('*').order('nom', { ascending: true });
+            // FIX ICI : On force bien la récupération de tampon_url
+            let { data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url').order('nom', { ascending: true });
             if (errC) throw errC;
             dbCloudCentres = centres || [];
 
@@ -902,7 +859,6 @@
         } catch (error) { console.error(error); }
     }
 
-    // INTERRUPTEUR D'ONGLETS POUR L'ESPACE DE GESTION
     function switchAdminTab(tab) {
         document.getElementById('tab-btn-view').className = 'admin-tab-btn' + (tab === 'view' ? ' active' : '');
         document.getElementById('tab-btn-edit').className = 'admin-tab-btn' + (tab === 'edit' ? ' active' : '');
@@ -932,7 +888,6 @@
         modal.style.display = "flex";
     }
 
-    // CONSTRUIRE DYNAMIQUEMENT LA FICHE COMPLÈTE DU CENTRE SÉLECTIONNÉ
     async function renderCenterCardDetails() {
         const targetDiv = document.getElementById('center-details-card-target');
         const selectedCenter = document.getElementById('admin-view-centre-select').value;
@@ -957,6 +912,7 @@
                 medHtml = "<span style='font-size:12px; color:var(--palette-vibrant-red); font-style:italic;'>Aucun médecin rattaché</span>";
             }
 
+            // FIX ICI : On utilise bien l'URL présente en cache local
             let tamponHtml = centreData.tampon_url 
                 ? `<div class="tampon-preview-box"><img src="${centreData.tampon_url}" alt="Tampon officiel"></div>`
                 : "<div style='font-size:12px; color:var(--text-muted); font-style:italic; margin-top:5px;'>Aucun visuel de tampon enregistré</div>";
@@ -1381,10 +1337,15 @@
             else sigTransImg.removeAttribute('src');
         }
 
+        // FIX ICI : On gère correctement le tampon automatisé sur le BL
         if (sigSource['centre'] === 'none') {
             const sigCentreImg = document.getElementById('v-sig-centre');
-            if (centreData.tampon_url) sigCentreImg.src = centreData.tampon_url;
-            else sigCentreImg.removeAttribute('src');
+            if (centreData.tampon_url) {
+                sigCentreImg.src = centreData.tampon_url;
+                sigCentreImg.style.display = "block";
+            } else {
+                sigCentreImg.removeAttribute('src');
+            }
         }
 
         const tableBody = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
