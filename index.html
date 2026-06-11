@@ -418,27 +418,9 @@
             -webkit-appearance: checkbox;
         }
 
-        /* Modal Admin principal */
-        #admin-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.65);
-            backdrop-filter: blur(8px);
-            z-index: 10000;
-            justify-content: center;
-            align-items: center;
-            padding: 16px;
-        }
-        #admin-modal .ios-modal-content {
-            border-radius: 24px;
-            width: 100%;
-            max-width: 500px;
-        }
-
         @media print {
             body { background: white; color: black; padding-bottom: 0; }
-            #login-screen, .app-container, .sticky-actions, #image-result, .ios-modal, #admin-modal, .bl-preview-header, #container-preview-zone { display: none !important; }
+            #login-screen, .app-container, .sticky-actions, #image-result, .ios-modal, .bl-preview-header, #container-preview-zone { display: none !important; }
             #bl-wrapper { background: transparent; padding: 0; margin: 0; display: block !important; height: auto !important; overflow: visible !important; }
             .bl-scaler { transform: none !important; width: 210mm !important; height: 297mm !important; }
             #bl-canvas { box-shadow: none !important; padding: 0; }
@@ -692,31 +674,42 @@
         <div id="manual-photo-status" style="font-size: 11px; color: var(--text-muted); font-style: italic; margin-bottom: 10px; text-align: center;"></div>
         <div class="grid-2" style="margin-top:24px;">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeManualModal()">FERMER</button>
-            <button class="btn-primary-ios" style="padding:14px; font-size:14px;" onclick="submitManualItem()">VALIDER 💾</button>
+            <button class="btn-primary-ios" style="padding:14px; font-size:14px;" onclick="saveManualItem()">VALIDER AU BL</button>
         </div>
     </div>
 </div>
 
-<div id="admin-modal" style="display: none;">
-    <div class="ios-modal-content">
-        <div style="display:flex; justify-content:between; align-items:center; margin-bottom:16px;">
-            <h3 style="margin:0; color:var(--blue-mp); font-size:16px; font-weight:850; letter-spacing:-0.3px;">⚙️ CONFIGURATION CLIENTS & SECTEUR</h3>
-            <button class="btn-header-icon" onclick="closeAdminModal()" style="width:32px; height:32px; font-size:12px;">✕</button>
+<div id="sig-modal" class="ios-modal">
+    <div class="ios-modal-content" style="max-width:100%; border-radius:28px 28px 0 0;">
+        <h3 id="sig-modal-title" style="margin-top:0; text-align:center; font-size:15px; color:var(--blue-mp); font-weight:bold; text-transform:uppercase;">ÉMARGEMENT ÉCRAN</h3>
+        <canvas id="modal-canvas" style="width:100%; height:280px; background:#fafafa; border:2px dashed var(--accent); border-radius:16px; touch-action:none;"></canvas>
+        <div class="grid-2" style="margin-top:20px;">
+            <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="clearModalPad()">EFFACER</button>
+            <button class="btn-primary-ios" style="padding:14px; font-size:14px;" onclick="closeFullscreenSig(true)">VALIDER ✅</button>
         </div>
-        <div class="admin-tabs">
-            <button id="tab-btn-view" class="admin-tab-btn active" onclick="switchAdminTab('view')">👁️ RECHERCHE</button>
-            <button id="tab-btn-edit" class="admin-tab-btn" onclick="switchAdminTab('edit')">✏️ MON SECTEUR</button>
-        </div>
-        <div id="admin-global-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:10px;"></div>
+    </div>
+</div>
+
+<div id="admin-modal" class="ios-modal">
+    <div class="ios-modal-content" style="max-height: 95vh;">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; text-align:center; margin-bottom:14px;">⚙️ Fiches Réseau & Établissements</h3>
         
+        <div class="admin-tabs">
+            <button id="tab-btn-view" class="admin-tab-btn active" onclick="switchAdminTab('view')">📋 CONSULTER</button>
+            <button id="tab-btn-edit" class="admin-tab-btn" onclick="switchAdminTab('edit')">➕ ÉDITION & AJOUT</button>
+        </div>
+
+        <div id="admin-global-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:10px;"></div>
+
         <div id="admin-tab-content-view">
             <div class="form-group">
                 <label>Sélectionner un Centre pour voir sa fiche</label>
                 <select id="admin-view-centre-select" onchange="renderCenterCardDetails()"></select>
             </div>
+            
             <div id="center-details-card-target"></div>
         </div>
-        
+
         <div id="admin-tab-content-edit" style="display:none;">
             <div class="admin-section-title">🔒 MON SECTEUR (CENTRES VISIBLES AU BL)</div>
             <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0; line-height: 1.3;">
@@ -724,7 +717,7 @@
             </p>
             <div id="ing-centers-checkboxes" class="checkbox-container-list"></div>
             <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 15px;" onclick="saveEngineerCentersProfile()">Enregistrer mon affectation sectorielle 📁</button>
-            
+
             <div class="admin-section-title">✏️ MODIFIER ENTIÈREMENT UNE FICHE CENTRE</div>
             <div class="form-group">
                 <label>Choisir le centre à modifier</label>
@@ -739,65 +732,73 @@
                 <input type="text" id="edit-c-adr">
             </div>
             <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 20px;" onclick="submitUpdateCentre()">Enregistrer les modifications du Centre 💾</button>
-            
+
             <div class="admin-section-title">🏥 AJOUTER UN NOUVEL ÉTABLISSEMENT</div>
             <div class="form-group"><label>Nom du Centre</label><input type="text" id="add-c-nom"></div>
             <div class="form-group"><label>Adresse Postale Complète</label><input type="text" id="add-c-adr"></div>
-            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 15px;" onclick="submitNouveauCentre()">Ajouter cet Établissement au Cloud ☁️</button>
+            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 20px;" onclick="submitNouveauCentre()">Créer le nouveau Centre ✅</button>
+            
+            <div class="admin-section-title">👨‍⚕️ AJOUTER UN MÉDECIN IMPLANTEUR</div>
+            <div class="form-group"><label>Rattacher au Centre</label><select id="add-m-centre-target"></select></div>
+            <div class="form-group"><label>Nom du Médecin</label><input type="text" id="add-m-nom"></div>
+            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 20px;" onclick="submitNouveauMedecin()">Rattacher le Médecin 🤝</button>
+            
+            <div class="admin-section-title">📷 ASSOCIER UN TAMPON OFFICIEL</div>
+            <div class="form-group"><label>Sélectionner le Centre</label><select id="add-t-centre-target"></select></div>
+            <button class="btn-smart-scan btn-scan-sonde" style="padding:14px; font-size:13px;" onclick="triggerCameraTampon()">📷 PRENDRE LE TAMPON EN PHOTO</button>
         </div>
-    </div>
-</div>
 
-<div id="sig-modal" class="ios-modal">
-    <div class="ios-modal-content" style="max-width:480px; padding:20px;">
-        <h3 style="margin-top:0; font-size:15px; color:var(--blue-mp); text-align:center; font-weight:bold;">ÉMARGEMENT ÉCRAN TACTILE</h3>
-        <canvas id="modal-sig-canvas" style="width:100%; height:280px; background:#f8fafc; border:2px dashed #cbd5e1; border-radius:16px; touch-action:none;"></canvas>
-        <div style="display:flex; gap:10px; margin-top:20px;">
-            <button class="btn-mini edit" style="padding:14px; flex:1; justify-content:center; font-size:14px;" onclick="clearModalPad()">EFFACER</button>
-            <button class="btn-mini edit" style="padding:14px; flex:1; justify-content:center; font-size:14px; background:#64748b; color:white;" onclick="closeFullscreenSig(false)">ANNULER</button>
-            <button class="btn-primary-ios" style="padding:14px; flex:1.5; font-size:14px;" onclick="closeFullscreenSig(true)">CONSERVER VALIDER</button>
+        <div style="margin-top:24px; border-top:1px solid #e2e8f0; padding-top:15px;">
+            <button class="btn-secondary-ios" style="padding:14px;" onclick="closeAdminModal()">FERMER LA GESTION</button>
         </div>
     </div>
 </div>
 
 <script>
-    // Config Supabase (Assurez-vous qu'elle correspond à votre environnement réel)
-    const _supabase = supabase.createClient('https://your-supabase-url.supabase.co', 'your-anon-key');
+    const supabaseUrl = "https://qwdwgrmhobkrstrnbcao.supabase.co";
+    const supabaseKey = "sb_publishable_fVGjFgTs7hsG_RIYljFSKQ_-ljz2sJ4";
+    
+    const _supabase = supabase.createClient(supabaseUrl, supabaseKey, {
+        auth: {
+            persistSession: true,
+            storageKey: 'mp-cardioflow-session',
+            storage: window.localStorage,
+            autoRefreshToken: true
+        }
+    });
+
+    // ====== LISTES GLOBALEMENT DÉCLARÉES DU MATÉRIEL ET ÉQUIPES ======
+    const listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
+    const listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
+    const listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
+    const listIngs = ["Antoine LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
 
     let dbCloudCentres = [];
-    let basketItems = [];
-    let activeFullscreenTarget = 'trans';
-    let sigSource = { trans: 'none', centre: 'none' };
-
-    let listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
-    let listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
-    let listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
-
-    let mCanvas = document.getElementById('modal-sig-canvas');
-    let mCtx = mCanvas.getContext('2d');
+    let basketItems = []; 
+    let sigSource = { trans: 'none', centre: 'none' }; 
+    let activeFullscreenTarget = null;
+    let mCanvas, mCtx;
     let cropper = null;
-    let currentScanScope = "BOITIER";
+    let currentScanScope = "BOITIER"; 
     let isUserZooming = false;
-    let modalScannerActive = false;
-    let temporaryModalSnapshot = null;
+    let modalScannerActive = false; 
+    let temporaryModalSnapshot = null; 
 
     let refsMap = {
-        "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M",
-        "Invicta 1CR58": "TLT001C", "Invicta 1CR68": "TLT005C", "Navigo ARC78": "TLT021C", "Navigo ARC88": "TLT022C",
-        "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT0200", "Talentia VR 3240": "TDF061C", "Talentia VR 3210": "TDF059C",
-        "Talentia DR 3540": "TDF062C", "Talentia DR 3510": "TDF060C", "Talentia CRTD 3844": "TDF068C",
-        "Talentia CRTD 3841": "TDF067C", "Talentia CRTD 3811": "TDF066C", "Alizéa DR 1600": "TPM020C",
-        "Alizéa SR 1300": "TPM021C", "ENO SR": "TPM015C", "ENO DR": "TPM014C"
+        "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M", 
+        "Invicta 1CR58": "TLT001C", "Invicta 1CR68": "TLT005C", "Navigo ARC78": "TLT021C", "Navigo ARC88": "TLT022C", 
+        "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT0200",
+        "Talentia VR 3240": "TDF061C", "Talentia VR 3210": "TDF059C", "Talentia DR 3540": "TDF062C", 
+        "Talentia DR 3510": "TDF060C", "Talentia CRTD 3844": "TDF068C", "Talentia CRTD 3841": "TDF067C", "Talentia CRTD 3811": "TDF066C",
+        "Alizéa DR 1600": "TPM020C", "Alizéa SR 1300": "TPM021C", "ENO SR": "TPM015C", "ENO DR": "TPM014C"
     };
 
     window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('inDate').valueAsDate = new Date();
         initPads();
         initDefaultScale();
-        window.addEventListener('resize', () => {
-            if(!isUserZooming) initDefaultScale();
-        });
-
+        window.addEventListener('resize', () => { if(!isUserZooming) initDefaultScale(); });
+        
         const { data: { session }, error } = await _supabase.auth.getSession();
         if (session && session.user) {
             showApp(session.user.email);
@@ -812,47 +813,65 @@
         const pass = document.getElementById('login-pass').value;
         const errEl = document.getElementById('login-error');
         errEl.innerText = "";
-        
-        const { data, error } = await _supabase.auth.signInWithPassword({ email, password: pass });
+
+        if (!email || !pass) {
+            errEl.innerText = "Veuillez remplir tous les champs.";
+            return;
+        }
+
+        const { data, error } = await _supabase.auth.signInWithPassword({ email: email, password: pass });
+
         if (error) {
-            errEl.innerText = "❌ Connexion échouée : " + error.message;
-        } else {
+            errEl.innerText = "Identifiants incorrects ou compte inexistant.";
+        } else if (data && data.user) {
             showApp(data.user.email);
         }
     }
 
-    function handleLogout() {
-        _supabase.auth.signOut();
-        document.getElementById('login-screen').style.display = 'flex';
+    async function handleLogout() {
+        await _supabase.auth.signOut();
         document.getElementById('app-content').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('login-pass').value = "";
+        document.getElementById('login-email').value = "";
     }
 
-    async function showApp(email) {
+    async function showApp(userEmail) {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-content').style.display = 'block';
-        await synchroniserDonneesDepuisCloud(email);
+        
+        const ingSel = document.getElementById('inIng');
+        if (userEmail && ingSel) {
+            if (userEmail.toLowerCase().includes('lecocq')) ingSel.value = "Antoine LECOCQ";
+            else if (userEmail.toLowerCase().includes('desarmenien')) ingSel.value = "Baptiste DESARMENIEN";
+            else if (userEmail.toLowerCase().includes('gartenlaub')) ingSel.value = "Valentin GARTENLAUB";
+            else if (userEmail.toLowerCase().includes('maingault')) ingSel.value = "Francois MAINGAULT";
+            else if (userEmail.toLowerCase().includes('morin')) ingSel.value = "Johann MORIN";
+        }
+
+        await synchroniserDonneesDepuisCloud();
     }
 
-    async function synchroniserDonneesDepuisCloud(currentEmail = "") {
+    async function synchroniserDonneesDepuisCloud() {
         try {
-            let { data: centres, error: errC } = await _supabase.from('centres').select('*').order('nom', { ascending: true });
+            let { data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url').order('nom', { ascending: true });
             if (errC) throw errC;
             dbCloudCentres = centres || [];
 
-            let { data: ings, error: errI } = await _supabase.from('ingenieurs').select('nom').order('nom', { ascending: true });
-            const iSel = document.getElementById('inIng');
+            const iSel = document.getElementById('inIng'); 
             iSel.innerHTML = "";
-            if (ings) {
-                ings.forEach(i => iSel.add(new Option(i.nom, i.nom)));
-            }
+            listIngs.forEach(i => iSel.add(new Option(i, i)));
 
-            if (currentEmail) {
-                let em = currentEmail.toLowerCase();
-                if (em.includes('desarmenien')) iSel.value = "Jean-Baptiste DESARMENIEN";
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (session && session.user && session.user.email) {
+                let em = session.user.email.toLowerCase();
+                if (em.includes('lecocq')) iSel.value = "Antoine LECOCQ";
+                else if (em.includes('desarmenien')) iSel.value = "Baptiste DESARMENIEN";
                 else if (em.includes('gartenlaub')) iSel.value = "Valentin GARTENLAUB";
                 else if (em.includes('maingault')) iSel.value = "Francois MAINGAULT";
                 else if (em.includes('morin')) iSel.value = "Johann MORIN";
             }
+
             await updateDynamicStocksAndFilter();
         } catch (error) {
             console.error(error);
@@ -864,47 +883,56 @@
         const targetOption = document.getElementById('man-dynamic-stock');
         if(targetOption) {
             let n = `Stock MICROPORT CRM ${ingName.toUpperCase()}`;
-            targetOption.value = n;
-            targetOption.innerText = n;
+            targetOption.value = n; targetOption.innerText = n;
         }
+
         try {
             let { data: mappings, error: errMap } = await _supabase
                 .from('engineer_centers')
                 .select('center_name')
                 .eq('engineer_name', ingName);
+
             if (errMap) throw errMap;
             
             let linkedCenterNames = (mappings || []).map(m => m.center_name);
-            const cSel = document.getElementById('inC');
-            cSel.innerHTML = "";
-            
+            const cSel = document.getElementById('inC'); 
+            cSel.innerHTML = ""; 
+
             let filteredCentres = dbCloudCentres.filter(c => linkedCenterNames.includes(c.nom));
+
             if (filteredCentres.length === 0) {
                 dbCloudCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
             } else {
                 filteredCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
             }
+
             await loadMedecinsDuCentre();
         } catch (e) {
             console.error("Erreur filtrage centres ingénieur:", e);
             const cSel = document.getElementById('inC');
-            cSel.innerHTML = "";
-            dbCloudCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
-            await loadMedecinsDuCentre();
+            if(cSel) {
+                cSel.innerHTML = "";
+                dbCloudCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
+                await loadMedecinsDuCentre();
+            }
         }
     }
 
     async function loadMedecinsDuCentre() {
         const centreChoisi = document.getElementById('inC').value;
         const dSel = document.getElementById('inD');
+        if(!dSel) return;
+        
         dSel.innerHTML = "";
         if (!centreChoisi) return;
+
         try {
             let { data: medecins, error: errM } = await _supabase
                 .from('medecins')
                 .select('nom')
                 .eq('centre_nom', centreChoisi)
                 .order('nom', { ascending: true });
+            
             if (errM) throw errM;
             if (medecins && medecins.length > 0) {
                 medecins.forEach(m => dSel.add(new Option(m.nom, m.nom)));
@@ -912,427 +940,109 @@
                 dSel.add(new Option("Aucun médecin", ""));
             }
             sync();
-        } catch(err) {
-            console.error(err);
-        }
-    }
-
-    function initPads() {}
-
-    function getPos(canvas, e) {
-        const rect = canvas.getBoundingClientRect();
-        if(e.touches) return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    }
-
-    function openFullscreenSig(target) {
-        activeFullscreenTarget = target;
-        document.getElementById('sig-modal').style.display = 'flex';
-        mCanvas.width = mCanvas.parentElement.clientWidth;
-        mCanvas.height = 280;
-        mCtx.lineWidth = 3;
-        mCtx.lineCap = 'round';
-        mCtx.strokeStyle = '#000';
-        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
-        let mDrawing = false;
-        
-        mCanvas.ontouchstart = (e) => {
-            mDrawing = true;
-            mCtx.beginPath();
-            const p = getPos(mCanvas, e);
-            mCtx.moveTo(p.x, p.y);
-            sigSource[activeFullscreenTarget] = 'fullscreen';
-        };
-        mCanvas.ontouchmove = (e) => {
-            if(!mDrawing) return;
-            const p = getPos(mCanvas, e);
-            mCtx.lineTo(p.x, p.y);
-            mCtx.stroke();
-        };
-        mCanvas.ontouchend = () => { mDrawing = false; };
-    }
-
-    function clearModalPad() {
-        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
-        sigSource[activeFullscreenTarget] = 'none';
-        const sCanvas = document.getElementById(`pad-${activeFullscreenTarget}`);
-        if(sCanvas) sCanvas.getContext('2d').clearRect(0, 0, sCanvas.width, sCanvas.height);
-        sync();
-    }
-
-    function closeFullscreenSig(save = false) {
-        if (save && sigSource[activeFullscreenTarget] !== 'none') {
-            const dataUrl = mCanvas.toDataURL();
-            document.getElementById(`v-sig-${activeFullscreenTarget}`).src = dataUrl;
-            const sCanvas = document.getElementById(`pad-${activeFullscreenTarget}`);
-            if(sCanvas) {
-                const sCtx = sCanvas.getContext('2d');
-                sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
-                const img = new Image();
-                img.onload = () => { sCtx.drawImage(img, 0, 0, sCanvas.width, sCanvas.height); };
-                img.src = dataUrl;
-            }
-        }
-        document.getElementById('sig-modal').style.display = 'none';
-        sync();
-    }
-
-    function handleSignatureImport(input, target) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                sigSource[target] = 'imported';
-                document.getElementById(`v-sig-${target}`).src = e.target.result;
-                const sCanvas = document.getElementById(`pad-${target}`);
-                if(sCanvas) {
-                    const sCtx = sCanvas.getContext('2d');
-                    sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
-                    const img = new Image();
-                    img.onload = () => { sCtx.drawImage(img, 0, 0, sCanvas.width, sCanvas.height); };
-                    img.src = e.target.result;
-                }
-                sync();
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
-
-    function triggerSmartAnalysis(scope) {
-        currentScanScope = scope;
-        modalScannerActive = false;
-        document.getElementById('label-camera-input').click();
-    }
-
-    function handleLabelFile(input) {
-        if(input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('crop-preview').src = e.target.result;
-                document.getElementById('crop-modal').style.display = 'flex';
-                if(cropper) cropper.destroy();
-                setTimeout(() => {
-                    cropper = new Cropper(document.getElementById('crop-preview'), {
-                        viewMode: 1, autoCropArea: 0.9, movable: true, zoomable: true, scalable: false, rotatable: true
-                    });
-                }, 200);
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
-
-    function closeCropModal() {
-        document.getElementById('crop-modal').style.display = 'none';
-        if(cropper) { cropper.destroy(); cropper = null; }
-    }
-
-    function processCroppedImage() {
-        if(!cropper) return;
-        document.getElementById('ocr-status').innerText = "Analyse Tesseract OCR... ⏳";
-        const canvas = cropper.getCroppedCanvas();
-        const ctx = canvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-
-        // Binarisation OCR rapide
-        for (let i = 0; i < data.length; i += 4) {
-            let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-            let bw = (grayscale > 110) ? 255 : 0;
-            data[i] = data[i+1] = data[i+2] = bw;
-        }
-        ctx.putImageData(imgData, 0, 0);
-        const savedCleanSnapshot = canvas.toDataURL('image/jpeg', 0.85);
-
-        Tesseract.recognize(canvas, 'eng').then(({ data: { text } }) => {
-            if (modalScannerActive) processInlineModalOCR(text, savedCleanSnapshot);
-            else {
-                if (currentScanScope === "BOITIER") parseBoitierText(text, savedCleanSnapshot);
-                else parseSondeText(text, savedCleanSnapshot);
-            }
-            document.getElementById('crop-modal').style.display = 'none';
-            if (cropper) { cropper.destroy(); cropper = null; }
-        }).catch(err => {
-            console.error(err);
-            closeCropModal();
-        });
-    }
-
-    function parseBoitierText(text, snapshot) {
-        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
-        let matchedModel = "Inconnu";
-        let targetType = "PM";
-
-        for (let name of listDefis) {
-            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; targetType = "DAI"; break; }
-        }
-        if (matchedModel === "Inconnu") {
-            for (let name of listPaces) {
-                if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; targetType = "PM"; break; }
-            }
-        }
-        let sn = extractSerialNumber(text, targetType);
-        let exp = extractExpirationDate(text);
-
-        basketItems.push({
-            type: targetType, model: matchedModel !== "Inconnu" ? matchedModel : listPaces[0],
-            sn: sn, exp: exp, stock: "Stock du centre", reno: "centre", img: snapshot
-        });
-        renderBasket();
-        if (matchedModel === "Inconnu" || !sn || !exp) openManualAddModal(basketItems.length - 1);
-    }
-
-    function parseSondeText(text, snapshot) {
-        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
-        let matchedModel = "Inconnu";
-
-        for (let name of listSondes) {
-            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
-        }
-        let sn = extractSerialNumber(text, "SONDE");
-        let exp = extractExpirationDate(text);
-
-        basketItems.push({
-            type: "SONDE", model: matchedModel !== "Inconnu" ? matchedModel : listSondes[0],
-            sn: sn, exp: exp, stock: "Stock du centre", reno: "centre", img: snapshot
-        });
-        renderBasket();
-        if (matchedModel === "Inconnu" || !sn || !exp) openManualAddModal(basketItems.length - 1);
-    }
-
-    function extractSerialNumber(text, type) {
-        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
-        const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{6,12})/i);
-        if (udiMatch) return udiMatch[1].trim();
-        let fallback = cleanText.match(/SN\s*[:\-\s]?\s*([A-Z0-9]{6,12})/i);
-        return fallback ? fallback[1].trim() : "";
-    }
-
-    function extractExpirationDate(text) {
-        let matches = text.match(/\b(20[2-3][0-9])[\-\/\s](0[1-9]|1[0-2])[\-\/\s](0[1-9]|[12][0-9]|3[01])\b/);
-        if (matches) return `${matches[1]}-${matches[2]}-${matches[3]}`;
-        return "";
-    }
-
-    function renderBasket() {
-        const container = document.getElementById('detected-items-list');
-        const emptyState = document.getElementById('empty-state-msg');
-        container.querySelectorAll('.detected-item-card').forEach(c => c.remove());
-
-        if (basketItems.length === 0) {
-            emptyState.style.display = "block";
-            document.getElementById('badge-total').innerText = "0";
-            sync();
-            return;
-        }
-        emptyState.style.display = "none";
-        document.getElementById('badge-total').innerText = basketItems.length;
-
-        basketItems.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.className = `detected-item-card ${item.type}`;
-            div.innerHTML = `
-                <div class="detected-header"><span>${item.type} &bull; ${item.model}</span><span>REF: ${refsMap[item.model]||'??'}</span></div>
-                <div class="detected-details"><b>S/N :</b> ${item.sn || '<span style="color:red;">⚠️</span>'} | <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}</div>
-                <div class="detected-actions">
-                    <button class="btn-mini edit" onclick="openManualAddModal(${index})">✏️ Ajuster</button>
-                    <button class="btn-mini delete" onclick="deleteBasketItem(${index})">🗑️ Retirer</button>
-                </div>`;
-            container.appendChild(div);
-        });
-        sync();
-    }
-
-    function deleteBasketItem(index) {
-        basketItems.splice(index, 1);
-        renderBasket();
-    }
-
-    function openManualAddModal(index = -1) {
-        const modal = document.getElementById('manual-modal');
-        document.getElementById('edit-index').value = index;
-        updateManualModelOptions();
-        temporaryModalSnapshot = null;
-
-        if (index > -1) {
-            const item = basketItems[index];
-            document.getElementById('manual-modal-title').innerText = "✏️ Ajustement Matériel";
-            document.getElementById('man-type').value = item.type;
-            updateManualModelOptions();
-            document.getElementById('man-model').value = item.model;
-            document.getElementById('man-sn').value = item.sn;
-            document.getElementById('man-exp').value = item.exp;
-            document.getElementById('man-stock').value = item.stock;
-            document.getElementById('man-reno').value = item.reno;
-            document.getElementById('manual-photo-status').innerText = item.img ? "📸 Photo liée enregistrée." : "Aucune image liée.";
-        } else {
-            document.getElementById('manual-modal-title').innerText = "➕ Ajout Matériel Manuel";
-            document.getElementById('man-sn').value = "";
-            document.getElementById('man-exp').value = "";
-            document.getElementById('manual-photo-status').innerText = "";
-        }
-        modal.style.display = "flex";
-    }
-
-    function closeManualModal() {
-        document.getElementById('manual-modal').style.display = "none";
-    }
-
-    function updateManualModelOptions() {
-        const type = document.getElementById('man-type').value;
-        const mSel = document.getElementById('man-model');
-        mSel.innerHTML = "";
-        let src = (type === "SONDE") ? listSondes : ((type === "DAI") ? listDefis : listPaces);
-        src.forEach(m => mSel.add(new Option(m, m)));
-    }
-
-    function autoAlignRenewalOption() {
-        const stock = document.getElementById('man-stock').value;
-        document.getElementById('man-reno').value = stock.includes("MICROPORT") ? "ing" : "centre";
-    }
-
-    function submitManualItem() {
-        const idx = parseInt(document.getElementById('edit-index').value);
-        const type = document.getElementById('man-type').value;
-        const model = document.getElementById('man-model').value;
-        const sn = document.getElementById('man-sn').value.trim().toUpperCase();
-        const exp = document.getElementById('man-exp').value;
-        const stock = document.getElementById('man-stock').value;
-        const reno = document.getElementById('man-reno').value;
-
-        let baseImg = temporaryModalSnapshot || null;
-
-        if (idx > -1) {
-            if(!baseImg) baseImg = basketItems[idx].img;
-            basketItems[idx] = { type, model, sn, exp, stock, reno, img: baseImg };
-        } else {
-            basketItems.push({ type, model, sn, exp, stock, reno, img: baseImg });
-        }
-        closeManualModal();
-        renderBasket();
-    }
-
-    function openAdminModal() {
-        document.getElementById('admin-modal').style.display = "flex";
-        switchAdminTab('view');
-        
-        const vSel = document.getElementById('admin-view-centre-select');
-        const eSel = document.getElementById('admin-edit-center-select');
-        vSel.innerHTML = ""; eSel.innerHTML = "";
-        
-        dbCloudCentres.forEach(c => {
-            vSel.add(new Option(c.nom, c.nom));
-            eSel.add(new Option(c.nom, c.nom));
-        });
-        renderCenterCardDetails();
-        renderEngineerSectorCheckboxes();
+        } catch (error) { console.error(error); }
     }
 
     function switchAdminTab(tab) {
-        document.getElementById('admin-tab-content-view').style.display = (tab === 'view') ? 'block' : 'none';
-        document.getElementById('admin-tab-content-edit').style.display = (tab === 'edit') ? 'block' : 'none';
-        document.getElementById('tab-btn-view').className = `admin-tab-btn ${tab === 'view' ? 'active' : ''}`;
-        document.getElementById('tab-btn-edit').className = `admin-tab-btn ${tab === 'edit' ? 'active' : ''}`;
+        document.getElementById('tab-btn-view').className = 'admin-tab-btn' + (tab === 'view' ? ' active' : '');
+        document.getElementById('tab-btn-edit').className = 'admin-tab-btn' + (tab === 'edit' ? ' active' : '');
+        
+        document.getElementById('admin-tab-content-view').style.display = (tab === 'view' ? 'block' : 'none');
+        document.getElementById('admin-tab-content-edit').style.display = (tab === 'edit' ? 'block' : 'none');
+        
+        if (tab === 'view') renderCenterCardDetails();
+        if (tab === 'edit') prepareAdminEditFormOptions();
     }
 
-    async function renderEngineerSectorCheckboxes() {
-        const container = document.getElementById('ing-centers-checkboxes');
-        container.innerHTML = "";
-        const currentIng = document.getElementById('inIng').value;
-        if (!currentIng) return;
+    async function prepareAdminEditFormOptions() {
+        const editSelect = document.getElementById('admin-edit-center-select');
+        editSelect.innerHTML = "";
+        dbCloudCentres.forEach(c => editSelect.add(new Option(c.nom, c.nom)));
+        loadCenterEditForm();
+        await renderEngineerCentersCheckboxes();
+    }
 
+    async function renderEngineerCentersCheckboxes() {
+        const currentIng = document.getElementById('inIng').value || "";
+        const checkboxContainer = document.getElementById('ing-centers-checkboxes');
+        
+        if (!currentIng) {
+            checkboxContainer.innerHTML = "<p style='font-size:12px;color:var(--palette-vibrant-red);'>⚠️ Veuillez d'abord sélectionner un ingénieur sur l'écran principal.</p>";
+            return;
+        }
+
+        checkboxContainer.innerHTML = "<p style='font-size:12px;color:var(--text-muted);padding:4px;'>Chargement du secteur... ⏳</p>";
+        
         try {
-            let { data: mappings } = await _supabase.from('engineer_centers').select('center_name').eq('engineer_name', currentIng);
-            let checkedNames = (mappings || []).map(m => m.center_name);
-
+            let { data: currentLinks, error } = await _supabase
+                .from('engineer_centers')
+                .select('center_name')
+                .eq('engineer_name', currentIng);
+                
+            if (error) throw error;
+            let checkedNames = (currentLinks || []).map(l => l.center_name);
+            
+            checkboxContainer.innerHTML = "";
             dbCloudCentres.forEach(center => {
                 const label = document.createElement('label');
                 label.className = "checkbox-item";
-                let isChecked = checkedNames.includes(center.nom) ? "checked" : "";
+                const isChecked = checkedNames.includes(center.nom) ? "checked" : "";
                 label.innerHTML = `<input type="checkbox" value="${center.nom}" ${isChecked}> <span>${center.nom}</span>`;
-                container.appendChild(label);
+                checkboxContainer.appendChild(label);
             });
         } catch (e) {
-            container.innerHTML = "<p style='color:red;font-size:12px;'>Erreur lors du chargement des affectations.</p>";
+            console.error("Erreur chargement affectations:", e);
+            checkboxContainer.innerHTML = `<p style='color:red;font-size:12px;'>Erreur lors du chargement des affectations. ${e.message || ''}</p>`;
         }
     }
 
     async function saveEngineerCentersProfile() {
         const currentIng = document.getElementById('inIng').value || "";
+        const status = document.getElementById('admin-global-status');
+        
         if (!currentIng) {
-            alert("Veuillez sélectionner un ingénieur d'application au préalable.");
+            status.innerText = "❌ Erreur : Aucun ingénieur sélectionné.";
             return;
         }
+
         const checkboxContainer = document.getElementById('ing-centers-checkboxes');
         const checkedBoxes = checkboxContainer.querySelectorAll('input[type="checkbox"]:checked');
-        const status = document.getElementById('admin-global-status');
         
         let targetCenters = [];
         checkedBoxes.forEach(box => targetCenters.push(box.value));
         
         status.innerText = "Mise à jour du secteur... ⏳";
+        
         try {
-            // Nettoyage sécurisé basé sur le profil de l'ingénieur sélectionné
-            const { error: delError } = await _supabase
+            // Etape 1 : Nettoyer l'existant
+            let { error: delError } = await _supabase
                 .from('engineer_centers')
                 .delete()
                 .eq('engineer_name', currentIng);
                 
-            if (delError) throw delError;
-
-            // Insertion des nouvelles lignes si cochées
+            if (delError) {
+                console.error("Erreur Suppression Supabase:", delError);
+                throw delError;
+            }
+            
+            // Etape 2 : Inserer la nouvelle sélection
             if (targetCenters.length > 0) {
                 let rowsToInsert = targetCenters.map(cName => ({
                     engineer_name: currentIng,
                     center_name: cName
                 }));
-                const { error: insError } = await _supabase.from('engineer_centers').insert(rowsToInsert);
-                if (insError) throw insError;
+                let { error: insError } = await _supabase.from('engineer_centers').insert(rowsToInsert);
+                if (insError) {
+                    console.error("Erreur Insertion Supabase:", insError);
+                    throw insError;
+                }
             }
-
-            status.innerText = "✅ Secteur enregistré avec succès !";
             
-            // Rechargement direct des filtres d'affichage locaux sans forcer la fermeture
+            status.innerText = "✅ Secteur enregistré avec succès !";
             await updateDynamicStocksAndFilter();
         } catch (e) {
-            console.error("Détail Erreur Supabase Sectorielle:", e);
-            status.innerText = "❌ Erreur de synchronisation sectorielle.";
-        }
-    }
-
-    async function renderCenterCardDetails() {
-        const selectedCenter = document.getElementById('admin-view-centre-select').value;
-        const targetDiv = document.getElementById('center-details-card-target');
-        if(!selectedCenter) { targetDiv.innerHTML = ""; return; }
-
-        const centreData = dbCloudCentres.find(item => item.nom === selectedCenter);
-        if(!centreData) return;
-
-        try {
-            let { data: medecins } = await _supabase
-                .from('medecins')
-                .select('nom')
-                .eq('centre_nom', selectedCenter)
-                .order('nom', { ascending: true });
-
-            let medHtml = "";
-            if (medecins && medecins.length > 0) {
-                medecins.forEach(m => { medHtml += `<span class="doc-tag">👨‍⚕️ Dr ${m.nom}</span>`; });
-            } else {
-                medHtml = "<span style='font-size:12px; color:var(--palette-vibrant-red); font-style:italic;'>Aucun médecin rattaché</span>";
-            }
-
-            let tamponHtml = centreData.tampon_url ? 
-                `<div class="tampon-preview-box"><img src="${centreData.tampon_url}" alt="Tampon"></div>` : 
-                "<div style='font-size:12px; color:var(--text-muted); font-style:italic; margin-top:5px;'>Aucun visuel de tampon enregistré</div>";
-
-            targetDiv.innerHTML = `
-                <div class="center-card-info">
-                    <div class="info-row"><b>🏥 Établissement</b>${centreData.nom}</div>
-                    <div class="info-row"><b>📍 Adresse Logistique</b>${centreData.adresse || 'Non renseignée'}</div>
-                    <div class="info-row" style="margin-top:12px;"><b>👥 Équipe de Cardiologie</b><div style="margin-top:4px;">${medHtml}</div></div>
-                    <div class="info-row" style="margin-top:14px;"><b>印 Tampon Officiel Lié</b>${tamponHtml}</div>
-                </div>`;
-        } catch (err) {
-            targetDiv.innerHTML = "<p style='color:red;'>Erreur lors du téléchargement</p>";
+            console.error("Erreur Complète Supabase:", e);
+            status.innerText = `❌ Échec: ${e.message || "Erreur de synchronisation"}`;
         }
     }
 
@@ -1350,23 +1060,91 @@
         const newNom = document.getElementById('edit-c-nom').value.trim().toUpperCase();
         const newAdr = document.getElementById('edit-c-adr').value.trim();
         const status = document.getElementById('admin-global-status');
-
+        
         if (!originalName || !newNom || !newAdr) {
             alert("Veuillez remplir tous les champs de modification.");
             return;
         }
+        
         status.innerText = "Mise à jour Cloud... ⏳";
         try {
-            const { error } = await _supabase.from('centres').update({ nom: newNom, adresse: newAdr }).eq('nom', originalName);
+            const { error } = await _supabase
+                .from('centres')
+                .update({ nom: newNom, adresse: newAdr })
+                .eq('nom', originalName);
+                
             if (error) throw error;
-            status.innerText = "✅ Établissement mis à jour !";
+            
+            status.innerText = "🎉 Fiche Centre modifiée avec succès !";
             await synchroniserDonneesDepuisCloud();
-            openAdminModal();
-        } catch(e) {
-            alert("Erreur lors de la modification");
+            prepareAdminEditFormOptions();
+        } catch (e) {
+            console.error(e);
+            alert("Erreur lors de la mise à jour des données.");
             status.innerText = "";
         }
     }
+
+    function openAdminModal() {
+        const modal = document.getElementById('admin-modal');
+        const cTarget = document.getElementById('add-m-centre-target');
+        const tTarget = document.getElementById('add-t-centre-target');
+        const viewTarget = document.getElementById('admin-view-centre-select');
+        
+        cTarget.innerHTML = ""; tTarget.innerHTML = ""; viewTarget.innerHTML = "";
+        
+        dbCloudCentres.forEach(c => {
+            cTarget.add(new Option(c.nom, c.nom));
+            tTarget.add(new Option(c.nom, c.nom));
+            viewTarget.add(new Option(c.nom, c.nom));
+        });
+        
+        document.getElementById('admin-global-status').innerText = "";
+        switchAdminTab('view'); 
+        modal.style.display = "flex";
+    }
+
+    async function renderCenterCardDetails() {
+        const targetDiv = document.getElementById('center-details-card-target');
+        const selectedCenter = document.getElementById('admin-view-centre-select').value;
+        if (!selectedCenter) { targetDiv.innerHTML = ""; return; }
+
+        targetDiv.innerHTML = "<p style='text-align:center; font-size:12px; color:var(--text-muted);'>Chargement de la fiche... ⏳</p>";
+
+        const centreData = dbCloudCentres.find(item => item.nom === selectedCenter);
+        if (!centreData) return;
+
+        try {
+            let { data: medecins, error } = await _supabase
+                .from('medecins')
+                .select('nom')
+                .eq('centre_nom', selectedCenter)
+                .order('nom', { ascending: true });
+
+            let medHtml = "";
+            if (medecins && medecins.length > 0) {
+                medecins.forEach(m => { medHtml += `<span class="doc-tag">👨‍⚕️ Dr ${m.nom}</span>`; });
+            } else {
+                medHtml = "<span style='font-size:12px; color:var(--palette-vibrant-red); font-style:italic;'>Aucun médecin rattaché</span>";
+            }
+
+            let tamponHtml = centreData.tampon_url 
+                ? `<div class="tampon-preview-box"><img src="${centreData.tampon_url}" alt="Tampon officiel"></div>`
+                : "<div style='font-size:12px; color:var(--text-muted); font-style:italic; margin-top:5px;'>Aucun visuel de tampon enregistré</div>";
+
+            targetDiv.innerHTML = `
+                <div class="center-card-info">
+                    <div class="info-row"><b>🏥 Établissement</b>${centreData.nom}</div>
+                    <div class="info-row"><b>📍 Adresse Logistique</b>${centreData.adresse || 'Non renseignée'}</div>
+                    <div class="info-row" style="margin-top:12px;"><b>👥 Équipe de Cardiologie</b><div style="margin-top:4px;">${medHtml}</div></div>
+                    <div class="info-row" style="margin-top:14px;"><b>印 Tampon Officiel Lié</b>${tamponHtml}</div>
+                </div>`;
+        } catch (err) {
+            targetDiv.innerHTML = "<p style='color:red;'>Erreur lors du téléchargement</p>";
+        }
+    }
+
+    function closeAdminModal() { document.getElementById('admin-modal').style.display = "none"; }
 
     async function submitNouveauCentre() {
         const nom = document.getElementById('add-c-nom').value.trim().toUpperCase();
@@ -1376,103 +1154,88 @@
 
         status.innerText = "Écriture Cloud... ⏳";
         const { error } = await _supabase.from('centres').insert([{ nom: nom, adresse: adr }]);
-        if (error) {
-            alert("Erreur de sauvegarde");
-            status.innerText = "";
-        } else {
-            document.getElementById('add-c-nom').value = "";
-            document.getElementById('add-c-adr').value = "";
+        if (error) { alert("Erreur de sauvegarde"); status.innerText = ""; } 
+        else {
+            document.getElementById('add-c-nom').value = ""; document.getElementById('add-c-adr').value = "";
             status.innerText = "✅ Centre enregistré !";
-            await synchroniserDonneesDepuisCloud();
-            openAdminModal();
+            await synchroniserDonneesDepuisCloud(); openAdminModal();
         }
     }
 
-    function closeAdminModal() {
-        document.getElementById('admin-modal').style.display = "none";
+    async function submitNouveauMedecin() {
+        const centre = document.getElementById('add-m-centre-target').value;
+        const nomDoc = document.getElementById('add-m-nom').value.trim();
+        const status = document.getElementById('admin-global-status');
+        if (!nomDoc) return;
+
+        status.innerText = "Liaison Cloud... ⏳";
+        const { error } = await _supabase.from('medecins').insert([{ nom: nomDoc, centre_nom: centre }]);
+        if (error) { alert("Erreur"); status.innerText = ""; } 
+        else {
+            document.getElementById('add-m-nom').value = "";
+            status.innerText = "✅ Médecin rattaché !";
+            await synchroniserDonneesDepuisCloud(); openAdminModal();
+        }
     }
 
-    async function sync() {
-        const centreName = document.getElementById('inC').value;
-        const medecin = document.getElementById('inD').value;
-        const ing = document.getElementById('inIng').value;
-        const dateVal = document.getElementById('inDate').value;
-        const acte = document.getElementById('inActe').value;
+    function triggerCameraTampon() { document.getElementById('admin-tampon-camera').click(); }
 
-        let dateStr = "N/A";
-        if(dateVal) { dateStr = dateVal.split('-').reverse().join('/'); }
+    async function handleAdminTamponUpload(input) {
+        const centreCible = document.getElementById('add-t-centre-target').value;
+        const status = document.getElementById('admin-global-status');
+        if (!input.files || !input.files[0] || !centreCible) return;
 
-        document.getElementById('v-date').innerText = dateStr;
-        document.getElementById('v-centre').innerText = centreName || "Non sélectionné";
-        document.getElementById('v-doc').innerText = medecin || "Non renseigné";
-        document.getElementById('v-ing').innerText = ing || "Non renseigné";
-        document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL - ${acte.toUpperCase()}`;
+        status.innerText = "Filtre contraste & Blanchiment... ⏳";
+        const file = input.files[0];
+        const reader = new FileReader();
 
-        const centreData = dbCloudCentres.find(c => c.nom === centreName);
-        document.getElementById('v-adr').innerText = centreData ? (centreData.adresse || "N/A") : "N/A";
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = async function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width; canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
 
-        // Signature Auto Transporteur
-        const sigTransImg = document.getElementById('v-sig-trans');
-        if(sigSource['trans'] === 'none') {
-            if (ing === "Jean-Baptiste DESARMENIEN") sigTransImg.src = "assets/signature-jb.png";
-            else if (ing === "Valentin GARTENLAUB") sigTransImg.src = "assets/signature-valentin.png";
-            else if (ing === "Francois MAINGAULT") sigTransImg.src = "assets/signature-francois.png";
-            else if (ing === "Johann MORIN") sigTransImg.src = "assets/signature-johann.png";
-            else sigTransImg.removeAttribute('src');
-        }
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                    let finalColor = (grayscale > 130) ? 255 : 0; 
+                    data[i] = data[i+1] = data[i+2] = finalColor;
+                }
+                ctx.putImageData(imgData, 0, 0);
 
-        // Tampon Officiel Auto
-        if (sigSource['centre'] === 'none') {
-            const sigCentreImg = document.getElementById('v-sig-centre');
-            if (centreData && centreData.tampon_url) {
-                sigCentreImg.src = centreData.tampon_url;
-                sigCentreImg.style.display = "block";
-            } else {
-                sigCentreImg.removeAttribute('src');
-            }
-        }
+                canvas.toBlob(async function(blob) {
+                    const cleanFileName = `tampon_${centreCible.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}.jpg`;
+                    status.innerText = "Upload Cloud Storage Sécurisé... 📤";
 
-        // Remplissage Tableau Preview A4
-        const tableBody = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
-        tableBody.innerHTML = "";
-        document.getElementById('v-total').innerText = basketItems.length;
+                    let { error: uploadError } = await _supabase.storage
+                        .from('tampons')
+                        .upload(cleanFileName, blob, { contentType: 'image/jpeg' });
 
-        basketItems.forEach(item => {
-            const row = tableBody.insertRow();
-            let ref = refsMap[item.model] || "N/A";
-            let formattedExp = item.exp ? item.exp.split('-').reverse().join('/') : "N/A";
-            let textType = item.type === "DAI" ? "Défibrillateur (DAI)" : (item.type === "PM" ? "Pacemaker (PM)" : "Sonde");
+                    if (uploadError) { alert("Erreur stockage"); status.innerText = ""; return; }
 
-            let logistiqueSpec = `• Provenance : ${item.stock}<br>• Suivi : ${item.reno === 'ing' ? "Renouvellement Ingénieur" : (item.reno === 'centre' ? "Renouvellement Stock Centre" : "Aucun")}`;
+                    const { data: urlData } = _supabase.storage.from('tampons').getPublicUrl(cleanFileName);
+                    const publicUrl = urlData.publicUrl;
 
-            let photoHtml = item.img ? `<div class="row-photo-flat"><img src="${item.img}"></div>` : '';
-
-            row.innerHTML = `
-                <td style="font-weight:bold; font-size:11px; text-align:center; background:#fafafa;">${textType}<br><span style="font-weight:normal; font-size:10px; color:#475569;">${item.model}</span></td>
-                <td>
-                    <div style="font-size:11px; font-family:monospace; line-height:1.4;">
-                        <b>REF :</b> ${ref}<br>
-                        <b>S/N :</b> ${item.sn || 'MANQUANT'}<br>
-                        <b>EXP :</b> ${formattedExp}
-                    </div>
-                    ${photoHtml}
-                </td>
-                <td style="font-size:10px; color:#334155; vertical-align:top; padding:8px;">${logistiqueSpec}</td>
-            `;
-        });
+                    const { error: updateError } = await _supabase.from('centres').update({ tampon_url: publicUrl }).eq('nom', centreCible);
+                    if (updateError) alert("Erreur SQL");
+                    else { status.innerText = "🎉 Tampon relié au centre avec succès !"; await synchroniserDonneesDepuisCloud(); }
+                }, 'image/jpeg', 0.85);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 
     function initDefaultScale() {
         const wrapper = document.getElementById('bl-wrapper');
         if (!wrapper) return;
-        let availableWidth = wrapper.clientWidth - 24;
-        let defaultScale = availableWidth / 794;
+        let availableWidth = wrapper.clientWidth - 24; 
+        let defaultScale = availableWidth / 794; 
         const slider = document.getElementById('preview-zoom-slider');
-        if(slider) {
-            slider.min = (defaultScale * 0.8).toFixed(2);
-            slider.max = "2.0";
-            slider.value = defaultScale.toFixed(2);
-        }
+        if(slider) { slider.min = (defaultScale * 0.8).toFixed(2); slider.max = "2.0"; slider.value = defaultScale.toFixed(2); }
         adjustPreviewScale(defaultScale);
     }
 
@@ -1481,63 +1244,371 @@
         const scaler = document.getElementById('bl-scaler-container');
         const badge = document.getElementById('zoom-val-badge');
         if (!wrapper || !scaler) return;
-
         let val = parseFloat(scaleValue);
         scaler.style.transform = `scale(${val})`;
         let autoWidth = wrapper.clientWidth - 24;
         let baseScale = autoWidth / 794;
-        
         if(badge) badge.innerText = `${Math.round((val / baseScale) * 100)}%`;
         wrapper.style.height = `${(1123 * val) + 24}px`;
     }
 
-    function generateEmail() {
-        const centre = document.getElementById('inC').value;
-        const medecin = document.getElementById('inD').value;
-        const ing = document.getElementById('inIng').value;
-        const acte = document.getElementById('inActe').value;
-        const dateVal = document.getElementById('inDate').value;
-        let dateStr = dateVal ? dateVal.split('-').reverse().join('/') : "N/A";
+    function autoAlignRenewalOption() {
+        document.getElementById('man-reno').value = (document.getElementById('man-stock').value === "Stock du centre") ? "centre" : "ing";
+    }
 
-        const subject = `[MicroPort] Compte-rendu d'intervention - ${centre}`;
-        let detailMatos = "";
-        basketItems.forEach(i => {
-            detailMatos += `• ${i.type} ${i.model} (SN: ${i.sn}, EXP: ${i.exp ? i.exp.split('-').reverse().join('/') : 'N/A'}) [${i.stock}]\n`;
+    function triggerSmartAnalysis(scope) {
+        modalScannerActive = false; currentScanScope = scope; 
+        document.getElementById('ocr-status').innerText = (scope === "BOITIER") ? "Cadrer l'étiquette Boîtier." : "Cadrer l'étiquette Sonde.";
+        document.getElementById('label-camera-input').click();
+    }
+
+    function handleLabelFile(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (modalScannerActive) document.getElementById('manual-modal').style.display = 'none';
+                const modal = document.getElementById('crop-modal');
+                const image = document.getElementById('crop-preview');
+                image.src = e.target.result; modal.style.display = 'flex';
+                if (cropper) cropper.destroy();
+                cropper = new Cropper(image, { viewMode: 1, autoCropArea: 0.95 });
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function closeCropModal() {
+        document.getElementById('crop-modal').style.display = 'none';
+        if (cropper) { cropper.destroy(); cropper = null; }
+        if (modalScannerActive) document.getElementById('manual-modal').style.display = 'flex';
+    }
+
+    function processCroppedImage() {
+        if (!cropper) return;
+        document.getElementById('ocr-status').innerText = "Analyse OCR... ⏳";
+        const canvasClean = cropper.getCroppedCanvas();
+        const canvasOcr = document.createElement('canvas');
+        canvasOcr.width = canvasClean.width; canvasOcr.height = canvasClean.height;
+        const ctxOcr = canvasOcr.getContext('2d'); ctxOcr.drawImage(canvasClean, 0, 0);
+        
+        const imgData = ctxOcr.getImageData(0, 0, canvasOcr.width, canvasOcr.height);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+            let bw = (grayscale > 110) ? 255 : 0; 
+            data[i] = data[i+1] = data[i+2] = bw;
+        }
+        ctxOcr.putImageData(imgData, 0, 0);
+        const savedCleanSnapshot = canvasOcr.toDataURL('image/jpeg', 0.85);
+
+        Tesseract.recognize(canvasOcr, 'eng').then(({ data: { text } }) => {
+            if (modalScannerActive) processInlineModalOCR(text, savedCleanSnapshot);
+            else {
+                if (currentScanScope === "BOITIER") parseBoitierText(text, savedCleanSnapshot);
+                else parseSondeText(text, savedCleanSnapshot);
+            }
+            document.getElementById('crop-modal').style.display = 'none';
+            if (cropper) { cropper.destroy(); cropper = null; }
+        }).catch(err => { console.error(err); closeCropModal(); });
+    }
+
+    function processInlineModalOCR(text, snapshot) {
+        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        let currentType = document.getElementById('man-type').value;
+        let matchedModel = "Inconnu";
+        let targetList = (currentType === "SONDE") ? listSondes : ((currentType === "DAI") ? listDefis : listPaces);
+
+        for (let name of targetList) {
+            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
+        }
+        let sn = extractSerialNumber(text, currentType);
+        let exp = extractExpirationDate(text);
+
+        if (matchedModel !== "Inconnu") document.getElementById('man-model').value = matchedModel;
+        if (sn) document.getElementById('man-sn').value = sn;
+        if (exp) document.getElementById('man-exp').value = exp;
+        
+        temporaryModalSnapshot = snapshot;
+        document.getElementById('manual-photo-status').innerText = "📸 Photo d'étiquette associée.";
+        document.getElementById('manual-modal').style.display = 'flex';
+    }
+
+    function extractSerialNumber(text, type) {
+        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
+        const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{6,12})/i);
+        if (udiMatch) return udiMatch[1].trim();
+
+        if (type === "SONDE") {
+            let vegaMatch = cleanText.match(/\b([A-Z]{3}\d{6})\b/i);
+            if (vegaMatch) return vegaMatch[1].trim();
+        } else {
+            let mpBoxMatch = cleanText.match(/\b(\d{3}[A-Z]{2}\d{3})\b/i);
+            if (mpBoxMatch) return mpBoxMatch[1].trim();
+        }
+        let m = cleanText.match(/(?:SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,12})/i);
+        return m ? m[1].trim() : "";
+    }
+
+    function extractExpirationDate(text) {
+        let cleanText = text.replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        const isoDateMatch = cleanText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
+        if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
+        return "";
+    }
+
+    function parseBoitierText(text, snapshot) {
+        let matchedModel = "Inconnu"; let detectedType = "DAI";
+        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        let listBoitiers = [...listDefis, ...listPaces];
+        
+        for (let name of listBoitiers) {
+            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
+        }
+        if (listPaces.includes(matchedModel)) detectedType = "PM";
+        let sn = extractSerialNumber(text, "BOITIER");
+        let exp = extractExpirationDate(text);
+
+        basketItems.push({
+            type: detectedType, model: matchedModel !== "Inconnu" ? matchedModel : listDefis[0], 
+            sn: sn, exp: exp, stock: "Stock du centre", reno: "centre", img: snapshot
         });
-        if(basketItems.length === 0) detailMatos = "Aucun matériel scanné.\n";
+        renderBasket();
+        if (matchedModel === "Inconnu" || !sn || !exp) openManualAddModal(basketItems.length - 1);
+    }
 
-        const mailBody = `Bonjour,\n\nVoici le récapitulatif du matériel lié à l'intervention :\n\n• Acte : ${acte}\n• Date : ${dateStr}\n• Centre : ${centre}\n• Médecin : ${medecin}\n• Ingénieur : ${ing}\n\n📦 MATÉRIEL\n${detailMatos}\nCordialement,`;
-        window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailBody)}`, '_blank');
+    function parseSondeText(text, snapshot) {
+        let matchedModel = "Inconnu";
+        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+
+        for (let name of listSondes) {
+            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
+        }
+        let sn = extractSerialNumber(text, "SONDE");
+        let exp = extractExpirationDate(text);
+
+        basketItems.push({
+            type: "SONDE", model: matchedModel !== "Inconnu" ? matchedModel : listSondes[0], 
+            sn: sn, exp: exp, stock: "Stock du centre", reno: "centre", img: snapshot
+        });
+        renderBasket();
+        if (matchedModel === "Inconnu" || !sn || !exp) openManualAddModal(basketItems.length - 1);
+    }
+
+    function renderBasket() {
+        const container = document.getElementById('detected-items-list');
+        const emptyState = document.getElementById('empty-state-msg');
+        container.querySelectorAll('.detected-item-card').forEach(c => c.remove());
+
+        if (basketItems.length === 0) { emptyState.style.display = "block"; document.getElementById('badge-total').innerText = "0"; sync(); return; }
+        emptyState.style.display = "none"; document.getElementById('badge-total').innerText = basketItems.length;
+
+        basketItems.forEach((item, index) => {
+            const div = document.createElement('div'); div.className = `detected-item-card ${item.type}`;
+            div.innerHTML = `
+                <div class="detected-header"><span>${item.type} &bull; ${item.model}</span><span>REF: ${refsMap[item.model]||'??'}</span></div>
+                <div class="detected-details"><b>S/N :</b> ${item.sn || '<span style="color:red;">⚠️</span>'} | <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}</div>
+                <div class="detected-actions">
+                    <button class="btn-mini edit" onclick="openManualAddModal(${index})">✏️ Ajuster</button>
+                    <button class="btn-mini delete" onclick="deleteBasketItem(${index})">🗑️ Retirer</button>
+                </div>`;
+            container.appendChild(div);
+        });
+        sync();
+    }
+
+    function deleteBasketItem(index) { basketItems.splice(index, 1); renderBasket(); }
+
+    function openManualAddModal(index = -1) {
+        const modal = document.getElementById('manual-modal');
+        document.getElementById('edit-index').value = index;
+        updateManualModelOptions(); temporaryModalSnapshot = null; 
+
+        if (index > -1) {
+            const item = basketItems[index];
+            document.getElementById('manual-modal-title').innerText = "✏️ Ajustement Matériel";
+            document.getElementById('man-type').value = item.type; updateManualModelOptions();
+            document.getElementById('man-model').value = item.model; document.getElementById('man-sn').value = item.sn;
+            document.getElementById('man-exp').value = item.exp; document.getElementById('man-stock').value = item.stock;
+            document.getElementById('man-reno').value = item.reno;
+            document.getElementById('manual-photo-status').innerText = item.img ? "📸 Photo d'étiquette associée." : "";
+            if (item.img) temporaryModalSnapshot = item.img;
+        } else {
+            document.getElementById('manual-modal-title').innerText = "➕ Ajout manuel";
+            document.getElementById('man-sn').value = ""; document.getElementById('man-exp').value = "";
+            document.getElementById('manual-photo-status').innerText = "";
+        }
+        modal.style.display = "flex";
+    }
+
+    function updateManualModelOptions() {
+        const type = document.getElementById('man-type').value;
+        const modelSel = document.getElementById('man-model'); modelSel.innerHTML = "";
+        let targetList = (type === "SONDE") ? listSondes : ((type === "DAI") ? listDefis : listPaces);
+        targetList.forEach(m => modelSel.add(new Option(m, m)));
+    }
+
+    function closeManualModal() { document.getElementById('manual-modal').style.display = "none"; }
+
+    function saveManualItem() {
+        const idx = parseInt(document.getElementById('edit-index').value);
+        const itemData = {
+            type: document.getElementById('man-type').value, model: document.getElementById('man-model').value,
+            sn: document.getElementById('man-sn').value, exp: document.getElementById('man-exp').value,
+            stock: document.getElementById('man-stock').value, reno: document.getElementById('man-reno').value, img: temporaryModalSnapshot 
+        };
+        if (idx > -1) basketItems[idx] = itemData; else basketItems.push(itemData);
+        closeManualModal(); renderBasket();
+    }
+
+    function initPads() {
+        ['trans', 'centre'].forEach(id => {
+            const canvas = document.getElementById(`pad-${id}`); if(!canvas) return;
+            canvas.width = canvas.parentElement.clientWidth; canvas.height = 90;
+        });
+        mCanvas = document.getElementById('modal-canvas'); if(mCanvas) mCtx = mCanvas.getContext('2d');
+    }
+
+    function getPos(c, e) { const rect = c.getBoundingClientRect(); return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top }; }
+
+    function openFullscreenSig(target) {
+        activeFullscreenTarget = target; document.getElementById('sig-modal').style.display = 'flex';
+        mCanvas.width = mCanvas.parentElement.clientWidth; mCanvas.height = 280;
+        mCtx.lineWidth = 3; mCtx.lineCap = 'round'; mCtx.strokeStyle = '#000'; mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+
+        let mDrawing = false;
+        mCanvas.ontouchstart = (e) => { mDrawing = true; mCtx.beginPath(); const p = getPos(mCanvas, e); mCtx.moveTo(p.x, p.y); sigSource[activeFullscreenTarget] = 'fullscreen'; };
+        mCanvas.ontouchmove = (e) => { if(!mDrawing) return; const p = getPos(mCanvas, e); mCtx.lineTo(p.x, p.y); mCtx.stroke(); };
+        mCanvas.ontouchend = () => { mDrawing = false; };
+    }
+
+    function clearModalPad() { 
+        mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height); 
+        sigSource[activeFullscreenTarget] = 'none';
+        const sCanvas = document.getElementById(`pad-${activeFullscreenTarget}`);
+        sCanvas.getContext('2d').clearRect(0, 0, sCanvas.width, sCanvas.height);
+        sync(); 
+    }
+
+    function closeFullscreenSig(save = false) {
+        if (save && sigSource[activeFullscreenTarget] !== 'none') {
+            const dataUrl = mCanvas.toDataURL();
+            document.getElementById(`v-sig-${activeFullscreenTarget}`).src = dataUrl;
+            const sCanvas = document.getElementById(`pad-${activeFullscreenTarget}`);
+            const sCtx = sCanvas.getContext('2d'); sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+            const img = new Image(); img.onload = () => { sCtx.drawImage(img, 0, 0, sCanvas.width, sCanvas.height); }; img.src = dataUrl;
+        }
+        document.getElementById('sig-modal').style.display = 'none'; sync();
+    }
+
+    function handleSignatureImport(input, target) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                sigSource[target] = 'imported';
+                document.getElementById(`v-sig-${target}`).src = e.target.result;
+                const sCanvas = document.getElementById(`pad-${target}`);
+                const sCtx = sCanvas.getContext('2d'); sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+                const img = new Image(); img.onload = () => { sCtx.drawImage(img, 0, 0, sCanvas.width, sCanvas.height); }; img.src = e.target.result;
+                sync();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function sync() {
+        const c = document.getElementById('inC').value; if(!c) return;
+        const centreData = dbCloudCentres.find(item => item.nom === c); if(!centreData) return;
+        
+        const act = document.getElementById('inActe').value;
+        const dateStr = document.getElementById('inDate').value ? document.getElementById('inDate').value.split('-').reverse().join('/') : '';
+        const ing = document.getElementById('inIng').value || '';
+        const doc = document.getElementById('inD').value || '';
+        
+        document.getElementById('v-date').innerText = dateStr; document.getElementById('v-centre').innerText = c;
+        document.getElementById('v-adr').innerText = centreData.adresse; document.getElementById('v-doc').innerText = doc;
+        document.getElementById('v-ing').innerText = ing;
+        document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
+        
+        document.getElementById('lbl-sig-ing').innerText = (sigSource['trans'] !== 'none') ? `${ing}\nIngénieur CRM` : "";
+        document.getElementById('lbl-sig-doc').innerText = (sigSource['centre'] !== 'none') ? `${doc.toUpperCase()}\nService Cardiologie\n${c}` : "";
+
+        if (sigSource['trans'] === 'none') {
+            const sigTransImg = document.getElementById('v-sig-trans');
+            if (ing === "Antoine LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
+            else if (ing === "Baptiste DESARMENIEN") sigTransImg.src = "assets/signature-baptiste.png";
+            else if (ing === "Valentin GARTENLAUB") sigTransImg.src = "assets/signature-valentin.png";
+            else if (ing === "Francois MAINGAULT") sigTransImg.src = "assets/signature-francois.png";
+            else if (ing === "Johann MORIN") sigTransImg.src = "assets/signature-johann.png";
+            else sigTransImg.removeAttribute('src');
+        }
+
+        if (sigSource['centre'] === 'none') {
+            const sigCentreImg = document.getElementById('v-sig-centre');
+            if (centreData.tampon_url) {
+                sigCentreImg.src = centreData.tampon_url;
+                sigCentreImg.style.display = "block";
+            } else {
+                sigCentreImg.removeAttribute('src');
+            }
+        }
+
+        const tableBody = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
+        tableBody.innerHTML = "";
+        
+        basketItems.forEach(item => {
+            const row = tableBody.insertRow();
+            let ref = refsMap[item.model] || "N/A";
+            let formattedExp = item.exp ? item.exp.split('-').reverse().join('/') : "N/A";
+            
+            let textType = item.type;
+            if (textType === "DAI") textType = "Défibrillateur (DAI)";
+            else if (textType === "PM") textType = "Pacemaker (PM)";
+            
+            row.innerHTML = `
+                <td style="font-weight:bold; font-size:11px; text-align:center; background:#fafafa;">${textType}<br><span style="font-weight:normal; font-size:10px; color:#555;">${item.model}</span></td>
+                <td class="row-photo-flat">${item.img ? `<img src="${item.img}">` : '<div style="color:#ccc; font-size:10px;">Aucun visuel</div>'}</td>
+                <td style="font-size:10px; line-height:1.4; padding-left:10px;"><b>REF :</b> ${ref}<br><b>S/N :</b> ${item.sn || 'N/A'}<br><b>EXP :</b> ${formattedExp}<br><b>Stock :</b> ${item.stock}<br><b>Suivi :</b> ${item.reno === 'centre' ? c : ing}</td>`;
+        });
+        document.getElementById('v-total').innerText = basketItems.length;
+    }
+
+    function generateEmail() {
+        const centre = document.getElementById('inC').value || "";
+        const acte = document.getElementById('inActe').value || "";
+        const medecin = (document.getElementById('inD').value || "").toUpperCase();
+        const dateStr = document.getElementById('inDate').value ? document.getElementById('inDate').value.split('-').reverse().join('/') : "";
+        
+        let detailMatos = "";
+        basketItems.forEach((item) => {
+            let ref = refsMap[item.model] || 'N/A';
+            let typeLabel = (item.type === "SONDE") ? "🔸 𝐒𝐎𝐍𝐃𝐄" : ((item.type === "PM") ? "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑" : "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑 (𝐃𝐀𝐈)");
+            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n• S/N : ${item.sn || 'N/A'} | EXP : ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}\n• Provenance : ${item.stock}\n\n`;
+        });
+
+        const subject = encodeURIComponent(`[BL MICROPORT] Matériel Implanté - ${acte} - ${centre}`);
+        let mailBody = `Bonjour,\n\nVous trouverez ci-joint le bon de livraison.\n\n📌 CONTEXTE\n• Acte : ${acte}\n• Date : ${dateStr}\n• Centre : ${centre}\n• Médecin : ${medecin}\n\n📦 MATÉRIEL\n${detailMatos}Cordialement,`;
+        window.open(`mailto:?subject=${subject}&body=${encodeURIComponent(mailBody)}`, '_blank');
     }
 
     function captureFinalImage() {
         const previewZone = document.getElementById('container-preview-zone');
         const scaler = document.getElementById('bl-scaler-container');
         const oldTransform = scaler.style.transform;
-        
-        previewZone.style.display = "block"; 
-        scaler.style.transform = "none";
+        previewZone.style.display = "block"; scaler.style.transform = "none";
 
         html2canvas(document.getElementById('bl-canvas'), { scale: 2.3 }).then(canvas => {
-            const container = document.getElementById('img-container'); 
-            container.innerHTML = '';
-            const img = new Image(); 
-            img.src = canvas.toDataURL("image/png"); 
-            container.appendChild(img);
-            
+            const container = document.getElementById('img-container'); container.innerHTML = '';
+            const img = new Image(); img.src = canvas.toDataURL("image/png"); container.appendChild(img);
             document.getElementById('image-result').style.display = 'block';
-            previewZone.style.display = "none"; 
-            scaler.style.transform = oldTransform;
+            previewZone.style.display = "none"; scaler.style.transform = oldTransform;
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         });
     }
 
     function reactivateLivePreview() {
         document.getElementById('image-result').style.display = 'none';
-        const previewZone = document.getElementById('container-preview-zone'); 
-        previewZone.style.display = "block";
-        sync(); 
-        initDefaultScale();
+        const previewZone = document.getElementById('container-preview-zone'); previewZone.style.display = "block";
+        sync(); if (!isUserZooming) initDefaultScale();
         previewZone.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 </script>
