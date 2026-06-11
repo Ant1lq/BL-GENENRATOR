@@ -392,6 +392,34 @@
         .doc-tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; margin: 4px 4px 0 0; }
         .tampon-preview-box { background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; text-align: center; margin-top: 10px; }
         .tampon-preview-box img { max-height: 100px; max-width: 100%; object-fit: contain; display: block; margin: 0 auto; }
+        
+        /* Styles additionnels pour le système de gestion des filtres */
+        .checkbox-container-list {
+            max-height: 160px;
+            overflow-y: auto;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px;
+            background: #f8fafc;
+            margin-bottom: 16px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 4px;
+            font-size: 13px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+        }
+        .checkbox-item:last-child { border-bottom: none; }
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--blue-mp);
+            cursor: pointer;
+            -webkit-appearance: checkbox;
+        }
 
         @media print {
             body { background: white; color: black; padding-bottom: 0; }
@@ -451,7 +479,7 @@
                 </div>
                 <div class="form-group">
                     <label>Ingénieur d'App.</label>
-                    <select id="inIng" onchange="updateDynamicStocks()"></select>
+                    <select id="inIng" onchange="updateDynamicStocksAndFilter()"></select>
                 </div>
             </div>
             <div class="grid-2">
@@ -671,7 +699,7 @@
         
         <div class="admin-tabs">
             <button id="tab-btn-view" class="admin-tab-btn active" onclick="switchAdminTab('view')">📋 CONSULTER</button>
-            <button id="tab-btn-edit" class="admin-tab-btn" onclick="switchAdminTab('edit')">➕ ENREGISTRER</button>
+            <button id="tab-btn-edit" class="admin-tab-btn" onclick="switchAdminTab('edit')">➕ ÉDITION & AJOUT</button>
         </div>
 
         <div id="admin-global-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:10px;"></div>
@@ -686,15 +714,39 @@
         </div>
 
         <div id="admin-tab-content-edit" style="display:none;">
-            <div class="admin-section-title">🏥 AJOUTER UN ÉTABLISSEMENT</div>
+            <div class="admin-section-title">🔒 MON SECTEUR (CENTRES VISIBLES AU BL)</div>
+            <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0; line-height: 1.3;">
+                Cochez les centres qui doivent apparaître dans votre liste déroulante d'établissement lors de la création d'un BL.
+            </p>
+            <div id="ing-centers-checkboxes" class="checkbox-container-list">
+                <!-- Liens dynamiques ingénieurs-centres -->
+            </div>
+            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 15px;" onclick="saveEngineerCentersProfile()">Enregistrer mon affectation sectorielle 📁</button>
+
+            <div class="admin-section-title">✏️ MODIFIER ENTIÈREMENT UNE FICHE CENTRE</div>
+            <div class="form-group">
+                <label>Choisir le centre à modifier</label>
+                <select id="admin-edit-center-select" onchange="loadCenterEditForm()"></select>
+            </div>
+            <div class="form-group">
+                <label>Nom de l'établissement</label>
+                <input type="text" id="edit-c-nom">
+            </div>
+            <div class="form-group">
+                <label>Adresse Postale Complète</label>
+                <input type="text" id="edit-c-adr">
+            </div>
+            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 20px;" onclick="submitUpdateCentre()">Enregistrer les modifications du Centre 💾</button>
+
+            <div class="admin-section-title">🏥 AJOUTER UN NOUVEL ÉTABLISSEMENT</div>
             <div class="form-group"><label>Nom du Centre</label><input type="text" id="add-c-nom"></div>
             <div class="form-group"><label>Adresse Postale Complète</label><input type="text" id="add-c-adr"></div>
-            <button class="btn-primary-ios" style="padding:12px; font-size:13px;" onclick="submitNouveauCentre()">Enregistrer le Centre ✅</button>
+            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 20px;" onclick="submitNouveauCentre()">Créer le nouveau Centre ✅</button>
             
             <div class="admin-section-title">👨‍⚕️ AJOUTER UN MÉDECIN IMPLANTEUR</div>
             <div class="form-group"><label>Rattacher au Centre</label><select id="add-m-centre-target"></select></div>
             <div class="form-group"><label>Nom du Médecin</label><input type="text" id="add-m-nom"></div>
-            <button class="btn-primary-ios" style="padding:12px; font-size:13px;" onclick="submitNouveauMedecin()">Rattacher le Médecin 🤝</button>
+            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 20px;" onclick="submitNouveauMedecin()">Rattacher le Médecin 🤝</button>
             
             <div class="admin-section-title">📷 ASSOCIER UN TAMPON OFFICIEL</div>
             <div class="form-group"><label>Sélectionner le Centre</label><select id="add-t-centre-target"></select></div>
@@ -806,14 +858,9 @@
 
     async function synchroniserDonneesDepuisCloud() {
         try {
-            // FIX ICI : On force bien la récupération de tampon_url
             let { data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url').order('nom', { ascending: true });
             if (errC) throw errC;
             dbCloudCentres = centres || [];
-
-            const cSel = document.getElementById('inC'); 
-            cSel.innerHTML = ""; 
-            dbCloudCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
 
             const iSel = document.getElementById('inIng'); 
             iSel.innerHTML = "";
@@ -829,10 +876,47 @@
                 else if (em.includes('morin')) iSel.value = "Johann MORIN";
             }
 
-            updateDynamicStocks();
-            await loadMedecinsDuCentre();
+            await updateDynamicStocksAndFilter();
         } catch (error) {
             console.error(error);
+        }
+    }
+
+    async function updateDynamicStocksAndFilter() {
+        const ingName = document.getElementById('inIng').value || "";
+        const targetOption = document.getElementById('man-dynamic-stock');
+        if(targetOption) {
+            let n = `Stock MICROPORT CRM ${ingName.toUpperCase()}`;
+            targetOption.value = n; targetOption.innerText = n;
+        }
+
+        try {
+            let { data: mappings, error: errMap } = await _supabase
+                .from('engineer_centers')
+                .select('center_name')
+                .eq('engineer_name', ingName);
+
+            if (errMap) throw errMap;
+            
+            let linkedCenterNames = (mappings || []).map(m => m.center_name);
+            const cSel = document.getElementById('inC'); 
+            cSel.innerHTML = ""; 
+
+            let filteredCentres = dbCloudCentres.filter(c => linkedCenterNames.includes(c.nom));
+
+            if (filteredCentres.length === 0) {
+                dbCloudCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
+            } else {
+                filteredCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
+            }
+
+            await loadMedecinsDuCentre();
+        } catch (e) {
+            console.error("Erreur filtrage centres ingénieur:", e);
+            const cSel = document.getElementById('inC');
+            cSel.innerHTML = "";
+            dbCloudCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
+            await loadMedecinsDuCentre();
         }
     }
 
@@ -867,6 +951,117 @@
         document.getElementById('admin-tab-content-edit').style.display = (tab === 'edit' ? 'block' : 'none');
         
         if (tab === 'view') renderCenterCardDetails();
+        if (tab === 'edit') prepareAdminEditFormOptions();
+    }
+
+    async function prepareAdminEditFormOptions() {
+        const editSelect = document.getElementById('admin-edit-center-select');
+        editSelect.innerHTML = "";
+        dbCloudCentres.forEach(c => editSelect.add(new Option(c.nom, c.nom)));
+        loadCenterEditForm();
+        await renderEngineerCentersCheckboxes();
+    }
+
+    async function renderEngineerCentersCheckboxes() {
+        const currentIng = document.getElementById('inIng').value || "";
+        const checkboxContainer = document.getElementById('ing-centers-checkboxes');
+        checkboxContainer.innerHTML = "<p style='font-size:12px;color:var(--text-muted);padding:4px;'>Chargement du secteur... ⏳</p>";
+        
+        try {
+            let { data: currentLinks, error } = await _supabase
+                .from('engineer_centers')
+                .select('center_name')
+                .eq('engineer_name', currentIng);
+                
+            if (error) throw error;
+            let checkedNames = (currentLinks || []).map(l => l.center_name);
+            
+            checkboxContainer.innerHTML = "";
+            dbCloudCentres.forEach(center => {
+                const label = document.createElement('label');
+                label.className = "checkbox-item";
+                const isChecked = checkedNames.includes(center.nom) ? "checked" : "";
+                label.innerHTML = `<input type="checkbox" value="${center.nom}" ${isChecked}> <span>${center.nom}</span>`;
+                checkboxContainer.appendChild(label);
+            });
+        } catch (e) {
+            checkboxContainer.innerHTML = "<p style='color:red;font-size:12px;'>Erreur lors du chargement des affectations.</p>";
+        }
+    }
+
+    async function saveEngineerCentersProfile() {
+        const currentIng = document.getElementById('inIng').value || "";
+        const checkboxContainer = document.getElementById('ing-centers-checkboxes');
+        const checkedBoxes = checkboxContainer.querySelectorAll('input[type="checkbox"]:checked');
+        const status = document.getElementById('admin-global-status');
+        
+        let targetCenters = [];
+        checkedBoxes.forEach(box => targetCenters.push(box.value));
+        
+        status.innerText = "Mise à jour du secteur... ⏳";
+        
+        try {
+            let { error: delError } = await _supabase
+                .from('engineer_centers')
+                .delete()
+                .eq('engineer_name', currentIng);
+                
+            if (delError) throw delError;
+            
+            if (targetCenters.length > 0) {
+                let rowsToInsert = targetCenters.map(cName => ({
+                    engineer_name: currentIng,
+                    center_name: cName
+                }));
+                let { error: insError } = await _supabase.from('engineer_centers').insert(rowsToInsert);
+                if (insError) throw insError;
+            }
+            
+            status.innerText = "✅ Secteur enregistré avec succès !";
+            await updateDynamicStocksAndFilter();
+        } catch (e) {
+            console.error(e);
+            status.innerText = "❌ Erreur de synchronisation sectorielle.";
+        }
+    }
+
+    function loadCenterEditForm() {
+        const selectedCenterName = document.getElementById('admin-edit-center-select').value;
+        const centerData = dbCloudCentres.find(item => item.nom === selectedCenterName);
+        if (centerData) {
+            document.getElementById('edit-c-nom').value = centerData.nom;
+            document.getElementById('edit-c-adr').value = centerData.adresse || "";
+        }
+    }
+
+    async function submitUpdateCentre() {
+        const originalName = document.getElementById('admin-edit-center-select').value;
+        const newNom = document.getElementById('edit-c-nom').value.trim().toUpperCase();
+        const newAdr = document.getElementById('edit-c-adr').value.trim();
+        const status = document.getElementById('admin-global-status');
+        
+        if (!originalName || !newNom || !newAdr) {
+            alert("Veuillez remplir tous les champs de modification.");
+            return;
+        }
+        
+        status.innerText = "Mise à jour Cloud... ⏳";
+        try {
+            const { error } = await _supabase
+                .from('centres')
+                .update({ nom: newNom, adresse: newAdr })
+                .eq('nom', originalName);
+                
+            if (error) throw error;
+            
+            status.innerText = "🎉 Fiche Centre modifiée avec succès !";
+            await synchroniserDonneesDepuisCloud();
+            prepareAdminEditFormOptions();
+        } catch (e) {
+            console.error(e);
+            alert("Erreur lors de la mise à jour des données.");
+            status.innerText = "";
+        }
     }
 
     function openAdminModal() {
@@ -912,7 +1107,6 @@
                 medHtml = "<span style='font-size:12px; color:var(--palette-vibrant-red); font-style:italic;'>Aucun médecin rattaché</span>";
             }
 
-            // FIX ICI : On utilise bien l'URL présente en cache local
             let tamponHtml = centreData.tampon_url 
                 ? `<div class="tampon-preview-box"><img src="${centreData.tampon_url}" alt="Tampon officiel"></div>`
                 : "<div style='font-size:12px; color:var(--text-muted); font-style:italic; margin-top:5px;'>Aucun visuel de tampon enregistré</div>";
@@ -1037,16 +1231,6 @@
         wrapper.style.height = `${(1123 * val) + 24}px`;
     }
 
-    function updateDynamicStocks() {
-        const ingName = document.getElementById('inIng').value || "";
-        const targetOption = document.getElementById('man-dynamic-stock');
-        if(targetOption) {
-            let n = `Stock MICROPORT CRM ${ingName.toUpperCase()}`;
-            targetOption.value = n; targetOption.innerText = n;
-        }
-        sync();
-    }
-
     function autoAlignRenewalOption() {
         document.getElementById('man-reno').value = (document.getElementById('man-stock').value === "Stock du centre") ? "centre" : "ing";
     }
@@ -1108,7 +1292,8 @@
     }
 
     function processInlineModalOCR(text, snapshot) {
-        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        let normalizedText = text.toUpperCase().replace(/[
+]/g, " ").replace(/\s+/g, " ");
         let currentType = document.getElementById('man-type').value;
         let matchedModel = "Inconnu";
         let targetList = (currentType === "SONDE") ? listSondes : ((currentType === "DAI") ? listDefis : listPaces);
@@ -1134,10 +1319,10 @@
         if (udiMatch) return udiMatch[1].trim();
 
         if (type === "SONDE") {
-            let vegaMatch = cleanText.match(/\b([A-Z]{3}\d{6})\b/i);
+            let vegaMatch = cleanText.match(/([A-Z]{3}\d{6})/i);
             if (vegaMatch) return vegaMatch[1].trim();
         } else {
-            let mpBoxMatch = cleanText.match(/\b(\d{3}[A-Z]{2}\d{3})\b/i);
+            let mpBoxMatch = cleanText.match(/(\d{3}[A-Z]{2}\d{3})/i);
             if (mpBoxMatch) return mpBoxMatch[1].trim();
         }
         let m = cleanText.match(/(?:SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,12})/i);
@@ -1145,15 +1330,17 @@
     }
 
     function extractExpirationDate(text) {
-        let cleanText = text.replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
-        const isoDateMatch = cleanText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
+        let cleanText = text.replace(/[
+]/g, " ").replace(/\s+/g, " ");
+        const isoDateMatch = cleanText.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
         if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
         return "";
     }
 
     function parseBoitierText(text, snapshot) {
         let matchedModel = "Inconnu"; let detectedType = "DAI";
-        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        let normalizedText = text.toUpperCase().replace(/[
+]/g, " ").replace(/\s+/g, " ");
         let listBoitiers = [...listDefis, ...listPaces];
         
         for (let name of listBoitiers) {
@@ -1173,7 +1360,8 @@
 
     function parseSondeText(text, snapshot) {
         let matchedModel = "Inconnu";
-        let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+        let normalizedText = text.toUpperCase().replace(/[
+]/g, " ").replace(/\s+/g, " ");
 
         for (let name of listSondes) {
             if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
@@ -1324,8 +1512,11 @@
         document.getElementById('v-ing').innerText = ing;
         document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
         
-        document.getElementById('lbl-sig-ing').innerText = (sigSource['trans'] !== 'none') ? `${ing}\nIngénieur CRM` : "";
-        document.getElementById('lbl-sig-doc').innerText = (sigSource['centre'] !== 'none') ? `${doc.toUpperCase()}\nService Cardiologie\n${c}` : "";
+        document.getElementById('lbl-sig-ing').innerText = (sigSource['trans'] !== 'none') ? `${ing}
+Ingénieur CRM` : "";
+        document.getElementById('lbl-sig-doc').innerText = (sigSource['centre'] !== 'none') ? `${doc.toUpperCase()}
+Service Cardiologie
+${c}` : "";
 
         if (sigSource['trans'] === 'none') {
             const sigTransImg = document.getElementById('v-sig-trans');
@@ -1337,7 +1528,6 @@
             else sigTransImg.removeAttribute('src');
         }
 
-        // FIX ICI : On gère correctement le tampon automatisé sur le BL
         if (sigSource['centre'] === 'none') {
             const sigCentreImg = document.getElementById('v-sig-centre');
             if (centreData.tampon_url) {
@@ -1373,11 +1563,26 @@
         basketItems.forEach((item) => {
             let ref = refsMap[item.model] || 'N/A';
             let typeLabel = (item.type === "SONDE") ? "🔸 𝐒𝐎𝐍𝐃𝐄" : ((item.type === "PM") ? "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑" : "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑");
-            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n• S/N : ${item.sn || 'N/A'} | EXP : ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}\n• Provenance : ${item.stock}\n\n`;
+            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})
+• S/N : ${item.sn || 'N/A'} | EXP : ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}
+• Provenance : ${item.stock}
+
+`;
         });
 
         const subject = encodeURIComponent(`[BL MICROPORT] Matériel Implanté - ${acte} - ${centre}`);
-        let mailBody = `Bonjour,\n\nVous trouverez ci-joint le bon de livraison.\n\n📌 CONTEXTE\n• Acte : ${acte}\n• Date : ${dateStr}\n• Centre : ${centre}\n• Médecin : ${medecin}\n\n📦 MATÉRIEL\n${detailMatos}Cordialement,`;
+        let mailBody = `Bonjour,
+
+Vous trouverez ci-joint le bon de livraison.
+
+📌 CONTEXTE
+• Acte : ${acte}
+• Date : ${dateStr}
+• Centre : ${centre}
+• Médecin : ${medecin}
+
+📦 MATÉRIEL
+${detailMatos}Cordialement,`;
         window.open(`mailto:?subject=${subject}&body=${encodeURIComponent(mailBody)}`, '_blank');
     }
 
