@@ -11,6 +11,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         :root { 
             --palette-dark-navy: #0f172a;       
@@ -443,6 +445,18 @@
             border: 1px dashed var(--palette-royal-blue);
         }
 
+        /* Nouveaux styles pour le volet d'administration */
+        .admin-section-title {
+            background: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            color: #334155;
+        }
+
         @media print {
             body { background: white; color: black; padding-bottom: 0; }
             .app-container, .sticky-actions, #image-result, .ios-modal, .bl-preview-header, #container-preview-zone { display: none !important; }
@@ -472,7 +486,7 @@
         <div class="card-title">1️⃣ Logistique & Contextes</div>
         <div class="form-group">
             <label>Établissement</label>
-            <select id="inC" onchange="initDocs()"></select>
+            <select id="inC" onchange="loadMedecinsDuCentre()"></select>
         </div>
         <div class="grid-2">
             <div class="form-group">
@@ -538,6 +552,12 @@
                 <input type="file" id="import-sig-centre" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
             </div>
         </div>
+    </div>
+
+    <div class="app-card" style="border: 2px dashed var(--palette-royal-blue); background: #f0f7ff;">
+        <div class="card-title" style="color: var(--palette-royal-blue);">⚙️ Espace Gestion Équipes & Fiches</div>
+        <p style="font-size: 12px; color: #334155; margin: 0 0 12px 0;">Ajoutez vos hôpitaux, médecins et tampons officiels en direct dans le Cloud.</p>
+        <button class="btn-primary-ios" style="background: var(--palette-royal-blue);" onclick="openAdminModal()">OUVRIR LA GESTION DES FICHES</button>
     </div>
 
     <div class="sticky-actions">
@@ -632,6 +652,8 @@
 
 <input type="file" id="label-gallery-input" accept="image/*" style="display: none;" onchange="handleLabelFile(this)">
 
+<input type="file" id="admin-tampon-camera" accept="image/*" capture="environment" style="display: none;" onchange="handleAdminTamponUpload(this)">
+
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold; letter-spacing: 0.3px;">TRAITEMENT SMART ÉTIQUETTE</h3>
@@ -716,17 +738,58 @@
     </div>
 </div>
 
+<div id="admin-modal" class="ios-modal">
+    <div class="ios-modal-content" style="max-height: 95vh;">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:18px; font-weight:bold; border-bottom:1px solid #e2e8f0; padding-bottom:10px; text-align:center;">⚙️ Gestion Base de Données Cloud</h3>
+        
+        <div id="admin-global-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:10px;"></div>
+
+        <div class="admin-section-title">🏥 AJOUTER UN ÉTABLISSEMENT / CENTRE</div>
+        <div class="form-group">
+            <label>Nom du Centre (ex: CHU ORLEANS)</label>
+            <input type="text" id="add-c-nom" placeholder="Ex: CH VALENCIA">
+        </div>
+        <div class="form-group">
+            <label>Adresse Postale Complète</label>
+            <input type="text" id="add-c-adr" placeholder="Ex: 1 Rue de l'Hôpital, 75000 Paris">
+        </div>
+        <button class="btn-primary-ios" style="padding:12px; font-size:13px; background:var(--blue-mp);" onclick="submitNouveauCentre()">Enregistrer le Centre ✅</button>
+
+        <div class="admin-section-title">👨‍⚕️ AJOUTER UN MÉDECIN IMPLANTEUR</div>
+        <div class="form-group">
+            <label>Rattacher au Centre</label>
+            <select id="add-m-centre-target"></select>
+        </div>
+        <div class="form-group">
+            <label>Nom du Médecin (ex: Dr Martin)</label>
+            <input type="text" id="add-m-nom" placeholder="Ex: Dr Dupont">
+        </div>
+        <button class="btn-primary-ios" style="padding:12px; font-size:13px; background:var(--blue-mp);" onclick="submitNouveauMedecin()">Rattacher le Médecin 🤝</button>
+
+        <div class="admin-section-title">📷 ASSOCIER UN TAMPON OFFICIEL PAR APPAREIL PHOTO</div>
+        <div class="form-group">
+            <label>Sélectionner le Centre cible</label>
+            <select id="add-t-centre-target"></select>
+        </div>
+        <button class="btn-smart-scan btn-scan-sonde" style="padding:14px; font-size:13px; font-weight:bold;" onclick="triggerCameraTampon()">
+            📷 PRENDRE LE TAMPON EN PHOTO
+        </button>
+
+        <div class="grid-2" style="margin-top:30px; border-top:1px solid #e2e8f0; padding-top:15px;">
+            <button class="btn-secondary-ios" style="border-radius:14px; padding:14px;" onclick="closeAdminModal()">FERMER LA GESTION</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    let db = {
-        "CHU TOURS": { adr: "Av. de la République, 37170 Chambray-lès-Tours", docs: ["Dr Bodin", "Dr Pierre", "Dr Bisson", "Dr Lemrini", "Dr Lenormand", "Dr Nasarre"] },
-        "CHU ORLEANS": { adr: "14 Av. de l'Hôpital, 45100 Orléans", docs: ["Dr Domain", "Dr Jacobs", "Dr Spiesser", "Dr Lenormand"] },
-        "CHU LIMOGES": { adr: "2 Av. Martin Luther King, 87000 Limoges", docs: ["Dr Guymoyat", "Dr Bauley"] },
-        "CHU POITIERS": { adr: "2 Rue de la Milétrie Cs 90577, 86000 Poitiers", docs: ["Dr Degand", "Dr Gracia", "Dr Chourrout", "Dr Legal"] },
-        "CH BLOIS": { adr: "Mail Pierre Charlot, 41000 Blois", docs: ["Dr Lang", "Dr Garcia", "Dr Lallemand", "Dr Petitjean"] },
-        "CH CHATEAUROUX": { adr: "216 Av. de Verdun, 36000 Châteauroux", docs: ["Dr Poitrineau", "Dr Ghanem", "Dr Temgoua Ngou"] },
-        "CH Bourges": { adr: "145 Av. François Mitterrand, 18000 Bourges", docs: ["Dr Heurtebise", "Dr Didot", "Dr Lemrini"] },
-        "Pôle Santé Oréliance": { adr: "ZAC des Portes du Loiret Sud, 555 Av. Jacqueline Auriol, 45770 Saran", docs: ["Dr Moisei", "Dr Giraudeau", "Dr Rischard", "Dr Anys"] }
-    };
+    // INITIALISATION UNIQUE DE SUPABASE AVEC VOS CLEFS TRANSMISES
+    const supabaseUrl = "https://qwdwgrmhobkrstrnbcao.supabase.co";
+    const supabaseKey = "sb_publishable_fVGjFgTs7hsG_RIYljFSKQ_-ljz2sJ4";
+    const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    // Les données seront chargées dynamiquement depuis l'infrastructure Cloud
+    let dbCloudCentres = [];
+    let cacheTamponsUrls = {};
 
     let refsMap = {
         "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M", 
@@ -755,14 +818,220 @@
     let modalScannerActive = false; 
     let temporaryModalSnapshot = null; 
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('inDate').valueAsDate = new Date();
-        buildLogistiqueMenus();
         initPads();
         initDefaultScale();
         window.addEventListener('resize', () => { if(!isUserZooming) initDefaultScale(); });
-        sync();
+        
+        // Téléchargement initial complet depuis le cloud
+        await synchroniserDonneesDepuisCloud();
     });
+
+    // FONCTION MAJEURE : VA CHERCHER TOUS LES HOSPITAUX ET COMPTES SUR LE CLOUD SUPABASE
+    async function synchroniserDonneesDepuisCloud() {
+        try {
+            // Lecture des établissements
+            let { data: centres, error: errC } = await _supabase.from('centres').select('*').order('nom', { ascending: true });
+            if (errC) throw errC;
+            dbCloudCentres = centres || [];
+
+            // Construction dynamique des sélecteurs logistiques
+            const cSel = document.getElementById('inC'); 
+            cSel.innerHTML = ""; 
+            
+            dbCloudCentres.forEach(c => {
+                cSel.add(new Option(c.nom, c.nom));
+            });
+
+            const iSel = document.getElementById('inIng'); 
+            iSel.innerHTML = "";
+            listIngs.forEach(i => iSel.add(new Option(i, i)));
+
+            updateDynamicStocks();
+            await loadMedecinsDuCentre();
+        } catch (error) {
+            console.error("Erreur de synchro Cloud Supabase: ", error);
+            alert("Erreur lors de la récupération des données en direct. Vérifiez votre connexion internet.");
+        }
+    }
+
+    // CHARGEMENT EN DIRECT DES MEDECINS ASSOCIES AU CHU SELECTIONNE
+    async function loadMedecinsDuCentre() {
+        const centreChoisi = document.getElementById('inC').value;
+        const dSel = document.getElementById('inD');
+        dSel.innerHTML = "";
+
+        if (!centreChoisi) return;
+
+        try {
+            let { data: medecins, error: errM } = await _supabase
+                .from('medecins')
+                .select('nom')
+                .eq('centre_nom', centreChoisi)
+                .order('nom', { ascending: true });
+            
+            if (errM) throw errM;
+
+            if (medecins && medecins.length > 0) {
+                medecins.forEach(m => dSel.add(new Option(m.nom, m.nom)));
+            } else {
+                dSel.add(new Option("Aucun médecin répertorié", ""));
+            }
+            sync();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // ACTIONS DE L'ONGLET DE GESTION EN DIRECT DEPUIS L'APP
+    function openAdminModal() {
+        const modal = document.getElementById('admin-modal');
+        const cTarget = document.getElementById('add-m-centre-target');
+        const tTarget = document.getElementById('add-t-centre-target');
+        
+        cTarget.innerHTML = "";
+        tTarget.innerHTML = "";
+        
+        dbCloudCentres.forEach(c => {
+            cTarget.add(new Option(c.nom, c.nom));
+            tTarget.add(new Option(c.nom, c.nom));
+        });
+
+        document.getElementById('admin-global-status').innerText = "";
+        modal.style.display = "flex";
+    }
+
+    function closeAdminModal() {
+        document.getElementById('admin-modal').style.display = "none";
+    }
+
+    async function submitNouveauCentre() {
+        const nom = document.getElementById('add-c-nom').value.trim().toUpperCase();
+        const adr = document.getElementById('add-c-adr').value.trim();
+        const status = document.getElementById('admin-global-status');
+
+        if (!nom || !adr) {
+            alert("Veuillez renseigner un nom d'établissement et son adresse postale.");
+            return;
+        }
+
+        status.innerText = "Écriture dans le Cloud en cours... ⏳";
+
+        const { error } = await _supabase.from('centres').insert([{ nom: nom, adresse: adr }]);
+        if (error) {
+            alert("Erreur: Ce centre existe déjà ou un problème réseau est survenu.");
+            status.innerText = "";
+        } else {
+            document.getElementById('add-c-nom').value = "";
+            document.getElementById('add-c-adr').value = "";
+            status.innerText = `✅ Centre "${nom}" enregistré avec succès !`;
+            await synchroniserDonneesDepuisCloud();
+            openAdminModal(); // rafraîchir les sélecteurs internes du modal
+        }
+    }
+
+    async function submitNouveauMedecin() {
+        const centre = document.getElementById('add-m-centre-target').value;
+        const nomDoc = document.getElementById('add-m-nom').value.trim();
+        const status = document.getElementById('admin-global-status');
+
+        if (!nomDoc) {
+            alert("Veuillez indiquer le nom du médecin.");
+            return;
+        }
+
+        status.innerText = "Liaison au médecin en cours... ⏳";
+
+        const { error } = await _supabase.from('medecins').insert([{ nom: nomDoc, centre_nom: centre }]);
+        if (error) {
+            alert("Erreur lors de la sauvegarde du médecin.");
+            status.innerText = "";
+        } else {
+            document.getElementById('add-m-nom').value = "";
+            status.innerText = `✅ ${nomDoc} rattaché au centre ${centre} !`;
+            await synchroniserDonneesDepuisCloud();
+            openAdminModal();
+        }
+    }
+
+    function triggerCameraTampon() {
+        document.getElementById('admin-tampon-camera').click();
+    }
+
+    // CAPTURE DU TAMPON VIA APPAREIL PHOTO, FILTRE NOIR & BLANC INTELLIGENT ET ENVOI UNIQUE AU CLOUD STORAGE
+    async function handleAdminTamponUpload(input) {
+        const centreCible = document.getElementById('add-t-centre-target').value;
+        const status = document.getElementById('admin-global-status');
+
+        if (!input.files || !input.files[0] || !centreCible) return;
+        status.innerText = "Traitement d'image & Nettoyage numérique... ⏳";
+
+        const file = input.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = async function() {
+                // Application immédiate d'un filtre Grayscale/Contraste lourd pour blanchir le fond et noircir l'encre
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                    // Seuil de contraste binaire agressif pour isoler parfaitement l'empreinte du tampon
+                    let finalColor = (grayscale > 130) ? 255 : 0; 
+                    data[i] = data[i+1] = data[i+2] = finalColor;
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                // Conversion en fichier Blob exploitable pour le stockage Cloud Supabase Storage
+                canvas.toBlob(async function(blob) {
+                    const cleanFileName = `tampon_${centreCible.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}.jpg`;
+                    status.innerText = "Téléversement sécurisé vers le Cloud Storage... 📤";
+
+                    // Envoi au Bucket privé "tampons" créé à l'étape 1
+                    let { data: uploadData, error: uploadError } = await _supabase.storage
+                        .from('tampons')
+                        .upload(cleanFileName, blob, { contentType: 'image/jpeg', cacheControl: '3600' });
+
+                    if (uploadError) {
+                        console.error(uploadError);
+                        alert("Erreur technique lors de l'envoi du fichier sur le stockage Cloud.");
+                        status.innerText = "";
+                        return;
+                    }
+
+                    // Génération du lien de téléchargement direct depuis le Bucket
+                    const { data: urlData } = _supabase.storage.from('tampons').getPublicUrl(cleanFileName);
+                    const publicUrl = urlData.publicUrl;
+
+                    status.innerText = "Mise à jour de la fiche établissement... 💾";
+                    
+                    // Liaison de l'adresse URL de l'image directement à la ligne du Centre
+                    const { error: updateError } = await _supabase
+                        .from('centres')
+                        .update({ tampon_url: publicUrl })
+                        .eq('nom', centreCible);
+
+                    if (updateError) {
+                        alert("Erreur lors de la liaison SQL de l'image.");
+                    } else {
+                        status.innerText = `🎉 Tampon officiel relié avec succès au ${centreCible} !`;
+                        await synchroniserDonneesDepuisCloud();
+                    }
+                    input.value = "";
+                }, 'image/jpeg', 0.85);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
 
     function initDefaultScale() {
         const wrapper = document.getElementById('bl-wrapper');
@@ -771,10 +1040,11 @@
         let defaultScale = availableWidth / 794; 
         
         const slider = document.getElementById('preview-zoom-slider');
-        slider.min = (defaultScale * 0.8).toFixed(2);
-        slider.max = "2.0";
-        slider.value = defaultScale.toFixed(2);
-        
+        if(slider) {
+            slider.min = (defaultScale * 0.8).toFixed(2);
+            slider.max = "2.0";
+            slider.value = defaultScale.toFixed(2);
+        }
         adjustPreviewScale(defaultScale);
     }
 
@@ -790,7 +1060,7 @@
         let autoWidth = wrapper.clientWidth - 24;
         let baseScale = autoWidth / 794;
         let percent = Math.round((val / baseScale) * 100);
-        badge.innerText = `${percent}%`;
+        if(badge) badge.innerText = `${percent}%`;
 
         wrapper.style.height = `${(1123 * val) + 24}px`;
     }
@@ -799,27 +1069,14 @@
         isUserZooming = true;
     });
 
-    function buildLogistiqueMenus() {
-        const cSel = document.getElementById('inC'); cSel.innerHTML = ""; 
-        Object.keys(db).forEach(c => cSel.add(new Option(c, c)));
-        const iSel = document.getElementById('inIng'); iSel.innerHTML = "";
-        listIngs.forEach(i => iSel.add(new Option(i, i)));
-        initDocs();
-    }
-
-    function initDocs() {
-        const sel = document.getElementById('inD'); sel.innerHTML = "";
-        const c = document.getElementById('inC').value; 
-        if(db[c]) { db[c].docs.forEach(d => sel.add(new Option(d, d))); }
-        updateDynamicStocks();
-        sync();
-    }
-
     function updateDynamicStocks() {
         const ingName = document.getElementById('inIng').value || "";
         const formattedStockName = `Stock MICROPORT CRM ${ingName.toUpperCase()}`;
-        document.getElementById('man-dynamic-stock').value = formattedStockName;
-        document.getElementById('man-dynamic-stock').innerText = formattedStockName;
+        const targetOption = document.getElementById('man-dynamic-stock');
+        if(targetOption) {
+            targetOption.value = formattedStockName;
+            targetOption.innerText = formattedStockName;
+        }
         sync();
     }
 
@@ -842,7 +1099,6 @@
         } else {
             statusEl.innerText = "Cadrer les codes barres et la référence de la Sonde (VEGA, INVICTA, NAVIGO...).";
         }
-        // Active l'input avec capture="environment" pour ouvrir directement l'appareil photo
         document.getElementById('label-camera-input').click();
     }
 
@@ -855,7 +1111,6 @@
         } else {
             statusEl.innerText = "Cadrer les codes barres et la référence du Boîtier.";
         }
-        // Ouvre l'input sans restriction "capture" pour laisser le choix d'importer depuis la galerie
         document.getElementById('label-gallery-input').click();
     }
 
@@ -1345,7 +1600,11 @@
 
     function sync() {
         const c = document.getElementById('inC').value;
-        if(!c || !db[c]) return;
+        if(!c) return;
+
+        // Extraction de la fiche du centre courant chargé depuis le cloud
+        const centreData = dbCloudCentres.find(item => item.nom === c);
+        if(!centreData) return;
         
         const act = document.getElementById('inActe').value;
         const rawDate = document.getElementById('inDate').value;
@@ -1355,7 +1614,7 @@
         
         document.getElementById('v-date').innerText = dStr;
         document.getElementById('v-centre').innerText = c;
-        document.getElementById('v-adr').innerText = db[c].adr;
+        document.getElementById('v-adr').innerText = centreData.adresse;
         document.getElementById('v-doc').innerText = doc;
         document.getElementById('v-ing').innerText = ing;
         document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
@@ -1384,15 +1643,21 @@
 
         const sigCentreImg = document.getElementById('v-sig-centre');
         if (sigSource['centre'] === 'none') {
-            if (c === "CHU TOURS") sigCentreImg.src = "assets/tampon-chu-tours.png";
-            else if (c === "CHU ORLEANS") sigCentreImg.src = "assets/tampon-chu-orleans.png";
-            else if (c === "CHU LIMOGES") sigCentreImg.src = "assets/tampon-chu-limoges.png";
-            else if (c === "CHU POITIERS") sigCentreImg.src = "assets/tampon-chu-poitiers.png";
-            else if (c === "CH BLOIS") sigCentreImg.src = "assets/tampon-ch-blois.png";
-            else if (c === "CH Bourges") sigCentreImg.src = "assets/tampon-ch-bourges.png";
-            else if (c === "CH CHATEAUROUX") sigCentreImg.src = "assets/tampon-ch-chateauroux.png";
-            else if (c === "Pôle Santé Oréliance") sigCentreImg.src = "assets/tampon-oreliance.png";
-            else sigCentreImg.removeAttribute('src');
+            // RENDU DYNAMIQUE : Si un tampon Cloud existe, on l'affiche en priorité absolue !
+            if (centreData.tampon_url) {
+                sigCentreImg.src = centreData.tampon_url;
+            } else {
+                // Fallback historique si l'image n'a pas encore été migrée sur le Cloud
+                if (c === "CHU TOURS") sigCentreImg.src = "assets/tampon-chu-tours.png";
+                else if (c === "CHU ORLEANS") sigCentreImg.src = "assets/tampon-chu-orleans.png";
+                else if (c === "CHU LIMOGES") sigCentreImg.src = "assets/tampon-chu-limoges.png";
+                else if (c === "CHU POITIERS") sigCentreImg.src = "assets/tampon-chu-poitiers.png";
+                else if (c === "CH BLOIS") sigCentreImg.src = "assets/tampon-ch-blois.png";
+                else if (c === "CH Bourges") sigCentreImg.src = "assets/tampon-ch-bourges.png";
+                else if (c === "CH CHATEAUROUX") sigCentreImg.src = "assets/tampon-ch-chateauroux.png";
+                else if (c === "Pôle Santé Oréliance") sigCentreImg.src = "assets/tampon-oreliance.png";
+                else sigCentreImg.removeAttribute('src');
+            }
         }
 
         const tableBody = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
