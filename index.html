@@ -87,7 +87,7 @@
         }
 
         #app-content {
-            display: none; /* Masqué par défaut tant que pas connecté */
+            display: none; 
         }
 
         .app-container {
@@ -418,6 +418,19 @@
         .ocr-inline-loading { display: none; background: #eff6ff; color: var(--palette-royal-blue); padding: 10px; border-radius: 10px; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 10px; border: 1px dashed var(--palette-royal-blue); }
         .admin-section-title { background: #e2e8f0; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-top: 15px; margin-bottom: 10px; color: #334155; }
 
+        /* ÉLÉMENTS DE MENU ET DESIGN POUR LES FICHES DE GESTION */
+        .admin-tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        .admin-tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: none; font-size: 12px; font-weight: bold; background: #f1f5f9; color: #64748b; cursor: pointer; }
+        .admin-tab-btn.active { background: var(--blue-mp); color: white; }
+        
+        .center-card-info { background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 16px; margin-top: 12px; }
+        .info-row { font-size: 13px; margin-bottom: 8px; color: #334155; line-height: 1.4; }
+        .info-row b { color: var(--blue-mp); font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+        
+        .doc-tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; margin: 4px 4px 0 0; }
+        .tampon-preview-box { background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; text-align: center; margin-top: 10px; }
+        .tampon-preview-box img { max-height: 80px; max-width: 100%; object-fit: contain; }
+
         @media print {
             body { background: white; color: black; padding-bottom: 0; }
             #login-screen, .app-container, .sticky-actions, #image-result, .ios-modal, .bl-preview-header, #container-preview-zone { display: none !important; }
@@ -536,8 +549,8 @@
 
         <div class="app-card" style="border: 2px dashed var(--palette-royal-blue); background: #f0f7ff;">
             <div class="card-title" style="color: var(--palette-royal-blue);">⚙️ Espace Gestion Équipes & Fiches</div>
-            <p style="font-size: 12px; color: #334155; margin: 0 0 12px 0;">Ajoutez vos hôpitaux, médecins et tampons officiels en direct dans le Cloud.</p>
-            <button class="btn-primary-ios" style="background: var(--palette-royal-blue);" onclick="openAdminModal()">OUVRIR LA GESTION DES FICHES</button>
+            <p style="font-size: 12px; color: #334155; margin: 0 0 12px 0;">Consultez ou modifiez vos hôpitaux, médecins et tampons officiels sauvegardés dans le Cloud.</p>
+            <button class="btn-primary-ios" style="background: var(--palette-royal-blue);" onclick="openAdminModal()">OUVRIR L'ESPACE DE GESTION</button>
         </div>
 
         <div class="sticky-actions">
@@ -697,20 +710,42 @@
 
 <div id="admin-modal" class="ios-modal">
     <div class="ios-modal-content" style="max-height: 95vh;">
-        <h3 style="margin-top:0; color:var(--blue-mp); font-size:18px; font-weight:bold; border-bottom:1px solid #e2e8f0; padding-bottom:10px; text-align:center;">⚙️ Gestion Base de Données Cloud</h3>
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; text-align:center; margin-bottom:14px;">⚙️ Fiches Réseau & Établissements</h3>
+        
+        <div class="admin-tabs">
+            <button id="tab-btn-view" class="admin-tab-btn active" onclick="switchAdminTab('view')">📋 CONSULTER</button>
+            <button id="tab-btn-edit" class="admin-tab-btn" onclick="switchAdminTab('edit')">➕ ENREGISTRER</button>
+        </div>
+
         <div id="admin-global-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:10px;"></div>
-        <div class="admin-section-title">🏥 AJOUTER UN ÉTABLISSEMENT</div>
-        <div class="form-group"><label>Nom du Centre</label><input type="text" id="add-c-nom"></div>
-        <div class="form-group"><label>Adresse Postale Complète</label><input type="text" id="add-c-adr"></div>
-        <button class="btn-primary-ios" style="padding:12px; font-size:13px;" onclick="submitNouveauCentre()">Enregistrer le Centre ✅</button>
-        <div class="admin-section-title">👨‍⚕️ AJOUTER UN MÉDECIN IMPLANTEUR</div>
-        <div class="form-group"><label>Rattacher au Centre</label><select id="add-m-centre-target"></select></div>
-        <div class="form-group"><label>Nom du Médecin</label><input type="text" id="add-m-nom"></div>
-        <button class="btn-primary-ios" style="padding:12px; font-size:13px;" onclick="submitNouveauMedecin()">Rattacher le Médecin 🤝</button>
-        <div class="admin-section-title">📷 ASSOCIER UN TAMPON OFFICIEL</div>
-        <div class="form-group"><label>Sélectionner le Centre</label><select id="add-t-centre-target"></select></div>
-        <button class="btn-smart-scan btn-scan-sonde" style="padding:14px; font-size:13px;" onclick="triggerCameraTampon()">📷 PRENDRE LE TAMPON EN PHOTO</button>
-        <div class="grid-2" style="margin-top:30px; border-top:1px solid #e2e8f0; padding-top:15px;">
+
+        <div id="admin-tab-content-view">
+            <div class="form-group">
+                <label>Sélectionner un Centre pour voir sa fiche</label>
+                <select id="admin-view-centre-select" onchange="renderCenterCardDetails()"></select>
+            </div>
+            
+            <div id="center-details-card-target">
+                </div>
+        </div>
+
+        <div id="admin-tab-content-edit" style="display:none;">
+            <div class="admin-section-title">🏥 AJOUTER UN ÉTABLISSEMENT</div>
+            <div class="form-group"><label>Nom du Centre</label><input type="text" id="add-c-nom"></div>
+            <div class="form-group"><label>Adresse Postale Complète</label><input type="text" id="add-c-adr"></div>
+            <button class="btn-primary-ios" style="padding:12px; font-size:13px;" onclick="submitNouveauCentre()">Enregistrer le Centre ✅</button>
+            
+            <div class="admin-section-title">👨‍⚕️ AJOUTER UN MÉDECIN IMPLANTEUR</div>
+            <div class="form-group"><label>Rattacher au Centre</label><select id="add-m-centre-target"></select></div>
+            <div class="form-group"><label>Nom du Médecin</label><input type="text" id="add-m-nom"></div>
+            <button class="btn-primary-ios" style="padding:12px; font-size:13px;" onclick="submitNouveauMedecin()">Rattacher le Médecin 🤝</button>
+            
+            <div class="admin-section-title">📷 ASSOCIER UN TAMPON OFFICIEL</div>
+            <div class="form-group"><label>Sélectionner le Centre</label><select id="add-t-centre-target"></select></div>
+            <button class="btn-smart-scan btn-scan-sonde" style="padding:14px; font-size:13px;" onclick="triggerCameraTampon()">📷 PRENDRE LE TAMPON EN PHOTO</button>
+        </div>
+
+        <div style="margin-top:24px; border-top:1px solid #e2e8f0; padding-top:15px;">
             <button class="btn-secondary-ios" style="padding:14px;" onclick="closeAdminModal()">FERMER LA GESTION</button>
         </div>
     </div>
@@ -720,7 +755,6 @@
     const supabaseUrl = "https://qwdwgrmhobkrstrnbcao.supabase.co";
     const supabaseKey = "sb_publishable_fVGjFgTs7hsG_RIYljFSKQ_-ljz2sJ4";
     
-    // INITIALISATION AVEC CONFIGURATION DE LA PERSISTANCE LOCALE SÉCURISÉE
     const _supabase = supabase.createClient(supabaseUrl, supabaseKey, {
         auth: {
             persistSession: true,
@@ -761,7 +795,6 @@
         initDefaultScale();
         window.addEventListener('resize', () => { if(!isUserZooming) initDefaultScale(); });
         
-        // VÉRIFICATION DE LA PERSISTANCE AU CHARGEMENT DE LA PAGE
         const { data: { session }, error } = await _supabase.auth.getSession();
         if (session && session.user) {
             showApp(session.user.email);
@@ -771,7 +804,6 @@
         }
     });
 
-    // GESTIONNAIRE DE CONNEXION SÉCURISÉE
     async function handleLogin() {
         const email = document.getElementById('login-email').value.trim();
         const pass = document.getElementById('login-pass').value;
@@ -792,7 +824,6 @@
         }
     }
 
-    // GESTIONNAIRE DE DÉCONNEXION (EFFACE LA PERSISTANCE)
     async function handleLogout() {
         await _supabase.auth.signOut();
         document.getElementById('app-content').style.display = 'none';
@@ -831,7 +862,6 @@
             iSel.innerHTML = "";
             listIngs.forEach(i => iSel.add(new Option(i, i)));
 
-            // Recaler l'ingénieur sélectionné basé sur la session après reconstruction de la liste
             const { data: { session } } = await _supabase.auth.getSession();
             if (session && session.user && session.user.email) {
                 let em = session.user.email.toLowerCase();
@@ -872,17 +902,75 @@
         } catch (error) { console.error(error); }
     }
 
+    // INTERRUPTEUR D'ONGLETS POUR L'ESPACE DE GESTION
+    function switchAdminTab(tab) {
+        document.getElementById('tab-btn-view').className = 'admin-tab-btn' + (tab === 'view' ? ' active' : '');
+        document.getElementById('tab-btn-edit').className = 'admin-tab-btn' + (tab === 'edit' ? ' active' : '');
+        
+        document.getElementById('admin-tab-content-view').style.display = (tab === 'view' ? 'block' : 'none');
+        document.getElementById('admin-tab-content-edit').style.display = (tab === 'edit' ? 'block' : 'none');
+        
+        if (tab === 'view') renderCenterCardDetails();
+    }
+
     function openAdminModal() {
         const modal = document.getElementById('admin-modal');
         const cTarget = document.getElementById('add-m-centre-target');
         const tTarget = document.getElementById('add-t-centre-target');
-        cTarget.innerHTML = ""; tTarget.innerHTML = "";
+        const viewTarget = document.getElementById('admin-view-centre-select');
+        
+        cTarget.innerHTML = ""; tTarget.innerHTML = ""; viewTarget.innerHTML = "";
+        
         dbCloudCentres.forEach(c => {
             cTarget.add(new Option(c.nom, c.nom));
             tTarget.add(new Option(c.nom, c.nom));
+            viewTarget.add(new Option(c.nom, c.nom));
         });
+        
         document.getElementById('admin-global-status').innerText = "";
+        switchAdminTab('view'); 
         modal.style.display = "flex";
+    }
+
+    // CONSTRUIRE DYNAMIQUEMENT LA FICHE COMPLÈTE DU CENTRE SÉLECTIONNÉ
+    async function renderCenterCardDetails() {
+        const targetDiv = document.getElementById('center-details-card-target');
+        const selectedCenter = document.getElementById('admin-view-centre-select').value;
+        if (!selectedCenter) { targetDiv.innerHTML = ""; return; }
+
+        targetDiv.innerHTML = "<p style='text-align:center; font-size:12px; color:var(--text-muted);'>Chargement de la fiche... ⏳</p>";
+
+        const centreData = dbCloudCentres.find(item => item.nom === selectedCenter);
+        if (!centreData) return;
+
+        try {
+            let { data: medecins, error } = await _supabase
+                .from('medecins')
+                .select('nom')
+                .eq('centre_nom', selectedCenter)
+                .order('nom', { ascending: true });
+
+            let medHtml = "";
+            if (medecins && medecins.length > 0) {
+                medecins.forEach(m => { medHtml += `<span class="doc-tag">👨‍⚕️ Dr ${m.nom}</span>`; });
+            } else {
+                medHtml = "<span style='font-size:12px; color:var(--palette-vibrant-red); font-style:italic;'>Aucun médecin rattaché</span>";
+            }
+
+            let tamponHtml = centreData.tampon_url 
+                ? `<div class="tampon-preview-box"><img src="${centreData.tampon_url}" alt="Tampon officiel"></div>`
+                : "<div style='font-size:12px; color:var(--text-muted); font-style:italic; margin-top:5px;'>Aucun visuel de tampon enregistré</div>";
+
+            targetDiv.innerHTML = `
+                <div class="center-card-info">
+                    <div class="info-row"><b>🏥 Établissement</b>${centreData.nom}</div>
+                    <div class="info-row"><b>📍 Adresse Logistique</b>${centreData.adresse || 'Non renseignée'}</div>
+                    <div class="info-row" style="margin-top:12px;"><b>👥 Équipe de Cardiologie</b><div style="margin-top:4px;">${medHtml}</div></div>
+                    <div class="info-row" style="margin-top:14px;"><b>印 Tampon Officiel Lié</b>${tamponHtml}</div>
+                </div>`;
+        } catch (err) {
+            targetDiv.innerHTML = "<p style='color:red;'>Erreur lors de la récupération</p>";
+        }
     }
 
     function closeAdminModal() { document.getElementById('admin-modal').style.display = "none"; }
