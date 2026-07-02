@@ -595,10 +595,9 @@
         <div class="sticky-actions">
             <button class="btn-mail-ios" id="btn-generate-email" onclick="generateEmail(false)">📤 ENVOYER LE BL PAR EMAIL</button>
             <button class="btn-mail-ios" id="btn-generate-email-pharma" onclick="generateEmail(true)" style="background: linear-gradient(135deg, #b45309, #d97706);">🏥 ENVOYER VERSION PHARMACIE</button>
-            <button class="btn-secondary-ios" id="btn-download-bl" onclick="downloadCurrentBl()">📥 TÉLÉCHARGER LE BL</button>
             <div class="grid-2">
                 <button class="btn-refresh-ios" onclick="reactivateLivePreview()">🔄 ACTUALISER LE BL</button>
-                <button class="btn-primary-ios" onclick="captureFinalImage()">📸 GÉNÉRER BL (IMAGE)</button>
+                <button class="btn-secondary-ios" id="btn-download-bl" onclick="downloadCurrentBl()">📥 TÉLÉCHARGER LE BL</button>
             </div>
         </div>
 
@@ -1965,14 +1964,6 @@
         }
     }
 
-    function downloadBlFile(file) {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url; a.download = file.name;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }
-
     // Un lien mailto ne supporte que du texte brut (pas de HTML/gras réel) : on simule la mise en
     // valeur avec des caractères Unicode "gras mathématique" sur les informations les plus critiques
     // à vérifier au moment de la livraison (centre, date, numéro de série, date d'expiration).
@@ -2036,17 +2027,29 @@
         if (btn) { btn.disabled = true; btn.innerText = "⏳ Génération du BL..."; }
         try {
             const blFile = await getBlFileForSharing();
-            if (blFile) downloadBlFile(blFile);
-            else alert("Impossible de générer le BL, merci de réessayer.");
+            if (!blFile) { alert("Impossible de générer le BL, merci de réessayer."); return; }
+
+            // Sur iPhone, aucune page web ne peut écrire directement dans la pellicule Photos sans
+            // interaction (restriction de confidentialité imposée par iOS) : le partage natif est le
+            // seul moyen d'y arriver en un minimum de gestes, via son option "Enregistrer l'image".
+            if (navigator.canShare && navigator.canShare({ files: [blFile] })) {
+                try {
+                    await navigator.share({ files: [blFile] });
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return; // partage annulé par l'utilisateur
+                    console.error("Partage natif indisponible, ouverture de l'image en repli:", err);
+                }
+            }
+
+            // Repli : ouvre l'image dans un nouvel onglet — rester appuyé dessus puis
+            // "Ajouter à Photos" permet de l'enregistrer manuellement dans la galerie.
+            const url = URL.createObjectURL(blFile);
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
         } finally {
             if (btn) { btn.disabled = false; btn.innerText = originalLabel; }
         }
-    }
-
-    function captureFinalImage() {
-        renderBlCanvasAsync().then(() => {
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        }).catch(err => console.error("Erreur génération BL:", err));
     }
 
     function reactivateLivePreview() {
