@@ -1517,6 +1517,32 @@
         if (modalScannerActive) document.getElementById('manual-modal').style.display = 'flex';
     }
 
+    // Seuil de binarisation optimal calculé sur l'histogramme de l'image (méthode d'Otsu), au lieu
+    // d'une valeur fixe. Un seuil fixe (ex: 110) efface parfois les traits fins des logos stylisés
+    // ("VeGa", "InVicta", "NaviGo") si la photo est un peu plus sombre ou plus claire que prévu ;
+    // un seuil adaptatif suit l'éclairage réel de chaque photo.
+    function computeOtsuThreshold(grayValues) {
+        let histogram = new Array(256).fill(0);
+        for (let i = 0; i < grayValues.length; i++) histogram[grayValues[i]]++;
+        let total = grayValues.length;
+        let sum = 0;
+        for (let t = 0; t < 256; t++) sum += t * histogram[t];
+
+        let sumB = 0, wB = 0, maxVariance = 0, threshold = 110;
+        for (let t = 0; t < 256; t++) {
+            wB += histogram[t];
+            if (wB === 0) continue;
+            let wF = total - wB;
+            if (wF === 0) break;
+            sumB += t * histogram[t];
+            let mB = sumB / wB;
+            let mF = (sum - sumB) / wF;
+            let variance = wB * wF * (mB - mF) * (mB - mF);
+            if (variance > maxVariance) { maxVariance = variance; threshold = t; }
+        }
+        return threshold;
+    }
+
     function processCroppedImage() {
         if (!cropper) return;
         document.getElementById('ocr-status').innerText = "Analyse OCR... ⏳";
@@ -1527,9 +1553,15 @@
         
         const imgData = ctxOcr.getImageData(0, 0, canvasOcr.width, canvasOcr.height);
         const data = imgData.data;
-        for (let i = 0; i < data.length; i += 4) {
-            let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-            let bw = (grayscale > 110) ? 255 : 0; 
+
+        let grayValues = new Uint8Array(data.length / 4);
+        for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+            grayValues[p] = Math.round(0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]);
+        }
+        const threshold = computeOtsuThreshold(grayValues);
+
+        for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+            let bw = (grayValues[p] > threshold) ? 255 : 0;
             data[i] = data[i+1] = data[i+2] = bw;
         }
         ctxOcr.putImageData(imgData, 0, 0);
@@ -1609,16 +1641,17 @@
     }
 
     function extractSerialNumber(text, type) {
-        let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
+        let cleanText = text.replace(/[^A-Za-z0-9\(\)\[\]\|\s\-\/\._:]/g, "").replace(/\s+/g, " ");
 
-        // 1. Le plus fiable : l'identifiant GS1/UDI (21) imprimé sous le code-barres = numéro de série
-        const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{5,14})/i);
+        // 1. Le plus fiable : l'identifiant GS1/UDI (21) imprimé sous le code-barres = numéro de série.
+        // Tolérance sur ce qui sépare "(21)" de la valeur : les bordures d'encadré sont parfois
+        // lues par l'OCR comme des caractères parasites (|, [, ], espaces multiples...).
+        const udiMatch = cleanText.match(/\(21\)[^A-Za-z0-9]{0,4}([A-Z0-9]{5,14})/i);
         if (udiMatch) return udiMatch[1].trim();
 
         // 2. Le champ "SN" / "S/N" encadré, présent sur la quasi-totalité des étiquettes MicroPort.
-        // On le teste avant les motifs rigides ci-dessous car il est explicitement identifié
-        // (donc plus fiable qu'une simple ressemblance de format).
-        let labeledMatch = cleanText.match(/\bS\s*\/?\s*N\b\s*[:=\-]?\s*([A-Z0-9]{5,14})/i);
+        // Même tolérance que ci-dessus pour la bordure de l'encadré "SN".
+        let labeledMatch = cleanText.match(/\bS\s*\/?\s*N\b[^A-Za-z0-9]{0,4}([A-Z0-9]{5,14})/i);
         if (labeledMatch) return labeledMatch[1].trim();
 
         // 3. En dernier recours, si le mot "SN" n'a pas été lu par l'OCR : formats connus par cœur
