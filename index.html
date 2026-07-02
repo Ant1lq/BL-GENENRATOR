@@ -597,7 +597,7 @@
         </div>
 
         <div class="sticky-actions">
-            <button class="btn-mail-ios" onclick="generateEmail()">📧 COMPTE-RENDU OUTLOOK DIRECT</button>
+            <button class="btn-mail-ios" id="btn-generate-email" onclick="generateEmail()">📤 ENVOYER LE BL PAR EMAIL</button>
             <div class="grid-2">
                 <button class="btn-refresh-ios" onclick="reactivateLivePreview()">🔄 ACTUALISER LE BL</button>
                 <button class="btn-primary-ios" onclick="captureFinalImage()">📸 GÉNÉRER BL (IMAGE)</button>
@@ -1940,37 +1940,99 @@
         document.getElementById('v-total').innerText = basketItems.length;
     }
 
-    function generateEmail() {
+    // Génère le rendu du BL en canvas (factorisé pour être réutilisé par l'aperçu image ET le partage par mail)
+    function renderBlCanvasAsync() {
+        return new Promise((resolve, reject) => {
+            const previewZone = document.getElementById('container-preview-zone');
+            const scaler = document.getElementById('bl-scaler-container');
+            const oldTransform = scaler.style.transform;
+            previewZone.style.display = "block"; scaler.style.transform = "none";
+
+            html2canvas(document.getElementById('bl-canvas'), { scale: 2.3 }).then(canvas => {
+                const container = document.getElementById('img-container'); container.innerHTML = '';
+                const img = new Image(); img.src = canvas.toDataURL("image/png"); container.appendChild(img);
+                document.getElementById('image-result').style.display = 'block';
+                previewZone.style.display = "none"; scaler.style.transform = oldTransform;
+                resolve(canvas);
+            }).catch(err => { previewZone.style.display = "none"; scaler.style.transform = oldTransform; reject(err); });
+        });
+    }
+
+    async function getBlFileForSharing() {
+        try {
+            const canvas = await renderBlCanvasAsync();
+            const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92));
+            if (!blob) return null;
+            const centreSlug = (document.getElementById('inC').value || 'BL').replace(/[^a-zA-Z0-9]/g, '_');
+            const dateSlug = document.getElementById('inDate').value || '';
+            return new File([blob], `BL_${centreSlug}_${dateSlug}.jpg`, { type: 'image/jpeg' });
+        } catch (e) {
+            console.error("Erreur génération BL pour partage:", e);
+            return null;
+        }
+    }
+
+    function downloadBlFile(file) {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url; a.download = file.name;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    function buildEmailContent() {
         const centre = document.getElementById('inC').value || "";
         const acte = document.getElementById('inActe').value || "";
         const medecin = (document.getElementById('inD').value || "").toUpperCase();
+        const ingenieur = document.getElementById('inIng').value || "";
         const dateStr = document.getElementById('inDate').value ? document.getElementById('inDate').value.split('-').reverse().join('/') : "";
         
         let detailMatos = "";
         basketItems.forEach((item) => {
             let ref = refsMap[item.model] || 'N/A';
             let typeLabel = (item.type === "SONDE") ? "🔸 𝐒𝐎𝐍𝐃𝐄" : ((item.type === "PM") ? "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑" : "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑 (𝐃𝐀𝐈)");
-            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n• S/N : ${item.sn || 'N/A'} | EXP : ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}\n• Provenance : ${item.stock}\n\n`;
+            let renewalText = (item.reno === 'centre') ? `Stock du ${centre}` : (item.reno === 'ing') ? `Stock de ${ingenieur}` : "Aucun renouvellement";
+            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n• S/N : ${item.sn || 'N/A'} | EXP : ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}\n• Provenance : ${item.stock}\n• Renouvellement : ${renewalText}\n\n`;
         });
 
-        const subject = encodeURIComponent(`[BL MICROPORT] Matériel Implanté - ${acte} - ${centre}`);
-        let mailBody = `Bonjour,\n\nVous trouverez ci-joint le bon de livraison.\n\n📌 CONTEXTE\n• Acte : ${acte}\n• Date : ${dateStr}\n• Centre : ${centre}\n• Médecin : ${medecin}\n\n📦 MATÉRIEL\n${detailMatos}Cordialement,`;
-        window.open(`mailto:?subject=${subject}&body=${encodeURIComponent(mailBody)}`, '_blank');
+        const subject = `[BL MICROPORT] Matériel Implanté - ${acte} - ${centre}`;
+        const body = `Bonjour,\n\nVous trouverez ci-joint le bon de livraison.\n\n📌 CONTEXTE\n• Centre : ${centre}\n• Médecin implanteur : ${medecin}\n• Acte : ${acte}\n• Date : ${dateStr}\n• Ingénieur d'application : ${ingenieur}\n\n📦 MATÉRIEL LIVRÉ (${basketItems.length} éléments)\n${detailMatos}Cordialement,`;
+
+        return { subject, body };
+    }
+
+    async function generateEmail() {
+        const { subject, body } = buildEmailContent();
+        const mailBtn = document.getElementById('btn-generate-email');
+        if (mailBtn) { mailBtn.disabled = true; mailBtn.innerText = "⏳ Préparation du BL..."; }
+
+        try {
+            const blFile = await getBlFileForSharing();
+
+            // Partage natif (iOS/Android/Mac récents) : la seule façon d'attacher réellement un fichier,
+            // un lien mailto ne peut techniquement jamais joindre de pièce jointe.
+            if (blFile && navigator.canShare && navigator.canShare({ files: [blFile] })) {
+                try {
+                    await navigator.share({ files: [blFile], title: subject, text: body });
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return; // partage annulé par l'utilisateur, on ne relance pas mailto
+                    console.error("Partage natif indisponible, repli sur mailto:", err);
+                }
+            }
+
+            // Repli : mailto (texte uniquement) + téléchargement du BL à joindre manuellement
+            if (blFile) downloadBlFile(blFile);
+            window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+        } finally {
+            if (mailBtn) { mailBtn.disabled = false; mailBtn.innerText = "📤 ENVOYER LE BL PAR EMAIL"; }
+        }
     }
 
     function captureFinalImage() {
-        const previewZone = document.getElementById('container-preview-zone');
-        const scaler = document.getElementById('bl-scaler-container');
-        const oldTransform = scaler.style.transform;
-        previewZone.style.display = "block"; scaler.style.transform = "none";
-
-        html2canvas(document.getElementById('bl-canvas'), { scale: 2.3 }).then(canvas => {
-            const container = document.getElementById('img-container'); container.innerHTML = '';
-            const img = new Image(); img.src = canvas.toDataURL("image/png"); container.appendChild(img);
-            document.getElementById('image-result').style.display = 'block';
-            previewZone.style.display = "none"; scaler.style.transform = oldTransform;
+        renderBlCanvasAsync().then(() => {
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        });
+        }).catch(err => console.error("Erreur génération BL:", err));
     }
 
     function reactivateLivePreview() {
