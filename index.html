@@ -1933,6 +1933,20 @@
     }
 
     // Génère le rendu du BL en canvas (factorisé pour être réutilisé par l'aperçu image ET le partage par mail)
+    // Attend que toutes les images du BL (notamment le tampon, chargé depuis une URL Supabase externe)
+    // soient effectivement chargées avant de lancer la capture — sans ça, html2canvas peut prendre
+    // la photo avant que l'image distante soit arrivée, et elle apparaît alors vide sur le rendu final.
+    function waitForImagesLoaded(container) {
+        const imgs = Array.from(container.querySelectorAll('img')).filter(img => img.src);
+        return Promise.all(imgs.map(img => {
+            if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+            return new Promise(resolve => {
+                img.addEventListener('load', resolve, { once: true });
+                img.addEventListener('error', resolve, { once: true }); // ne bloque pas si une image échoue
+            });
+        }));
+    }
+
     function renderBlCanvasAsync() {
         return new Promise((resolve, reject) => {
             const previewZone = document.getElementById('container-preview-zone');
@@ -1940,7 +1954,10 @@
             const oldTransform = scaler.style.transform;
             previewZone.style.display = "block"; scaler.style.transform = "none";
 
-            html2canvas(document.getElementById('bl-canvas'), { scale: 2.3 }).then(canvas => {
+            const blCanvasEl = document.getElementById('bl-canvas');
+            waitForImagesLoaded(blCanvasEl).then(() => {
+                return html2canvas(blCanvasEl, { scale: 2.3, useCORS: true, allowTaint: false });
+            }).then(canvas => {
                 const container = document.getElementById('img-container'); container.innerHTML = '';
                 const img = new Image(); img.src = canvas.toDataURL("image/png"); container.appendChild(img);
                 document.getElementById('image-result').style.display = 'block';
