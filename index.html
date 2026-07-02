@@ -553,7 +553,7 @@
             </div>
             <div class="form-group" style="display:flex; align-items:center; gap:10px; background:#fef9e7; border:1.5px solid #fde68a; border-radius:14px; padding:12px 14px; margin-bottom:0;">
                 <input type="checkbox" id="inPharmacie" onchange="sync()" style="width:20px; height:20px; accent-color:var(--blue-mp); flex-shrink:0;">
-                <label for="inPharmacie" style="margin:0; text-transform:none; font-size:13px; font-weight:700; color:#92400e;">🏥 Commande Pharmacie (retire le renouvellement du BL)</label>
+                <label for="inPharmacie" style="margin:0; text-transform:none; font-size:13px; font-weight:700; color:#92400e;">Version Pharmacie</label>
             </div>
         </div>
 
@@ -1980,23 +1980,56 @@
         setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 
+    // Un lien mailto ne supporte que du texte brut (pas de HTML/gras réel) : on simule la mise en
+    // valeur avec des caractères Unicode "gras mathématique" sur les informations les plus critiques
+    // à vérifier au moment de la livraison (centre, date, numéro de série, date d'expiration).
+    function toBoldUnicode(str) {
+        const boldMap = {
+            'A':'𝐀','B':'𝐁','C':'𝐂','D':'𝐃','E':'𝐄','F':'𝐅','G':'𝐆','H':'𝐇','I':'𝐈','J':'𝐉','K':'𝐊','L':'𝐋','M':'𝐌',
+            'N':'𝐍','O':'𝐎','P':'𝐏','Q':'𝐐','R':'𝐑','S':'𝐒','T':'𝐓','U':'𝐔','V':'𝐕','W':'𝐖','X':'𝐗','Y':'𝐘','Z':'𝐙',
+            'a':'𝐚','b':'𝐛','c':'𝐜','d':'𝐝','e':'𝐞','f':'𝐟','g':'𝐠','h':'𝐡','i':'𝐢','j':'𝐣','k':'𝐤','l':'𝐥','m':'𝐦',
+            'n':'𝐧','o':'𝐨','p':'𝐩','q':'𝐪','r':'𝐫','s':'𝐬','t':'𝐭','u':'𝐮','v':'𝐯','w':'𝐰','x':'𝐱','y':'𝐲','z':'𝐳',
+            '0':'𝟎','1':'𝟏','2':'𝟐','3':'𝟑','4':'𝟒','5':'𝟓','6':'𝟔','7':'𝟕','8':'𝟖','9':'𝟗'
+        };
+        return String(str).split('').map(ch => boldMap[ch] || ch).join('');
+    }
+
     function buildEmailContent() {
         const centre = document.getElementById('inC').value || "";
         const acte = document.getElementById('inActe').value || "";
         const medecin = (document.getElementById('inD').value || "").toUpperCase();
         const ingenieur = document.getElementById('inIng').value || "";
         const dateStr = document.getElementById('inDate').value ? document.getElementById('inDate').value.split('-').reverse().join('/') : "";
+        const pharmacieMode = document.getElementById('inPharmacie').checked;
+
+        if (pharmacieMode) {
+            let detailMatosPharma = "";
+            basketItems.forEach((item) => {
+                let ref = refsMap[item.model] || 'N/A';
+                let typeLabel = (item.type === "SONDE") ? "🔸 𝐒𝐎𝐍𝐃𝐄" : ((item.type === "PM") ? "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑" : "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑 (𝐃𝐀𝐈)");
+                let snValue = toBoldUnicode(item.sn || 'N/A');
+                let expValue = toBoldUnicode(item.exp ? item.exp.split('-').reverse().join('/') : 'N/A');
+                detailMatosPharma += `${typeLabel} : ${item.model} (REF: ${ref})\n• S/N : ${snValue} | EXP : ${expValue}\n• Provenance : ${item.stock}\n\n`;
+            });
+
+            const subjectPharma = `[BL MICROPORT] Matériel Livré pour Implantation - ${centre} - ${dateStr}`;
+            const bodyPharma = `Bonjour,\n\nVeuillez trouver ci-joint le bon de livraison du matériel ci-dessous, à destination de la Pharmacie de ${toBoldUnicode(centre)}.\n\n📌 CONTEXTE\n• Centre : ${toBoldUnicode(centre)}\n• Médecin implanteur : ${medecin}\n• Acte : ${acte}\n• Date : ${toBoldUnicode(dateStr)}\n• Ingénieur d'application : ${ingenieur}\n\n📦 MATÉRIEL LIVRÉ (${basketItems.length} éléments)\n${detailMatosPharma}Merci pour votre aide, n'hésitez pas si vous avez besoin d'informations complémentaires.\n\nCordialement,`;
+
+            return { subject: subjectPharma, body: bodyPharma };
+        }
         
         let detailMatos = "";
         basketItems.forEach((item) => {
             let ref = refsMap[item.model] || 'N/A';
             let typeLabel = (item.type === "SONDE") ? "🔸 𝐒𝐎𝐍𝐃𝐄" : ((item.type === "PM") ? "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑" : "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑 (𝐃𝐀𝐈)");
             let renewalText = (item.reno === 'centre') ? `Stock du ${centre}` : (item.reno === 'ing') ? `Stock de ${ingenieur}` : "Aucun renouvellement";
-            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n• S/N : ${item.sn || 'N/A'} | EXP : ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}\n• Provenance : ${item.stock}\n• Renouvellement : ${renewalText}\n\n`;
+            let snValue = toBoldUnicode(item.sn || 'N/A');
+            let expValue = toBoldUnicode(item.exp ? item.exp.split('-').reverse().join('/') : 'N/A');
+            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n• S/N : ${snValue} | EXP : ${expValue}\n• Provenance : ${item.stock}\n• Renouvellement : ${renewalText}\n\n`;
         });
 
         const subject = `[BL MICROPORT] Matériel Implanté - ${acte} - ${centre}`;
-        const body = `Bonjour,\n\nVous trouverez ci-joint le bon de livraison.\n\n📌 CONTEXTE\n• Centre : ${centre}\n• Médecin implanteur : ${medecin}\n• Acte : ${acte}\n• Date : ${dateStr}\n• Ingénieur d'application : ${ingenieur}\n\n📦 MATÉRIEL LIVRÉ (${basketItems.length} éléments)\n${detailMatos}Cordialement,`;
+        const body = `Bonjour,\n\nVous trouverez ci-joint le bon de livraison.\n\n📌 CONTEXTE\n• Centre : ${toBoldUnicode(centre)}\n• Médecin implanteur : ${medecin}\n• Acte : ${acte}\n• Date : ${toBoldUnicode(dateStr)}\n• Ingénieur d'application : ${ingenieur}\n\n📦 MATÉRIEL LIVRÉ (${basketItems.length} éléments)\n${detailMatos}Cordialement,`;
 
         return { subject, body };
     }
