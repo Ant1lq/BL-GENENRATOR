@@ -1571,24 +1571,45 @@
 
     function extractSerialNumber(text, type) {
         let cleanText = text.replace(/[^A-Za-z0-9\(\)\s\-\/\._:]/g, "").replace(/\s+/g, " ");
-        const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{6,12})/i);
+
+        // 1. Le plus fiable : l'identifiant GS1/UDI (21) imprimé sous le code-barres = numéro de série
+        const udiMatch = cleanText.match(/\(21\)\s*([A-Z0-9]{5,14})/i);
         if (udiMatch) return udiMatch[1].trim();
 
+        // 2. Le champ "SN" / "S/N" encadré, présent sur la quasi-totalité des étiquettes MicroPort.
+        // On le teste avant les motifs rigides ci-dessous car il est explicitement identifié
+        // (donc plus fiable qu'une simple ressemblance de format).
+        let labeledMatch = cleanText.match(/\bS\s*\/?\s*N\b\s*[:=\-]?\s*([A-Z0-9]{5,14})/i);
+        if (labeledMatch) return labeledMatch[1].trim();
+
+        // 3. En dernier recours, si le mot "SN" n'a pas été lu par l'OCR : formats connus par cœur
         if (type === "SONDE") {
             let vegaMatch = cleanText.match(/\b([A-Z]{3}\d{6})\b/i);
             if (vegaMatch) return vegaMatch[1].trim();
-        } else {
-            let mpBoxMatch = cleanText.match(/\b(\d{3}[A-Z]{2}\d{3})\b/i);
-            if (mpBoxMatch) return mpBoxMatch[1].trim();
         }
-        let m = cleanText.match(/(?:SN|S\/N)\s*[:=-]?\s*([A-Z0-9\-]{5,12})/i);
-        return m ? m[1].trim() : "";
+        let mpBoxMatch = cleanText.match(/\b(\d{3}[A-Z]{2}\d{3})\b/i);
+        if (mpBoxMatch) return mpBoxMatch[1].trim();
+
+        return "";
     }
 
     function extractExpirationDate(text) {
         let cleanText = text.replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+
+        // 1. Date ISO imprimée en clair à côté du pictogramme sablier (ex: "2028-08-01")
         const isoDateMatch = cleanText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
         if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
+
+        // 2. Repli sur le code GS1/UDI : l'identifiant (17) encode la date de péremption au format AAMMJJ
+        // (ex: "(17)280417" = 17/04/2028). C'est la SEULE source d'expiration sur certaines étiquettes
+        // de boîtiers (Talentia, Alizéa...) qui n'impriment aucune date lisible séparément — sans ce
+        // repli, le champ EXP restait systématiquement vide pour ces modèles.
+        const gs1ExpMatch = cleanText.match(/\(17\)\s*(\d{2})(\d{2})(\d{2})\b/);
+        if (gs1ExpMatch) {
+            let yyyy = "20" + gs1ExpMatch[1]; // format GS1 sur 2 chiffres, toujours 20xx pour du matériel en cours d'utilisation
+            return `${yyyy}-${gs1ExpMatch[2]}-${gs1ExpMatch[3]}`;
+        }
+
         return "";
     }
 
