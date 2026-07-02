@@ -425,6 +425,24 @@
         .doc-tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; margin: 4px 4px 0 0; }
         .tampon-preview-box { background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; text-align: center; margin-top: 10px; }
         .tampon-preview-box img { max-height: 100px; max-width: 100%; object-fit: contain; display: block; margin: 0 auto; }
+
+        .center-list-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px;
+            padding: 13px 14px; margin-bottom: 10px; cursor: pointer; transition: background 0.15s ease;
+        }
+        .center-list-item:active { background: #eef2f7; }
+        .center-list-item-info { flex: 1; min-width: 0; }
+        .center-list-item-name { font-weight: 800; font-size: 13.5px; color: var(--blue-mp); }
+        .center-list-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .center-list-item-chevron { color: #94a3b8; font-size: 15px; margin-left: 10px; white-space: nowrap; }
+
+        .cd-doctor-row {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+            padding: 9px 10px; margin-bottom: 6px; font-size: 13px;
+        }
+        .btn-mini:disabled { opacity: 0.35; cursor: not-allowed; }
         
         .checkbox-container-list {
             max-height: 160px;
@@ -742,19 +760,21 @@
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; text-align:center; margin-bottom:14px;">⚙️ Fiches Réseau & Établissements</h3>
         
         <div class="admin-tabs">
-            <button id="tab-btn-view" class="admin-tab-btn active" onclick="switchAdminTab('view')">📋 CONSULTER</button>
-            <button id="tab-btn-edit" class="admin-tab-btn" onclick="switchAdminTab('edit')">➕ ÉDITION & AJOUT</button>
+            <button id="tab-btn-view" class="admin-tab-btn active" onclick="switchAdminTab('view')">🏢 CENTRES</button>
+            <button id="tab-btn-edit" class="admin-tab-btn" onclick="switchAdminTab('edit')">🌐 MON SECTEUR</button>
         </div>
 
         <div id="admin-global-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:10px;"></div>
 
         <div id="admin-tab-content-view">
-            <div class="form-group">
-                <label>Sélectionner un Centre pour voir sa fiche</label>
-                <select id="admin-view-centre-select" onchange="renderCenterCardDetails()"></select>
+            <div id="centers-list-view">
+                <button class="btn-action-block" style="margin-top:0;" onclick="openNewCenterModal()">➕ CRÉER UN NOUVEAU CENTRE</button>
+                <div class="form-group" style="margin-top:14px; margin-bottom:8px;">
+                    <input type="text" id="centers-search" placeholder="🔎 Rechercher un établissement..." oninput="renderCentersList()">
+                </div>
+                <div id="centers-list"></div>
             </div>
-            
-            <div id="center-details-card-target"></div>
+            <div id="center-detail-view" style="display:none;"></div>
         </div>
 
         <div id="admin-tab-content-edit" style="display:none;">
@@ -765,40 +785,25 @@
             </p>
             <div id="ing-centers-checkboxes" class="checkbox-container-list"></div>
             <button class="btn-primary-ios" id="btn-save-sector" style="padding:12px; font-size:13px; margin-bottom: 15px;" onclick="saveEngineerCentersProfile()">Enregistrer mon affectation sectorielle 📁</button>
-
-            <div class="admin-section-title">✏️ MODIFIER ENTIÈREMENT UNE FICHE CENTRE</div>
-            <div class="form-group">
-                <label>Choisir le centre à modifier</label>
-                <select id="admin-edit-center-select" onchange="loadCenterEditForm()"></select>
-            </div>
-            <div class="form-group">
-                <label>Nom de l'établissement</label>
-                <input type="text" id="edit-c-nom">
-            </div>
-            <div class="form-group">
-                <label>Adresse Postale Complète</label>
-                <input type="text" id="edit-c-adr">
-            </div>
-            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 20px;" onclick="submitUpdateCentre()">Enregistrer les modifications du Centre 💾</button>
-
-            <div class="admin-section-title">🏥 AJOUTER UN NOUVEL ÉTABLISSEMENT</div>
-            <div class="form-group"><label>Nom du Centre</label><input type="text" id="add-c-nom"></div>
-            <div class="form-group"><label>Adresse Postale Complète</label><input type="text" id="add-c-adr"></div>
-            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 20px;" onclick="submitNouveauCentre()">Créer le nouveau Centre ✅</button>
-            
-            <div class="admin-section-title">👨‍⚕️ AJOUTER UN MÉDECIN IMPLANTEUR</div>
-            <div class="form-group"><label>Rattacher au Centre</label><select id="add-m-centre-target"></select></div>
-            <div class="form-group"><label>Nom du Médecin</label><input type="text" id="add-m-nom"></div>
-            <button class="btn-primary-ios" style="padding:12px; font-size:13px; margin-bottom: 20px;" onclick="submitNouveauMedecin()">Rattacher le Médecin 🤝</button>
-            
-            <div class="admin-section-title">📷 ASSOCIER UN TAMPON OFFICIEL</div>
-            <div class="form-group"><label>Sélectionner le Centre</label><select id="add-t-centre-target"></select></div>
-            <button class="btn-smart-scan btn-scan-sonde" style="padding:14px; font-size:13px;" onclick="triggerCameraTampon()">📷 PRENDRE LE TAMPON EN PHOTO</button>
         </div>
 
         <div style="margin-top:24px; border-top:1px solid #e2e8f0; padding-top:15px;">
             <button class="btn-secondary-ios" style="padding:14px;" onclick="closeAdminModal()">FERMER LA GESTION</button>
         </div>
+    </div>
+</div>
+
+<div id="new-center-modal" class="ios-modal">
+    <div class="ios-modal-content">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">🏥 Nouveau Centre</h3>
+        <div class="form-group"><label>Nom de l'établissement</label><input type="text" id="new-c-nom" placeholder="Ex: CH DE ROUBAIX"></div>
+        <div class="form-group"><label>Adresse postale complète</label><input type="text" id="new-c-adr" placeholder="Ex: 11 Bd Lacordaire, 59100 Roubaix"></div>
+        <div id="new-center-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-vibrant-red); margin-bottom:8px;"></div>
+        <div class="grid-2">
+            <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeNewCenterModal()">ANNULER</button>
+            <button class="btn-primary-ios" id="btn-create-center" style="padding:14px; font-size:14px;" onclick="submitNouveauCentre()">CRÉER ✅</button>
+        </div>
+        <p style="font-size:10.5px; color:var(--text-muted); text-align:center; margin-top:10px; margin-bottom:0;">Vous pourrez ajouter les médecins et le tampon juste après, sur la fiche du centre.</p>
     </div>
 </div>
 
@@ -1023,6 +1028,8 @@
         } catch (error) { console.error(error); }
     }
 
+    let currentCenterDetail = null; // nom du centre actuellement ouvert dans la fiche détail
+
     function switchAdminTab(tab) {
         document.getElementById('tab-btn-view').className = 'admin-tab-btn' + (tab === 'view' ? ' active' : '');
         document.getElementById('tab-btn-edit').className = 'admin-tab-btn' + (tab === 'edit' ? ' active' : '');
@@ -1030,16 +1037,8 @@
         document.getElementById('admin-tab-content-view').style.display = (tab === 'view' ? 'block' : 'none');
         document.getElementById('admin-tab-content-edit').style.display = (tab === 'edit' ? 'block' : 'none');
         
-        if (tab === 'view') renderCenterCardDetails();
-        if (tab === 'edit') prepareAdminEditFormOptions();
-    }
-
-    async function prepareAdminEditFormOptions() {
-        const editSelect = document.getElementById('admin-edit-center-select');
-        editSelect.innerHTML = "";
-        dbCloudCentres.forEach(c => editSelect.add(new Option(c.nom, c.nom)));
-        loadCenterEditForm();
-        await renderEngineerCentersCheckboxes();
+        if (tab === 'view') { closeCenterDetail(); renderCentersList(); }
+        if (tab === 'edit') renderEngineerCentersCheckboxes();
     }
 
     async function renderEngineerCentersCheckboxes() {
@@ -1135,144 +1134,263 @@
         }
     }
 
-    function loadCenterEditForm() {
-        const selectedCenterName = document.getElementById('admin-edit-center-select').value;
-        const centerData = dbCloudCentres.find(item => item.nom === selectedCenterName);
-        if (centerData) {
-            document.getElementById('edit-c-nom').value = centerData.nom;
-            document.getElementById('edit-c-adr').value = centerData.adresse || "";
-        }
-    }
-
-    async function submitUpdateCentre() {
-        const originalName = document.getElementById('admin-edit-center-select').value;
-        const newNom = document.getElementById('edit-c-nom').value.trim().toUpperCase();
-        const newAdr = document.getElementById('edit-c-adr').value.trim();
-        const status = document.getElementById('admin-global-status');
-        
-        if (!originalName || !newNom || !newAdr) {
-            alert("Veuillez remplir tous les champs de modification.");
-            return;
-        }
-        
-        status.innerText = "Mise à jour Cloud... ⏳";
-        try {
-            const { error } = await _supabase
-                .from('centres')
-                .update({ nom: newNom, adresse: newAdr })
-                .eq('nom', originalName);
-                
-            if (error) throw error;
-            
-            status.innerText = "🎉 Fiche Centre modifiée avec succès !";
-            await synchroniserDonneesDepuisCloud();
-            prepareAdminEditFormOptions();
-        } catch (e) {
-            console.error(e);
-            alert("Erreur lors de la mise à jour des données.");
-            status.innerText = "";
-        }
-    }
-
     function openAdminModal() {
-        const modal = document.getElementById('admin-modal');
-        const cTarget = document.getElementById('add-m-centre-target');
-        const tTarget = document.getElementById('add-t-centre-target');
-        const viewTarget = document.getElementById('admin-view-centre-select');
-        
-        cTarget.innerHTML = ""; tTarget.innerHTML = ""; viewTarget.innerHTML = "";
-        
-        dbCloudCentres.forEach(c => {
-            cTarget.add(new Option(c.nom, c.nom));
-            tTarget.add(new Option(c.nom, c.nom));
-            viewTarget.add(new Option(c.nom, c.nom));
-        });
-        
         document.getElementById('admin-global-status').innerText = "";
-        switchAdminTab('view'); 
-        modal.style.display = "flex";
-    }
-
-    async function renderCenterCardDetails() {
-        const targetDiv = document.getElementById('center-details-card-target');
-        const selectedCenter = document.getElementById('admin-view-centre-select').value;
-        if (!selectedCenter) { targetDiv.innerHTML = ""; return; }
-
-        targetDiv.innerHTML = "<p style='text-align:center; font-size:12px; color:var(--text-muted);'>Chargement de la fiche... ⏳</p>";
-
-        const centreData = dbCloudCentres.find(item => item.nom === selectedCenter);
-        if (!centreData) return;
-
-        try {
-            let { data: medecins, error } = await _supabase
-                .from('medecins')
-                .select('nom')
-                .eq('centre_nom', selectedCenter)
-                .order('nom', { ascending: true });
-
-            let medHtml = "";
-            if (medecins && medecins.length > 0) {
-                medecins.forEach(m => { medHtml += `<span class="doc-tag">👨‍⚕️ Dr ${m.nom}</span>`; });
-            } else {
-                medHtml = "<span style='font-size:12px; color:var(--palette-vibrant-red); font-style:italic;'>Aucun médecin rattaché</span>";
-            }
-
-            let tamponHtml = centreData.tampon_url 
-                ? `<div class="tampon-preview-box"><img src="${centreData.tampon_url}" alt="Tampon officiel"></div>`
-                : "<div style='font-size:12px; color:var(--text-muted); font-style:italic; margin-top:5px;'>Aucun visuel de tampon enregistré</div>";
-
-            targetDiv.innerHTML = `
-                <div class="center-card-info">
-                    <div class="info-row"><b>🏥 Établissement</b>${centreData.nom}</div>
-                    <div class="info-row"><b>📍 Adresse Logistique</b>${centreData.adresse || 'Non renseignée'}</div>
-                    <div class="info-row" style="margin-top:12px;"><b>👥 Équipe de Cardiologie</b><div style="margin-top:4px;">${medHtml}</div></div>
-                    <div class="info-row" style="margin-top:14px;"><b>印 Tampon Officiel Lié</b>${tamponHtml}</div>
-                </div>`;
-        } catch (err) {
-            targetDiv.innerHTML = "<p style='color:red;'>Erreur lors du téléchargement</p>";
-        }
+        switchAdminTab('view');
+        document.getElementById('admin-modal').style.display = "flex";
     }
 
     function closeAdminModal() { document.getElementById('admin-modal').style.display = "none"; }
 
+    // ====== LISTE DES CENTRES ======
+    function renderCentersList() {
+        const listDiv = document.getElementById('centers-list');
+        const searchEl = document.getElementById('centers-search');
+        const search = (searchEl && searchEl.value ? searchEl.value.trim().toUpperCase() : "");
+        listDiv.innerHTML = "";
+
+        let filtered = dbCloudCentres.filter(c => !search || c.nom.toUpperCase().includes(search));
+        if (filtered.length === 0) {
+            listDiv.innerHTML = "<p style='text-align:center; font-size:12px; color:var(--text-muted); padding:20px 0;'>Aucun centre trouvé.</p>";
+            return;
+        }
+        filtered.forEach(c => {
+            const row = document.createElement('div');
+            row.className = 'center-list-item';
+            row.onclick = () => openCenterDetail(c.nom);
+            row.innerHTML = `
+                <div class="center-list-item-info">
+                    <div class="center-list-item-name">🏥 ${c.nom}</div>
+                    <div class="center-list-item-meta">${c.adresse ? c.adresse : 'Adresse non renseignée'}</div>
+                </div>
+                <span class="center-list-item-chevron">${c.tampon_url ? '🖋️ ' : ''}›</span>`;
+            listDiv.appendChild(row);
+        });
+    }
+
+    // ====== CRÉATION RAPIDE D'UN CENTRE ======
+    function openNewCenterModal() {
+        document.getElementById('new-c-nom').value = "";
+        document.getElementById('new-c-adr').value = "";
+        document.getElementById('new-center-status').innerText = "";
+        document.getElementById('new-center-modal').style.display = 'flex';
+    }
+    function closeNewCenterModal() { document.getElementById('new-center-modal').style.display = 'none'; }
+
     async function submitNouveauCentre() {
-        const nom = document.getElementById('add-c-nom').value.trim().toUpperCase();
-        const adr = document.getElementById('add-c-adr').value.trim();
-        const status = document.getElementById('admin-global-status');
-        if (!nom || !adr) return;
+        const nom = document.getElementById('new-c-nom').value.trim().toUpperCase();
+        const adr = document.getElementById('new-c-adr').value.trim();
+        const status = document.getElementById('new-center-status');
+        const btn = document.getElementById('btn-create-center');
 
-        status.innerText = "Écriture Cloud... ⏳";
-        const { error } = await _supabase.from('centres').insert([{ nom: nom, adresse: adr }]);
-        if (error) { alert("Erreur de sauvegarde"); status.innerText = ""; } 
-        else {
-            document.getElementById('add-c-nom').value = ""; document.getElementById('add-c-adr').value = "";
-            status.innerText = "✅ Centre enregistré !";
-            await synchroniserDonneesDepuisCloud(); openAdminModal();
+        if (!nom || !adr) { status.innerText = "Merci de remplir le nom et l'adresse."; return; }
+        if (dbCloudCentres.some(c => c.nom === nom)) { status.innerText = "Un centre porte déjà exactement ce nom."; return; }
+
+        status.style.color = "var(--palette-royal-blue)";
+        status.innerText = "Création en cours... ⏳";
+        if (btn) btn.disabled = true;
+
+        try {
+            const { error } = await _supabase.from('centres').insert([{ nom: nom, adresse: adr }]);
+            if (error) throw error;
+            await synchroniserDonneesDepuisCloud();
+            closeNewCenterModal();
+            switchAdminTab('view');
+            openCenterDetail(nom); // on enchaîne directement sur la fiche pour ajouter médecins/tampon
+        } catch (e) {
+            console.error(e);
+            status.style.color = "var(--palette-vibrant-red)";
+            status.innerText = "❌ Erreur lors de la création (voir console).";
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 
-    async function submitNouveauMedecin() {
-        const centre = document.getElementById('add-m-centre-target').value;
-        const nomDoc = document.getElementById('add-m-nom').value.trim();
-        const status = document.getElementById('admin-global-status');
-        if (!nomDoc) return;
+    // ====== FICHE DÉTAIL D'UN CENTRE (100% modifiable) ======
+    async function openCenterDetail(nomCentre) {
+        currentCenterDetail = nomCentre;
+        document.getElementById('centers-list-view').style.display = 'none';
+        const detail = document.getElementById('center-detail-view');
+        detail.style.display = 'block';
+        detail.innerHTML = "<p style='text-align:center; font-size:12px; color:var(--text-muted);'>Chargement de la fiche... ⏳</p>";
+        await renderCenterDetail();
+    }
 
-        status.innerText = "Liaison Cloud... ⏳";
-        const { error } = await _supabase.from('medecins').insert([{ nom: nomDoc, centre_nom: centre }]);
-        if (error) { alert("Erreur"); status.innerText = ""; } 
-        else {
-            document.getElementById('add-m-nom').value = "";
-            status.innerText = "✅ Médecin rattaché !";
-            await synchroniserDonneesDepuisCloud(); openAdminModal();
+    function closeCenterDetail() {
+        currentCenterDetail = null;
+        document.getElementById('center-detail-view').style.display = 'none';
+        document.getElementById('centers-list-view').style.display = 'block';
+    }
+
+    async function renderCenterDetail() {
+        const detail = document.getElementById('center-detail-view');
+        const centreData = dbCloudCentres.find(c => c.nom === currentCenterDetail);
+        if (!centreData) { closeCenterDetail(); return; }
+
+        let medecins = [];
+        try {
+            let { data, error } = await _supabase
+                .from('medecins').select('id, nom')
+                .eq('centre_nom', currentCenterDetail).order('nom', { ascending: true });
+            if (error) throw error;
+            medecins = data || [];
+        } catch (e) { console.error("Erreur chargement médecins:", e); }
+
+        let docsHtml = medecins.length > 0
+            ? medecins.map(m => `<div class="cd-doctor-row"><span>👨‍⚕️ Dr ${m.nom}</span><button class="btn-mini delete" onclick="deleteDoctor(${m.id})">🗑️</button></div>`).join("")
+            : "<p style='font-size:12px; color:var(--text-muted); font-style:italic;'>Aucun médecin rattaché pour le moment.</p>";
+
+        let tamponHtml = centreData.tampon_url
+            ? `<div class="tampon-preview-box"><img src="${centreData.tampon_url}" alt="Tampon officiel"></div>`
+            : "<p style='font-size:12px; color:var(--text-muted); font-style:italic; margin:6px 0 0 0;'>Aucun tampon enregistré pour ce centre.</p>";
+
+        detail.innerHTML = `
+            <button class="btn-mini edit" onclick="closeCenterDetail()">← Retour à la liste</button>
+
+            <div class="admin-section-title" style="margin-top:14px;">🏥 Informations générales</div>
+            <div class="form-group"><label>Nom de l'établissement</label><input type="text" id="cd-nom" value="${(centreData.nom||'').replace(/"/g,'&quot;')}"></div>
+            <div class="form-group"><label>Adresse postale complète</label><input type="text" id="cd-adr" value="${(centreData.adresse||'').replace(/"/g,'&quot;')}"></div>
+            <button class="btn-primary-ios" id="cd-save-info-btn" style="padding:12px; font-size:13px; margin-bottom:22px;" onclick="saveCenterDetailInfo()">💾 Enregistrer les infos</button>
+
+            <div class="admin-section-title">👨‍⚕️ Médecins implanteurs</div>
+            <div id="cd-doctors-list">${docsHtml}</div>
+            <div style="display:flex; gap:8px; margin-top:8px; margin-bottom:22px;">
+                <input type="text" id="cd-new-doctor" placeholder="Nom du nouveau médecin" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addDoctorToCenter();}">
+                <button class="btn-mini edit" style="white-space:nowrap;" onclick="addDoctorToCenter()">➕ Ajouter</button>
+            </div>
+
+            <div class="admin-section-title">🖋️ Tampon officiel</div>
+            <div id="cd-tampon-preview">${tamponHtml}</div>
+            <div class="grid-2" style="margin-top:10px; margin-bottom:22px;">
+                <button class="btn-smart-scan btn-scan-sonde" style="padding:12px; font-size:12.5px;" onclick="triggerCenterDetailStampPhoto()">📷 ${centreData.tampon_url ? 'Changer' : 'Ajouter'} le tampon</button>
+                <button class="btn-mini delete" style="justify-content:center;" onclick="removeCenterStamp()" ${centreData.tampon_url ? '' : 'disabled'}>🗑️ Retirer</button>
+            </div>
+
+            <div style="border-top:1px dashed #fecaca; padding-top:14px;">
+                <button class="btn-mini delete" style="width:100%; justify-content:center; padding:12px;" onclick="deleteCenterEntirely()">🗑️ Supprimer définitivement ce centre</button>
+            </div>`;
+    }
+
+    async function saveCenterDetailInfo() {
+        const originalName = currentCenterDetail;
+        const newNom = document.getElementById('cd-nom').value.trim().toUpperCase();
+        const newAdr = document.getElementById('cd-adr').value.trim();
+        const status = document.getElementById('admin-global-status');
+        const btn = document.getElementById('cd-save-info-btn');
+
+        if (!newNom || !newAdr) { status.innerText = "❌ Merci de remplir le nom et l'adresse."; return; }
+
+        status.innerText = "Mise à jour Cloud... ⏳";
+        if (btn) btn.disabled = true;
+
+        try {
+            const { error } = await _supabase.from('centres').update({ nom: newNom, adresse: newAdr }).eq('nom', originalName);
+            if (error) throw error;
+
+            // Le nom du centre sert de clé "texte" dans plusieurs tables (médecins, secteurs).
+            // Si on le renomme, il faut répercuter le changement partout, sinon les médecins et
+            // l'affectation sectorielle perdent silencieusement leur lien vers ce centre.
+            if (newNom !== originalName) {
+                const { error: errMed } = await _supabase.from('medecins').update({ centre_nom: newNom }).eq('centre_nom', originalName);
+                if (errMed) console.error("Erreur mise à jour médecins liés:", errMed);
+                const { error: errEng } = await _supabase.from('engineer_centers').update({ center_name: newNom }).eq('center_name', originalName);
+                if (errEng) console.error("Erreur mise à jour secteurs liés:", errEng);
+            }
+
+            status.innerText = "🎉 Fiche centre mise à jour avec succès !";
+            currentCenterDetail = newNom;
+            await synchroniserDonneesDepuisCloud();
+            await renderCenterDetail();
+        } catch (e) {
+            console.error(e);
+            status.innerText = "❌ Erreur lors de la mise à jour.";
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 
-    function triggerCameraTampon() { document.getElementById('admin-tampon-camera').click(); }
+    async function addDoctorToCenter() {
+        const input = document.getElementById('cd-new-doctor');
+        const nomDoc = input.value.trim();
+        const status = document.getElementById('admin-global-status');
+        if (!nomDoc || !currentCenterDetail) return;
+
+        status.innerText = "Ajout du médecin... ⏳";
+        try {
+            const { error } = await _supabase.from('medecins').insert([{ nom: nomDoc, centre_nom: currentCenterDetail }]);
+            if (error) throw error;
+            input.value = "";
+            status.innerText = "✅ Médecin ajouté !";
+            await renderCenterDetail();
+        } catch (e) {
+            console.error(e);
+            status.innerText = "❌ Erreur lors de l'ajout du médecin.";
+        }
+    }
+
+    async function deleteDoctor(id) {
+        if (!confirm("Retirer ce médecin de la fiche du centre ?")) return;
+        const status = document.getElementById('admin-global-status');
+        try {
+            const { error, data } = await _supabase.from('medecins').delete().eq('id', id).select();
+            if (error) throw error;
+            if (!data || data.length === 0) throw new Error("droits d'accès insuffisants côté base.");
+            status.innerText = "✅ Médecin retiré.";
+            await renderCenterDetail();
+        } catch (e) {
+            console.error(e);
+            status.innerText = `❌ Échec : ${e.message || "erreur inconnue"}`;
+        }
+    }
+
+    function triggerCenterDetailStampPhoto() {
+        if (!currentCenterDetail) return;
+        document.getElementById('admin-tampon-camera').click();
+    }
+
+    async function removeCenterStamp() {
+        if (!currentCenterDetail) return;
+        if (!confirm("Retirer le tampon officiel de ce centre ?")) return;
+        const status = document.getElementById('admin-global-status');
+        try {
+            const { error } = await _supabase.from('centres').update({ tampon_url: null }).eq('nom', currentCenterDetail);
+            if (error) throw error;
+            status.innerText = "✅ Tampon retiré.";
+            await synchroniserDonneesDepuisCloud();
+            await renderCenterDetail();
+        } catch (e) {
+            console.error(e);
+            status.innerText = "❌ Erreur lors du retrait du tampon.";
+        }
+    }
+
+    async function deleteCenterEntirely() {
+        if (!currentCenterDetail) return;
+        const nom = currentCenterDetail;
+        if (!confirm(`Supprimer définitivement "${nom}" ?\n\nCette action retirera aussi les médecins rattachés et l'affectation sectorielle liée à ce centre. Elle est irréversible.`)) return;
+
+        const status = document.getElementById('admin-global-status');
+        status.innerText = "Suppression... ⏳";
+        try {
+            await _supabase.from('medecins').delete().eq('centre_nom', nom);
+            await _supabase.from('engineer_centers').delete().eq('center_name', nom);
+            const { error } = await _supabase.from('centres').delete().eq('nom', nom);
+            if (error) throw error;
+
+            status.innerText = "✅ Centre supprimé.";
+            closeCenterDetail();
+            await synchroniserDonneesDepuisCloud();
+            renderCentersList();
+        } catch (e) {
+            console.error(e);
+            status.innerText = `❌ Échec de la suppression : ${e.message || "droits d'accès insuffisants côté base"}`;
+        }
+    }
 
     async function handleAdminTamponUpload(input) {
-        const centreCible = document.getElementById('add-t-centre-target').value;
+        const centreCible = currentCenterDetail;
         const status = document.getElementById('admin-global-status');
-        if (!input.files || !input.files[0] || !centreCible) return;
+        if (!input.files || !input.files[0] || !centreCible) { input.value = ""; return; }
 
         status.innerText = "Filtre contraste & Blanchiment... ⏳";
         const file = input.files[0];
@@ -1303,14 +1421,17 @@
                         .from('tampons')
                         .upload(cleanFileName, blob, { contentType: 'image/jpeg' });
 
-                    if (uploadError) { alert("Erreur stockage"); status.innerText = ""; return; }
+                    if (uploadError) { status.innerText = "❌ Erreur de stockage."; return; }
 
                     const { data: urlData } = _supabase.storage.from('tampons').getPublicUrl(cleanFileName);
                     const publicUrl = urlData.publicUrl;
 
                     const { error: updateError } = await _supabase.from('centres').update({ tampon_url: publicUrl }).eq('nom', centreCible);
-                    if (updateError) alert("Erreur SQL");
-                    else { status.innerText = "🎉 Tampon relié au centre avec succès !"; await synchroniserDonneesDepuisCloud(); }
+                    if (updateError) { status.innerText = "❌ Erreur d'enregistrement en base."; return; }
+
+                    status.innerText = "🎉 Tampon relié au centre avec succès !";
+                    await synchroniserDonneesDepuisCloud();
+                    await renderCenterDetail();
                 }, 'image/jpeg', 0.85);
             };
             img.src = e.target.result;
@@ -1318,6 +1439,7 @@
         reader.readAsDataURL(file);
         input.value = "";
     }
+
 
     function initDefaultScale() {
         const wrapper = document.getElementById('bl-wrapper');
