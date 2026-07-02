@@ -551,10 +551,6 @@
                     <input type="date" id="inDate" onchange="sync()">
                 </div>
             </div>
-            <div class="form-group" style="display:flex; align-items:center; gap:10px; background:#fef9e7; border:1.5px solid #fde68a; border-radius:14px; padding:12px 14px; margin-bottom:0;">
-                <input type="checkbox" id="inPharmacie" onchange="sync()" style="width:20px; height:20px; accent-color:var(--blue-mp); flex-shrink:0;">
-                <label for="inPharmacie" style="margin:0; text-transform:none; font-size:13px; font-weight:700; color:#92400e;">Version Pharmacie</label>
-            </div>
         </div>
 
         <div class="app-card">
@@ -597,7 +593,8 @@
         </div>
 
         <div class="sticky-actions">
-            <button class="btn-mail-ios" id="btn-generate-email" onclick="generateEmail()">📤 ENVOYER LE BL PAR EMAIL</button>
+            <button class="btn-mail-ios" id="btn-generate-email" onclick="generateEmail(false)">📤 ENVOYER LE BL PAR EMAIL</button>
+            <button class="btn-mail-ios" id="btn-generate-email-pharma" onclick="generateEmail(true)" style="background: linear-gradient(135deg, #b45309, #d97706);">🏥 ENVOYER VERSION PHARMACIE</button>
             <div class="grid-2">
                 <button class="btn-refresh-ios" onclick="reactivateLivePreview()">🔄 ACTUALISER LE BL</button>
                 <button class="btn-primary-ios" onclick="captureFinalImage()">📸 GÉNÉRER BL (IMAGE)</button>
@@ -1912,7 +1909,6 @@
 
         const tableBody = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
         tableBody.innerHTML = "";
-        const pharmacieMode = document.getElementById('inPharmacie').checked;
         
         basketItems.forEach(item => {
             const row = tableBody.insertRow();
@@ -1923,19 +1919,15 @@
             if (textType === "DAI") textType = "Défibrillateur (DAI)";
             else if (textType === "PM") textType = "Pacemaker (PM)";
 
-            let suiviLine = "";
-            if (!pharmacieMode) {
-                let suiviValue;
-                if (item.reno === 'centre') suiviValue = `Stock du ${c}`;
-                else if (item.reno === 'ing') suiviValue = `Stock de ${ing}`;
-                else suiviValue = "Aucun renouvellement";
-                suiviLine = `<br><b>Renouvellement pour :</b> ${suiviValue}`;
-            }
+            let suiviValue;
+            if (item.reno === 'centre') suiviValue = `Stock du ${c}`;
+            else if (item.reno === 'ing') suiviValue = `Stock de ${ing}`;
+            else suiviValue = "Aucun renouvellement";
             
             row.innerHTML = `
                 <td style="font-weight:bold; font-size:11px; text-align:center; background:#fafafa;">${textType}<br><span style="font-weight:normal; font-size:10px; color:#555;">${item.model}</span></td>
                 <td class="row-photo-flat">${item.img ? `<img src="${item.img}">` : '<div style="color:#ccc; font-size:10px;">Aucun visuel</div>'}</td>
-                <td style="font-size:10px; line-height:1.4; padding-left:10px;"><b>REF :</b> ${ref}<br><b>S/N :</b> ${item.sn || 'N/A'}<br><b>EXP :</b> ${formattedExp}<br><b>Provenance :</b> ${item.stock}${suiviLine}</td>`;
+                <td style="font-size:10px; line-height:1.4; padding-left:10px;"><b>REF :</b> ${ref}<br><b>S/N :</b> ${item.sn || 'N/A'}<br><b>EXP :</b> ${formattedExp}<br><b>PROVENANCE :</b> ${item.stock}<br><b>RENOUVELLEMENT :</b> ${suiviValue}</td>`;
         });
         document.getElementById('v-total').innerText = basketItems.length;
     }
@@ -1994,49 +1986,46 @@
         return String(str).split('').map(ch => boldMap[ch] || ch).join('');
     }
 
-    function buildEmailContent() {
+    function buildEmailContent(isPharmacie) {
         const centre = document.getElementById('inC').value || "";
         const acte = document.getElementById('inActe').value || "";
         const medecin = (document.getElementById('inD').value || "").toUpperCase();
         const ingenieur = document.getElementById('inIng').value || "";
         const dateStr = document.getElementById('inDate').value ? document.getElementById('inDate').value.split('-').reverse().join('/') : "";
-        const pharmacieMode = document.getElementById('inPharmacie').checked;
+        const divider = "──────────────────────";
 
-        if (pharmacieMode) {
-            let detailMatosPharma = "";
-            basketItems.forEach((item) => {
-                let ref = refsMap[item.model] || 'N/A';
-                let typeLabel = (item.type === "SONDE") ? "🔸 𝐒𝐎𝐍𝐃𝐄" : ((item.type === "PM") ? "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑" : "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑 (𝐃𝐀𝐈)");
-                let snValue = toBoldUnicode(item.sn || 'N/A');
-                let expValue = toBoldUnicode(item.exp ? item.exp.split('-').reverse().join('/') : 'N/A');
-                detailMatosPharma += `${typeLabel} : ${item.model} (REF: ${ref})\n• S/N : ${snValue} | EXP : ${expValue}\n• Provenance : ${item.stock}\n\n`;
-            });
-
-            const subjectPharma = `[BL MICROPORT] Matériel Livré pour Implantation - ${centre} - ${dateStr}`;
-            const bodyPharma = `Bonjour,\n\nVeuillez trouver ci-joint le bon de livraison du matériel ci-dessous, à destination de la Pharmacie de ${toBoldUnicode(centre)}.\n\n📌 CONTEXTE\n• Centre : ${toBoldUnicode(centre)}\n• Médecin implanteur : ${medecin}\n• Acte : ${acte}\n• Date : ${toBoldUnicode(dateStr)}\n• Ingénieur d'application : ${ingenieur}\n\n📦 MATÉRIEL LIVRÉ (${basketItems.length} éléments)\n${detailMatosPharma}Merci pour votre aide, n'hésitez pas si vous avez besoin d'informations complémentaires.\n\nCordialement,`;
-
-            return { subject: subjectPharma, body: bodyPharma };
-        }
-        
         let detailMatos = "";
-        basketItems.forEach((item) => {
+        basketItems.forEach((item, idx) => {
             let ref = refsMap[item.model] || 'N/A';
             let typeLabel = (item.type === "SONDE") ? "🔸 𝐒𝐎𝐍𝐃𝐄" : ((item.type === "PM") ? "🔹 𝐏𝐀𝐂𝐄𝐌𝐀𝐊𝐄𝐑" : "🔹 𝐃É𝐅𝐈𝐁𝐑𝐈𝐋𝐋𝐀𝐓𝐄𝐔𝐑 (𝐃𝐀𝐈)");
-            let renewalText = (item.reno === 'centre') ? `Stock du ${centre}` : (item.reno === 'ing') ? `Stock de ${ingenieur}` : "Aucun renouvellement";
             let snValue = toBoldUnicode(item.sn || 'N/A');
             let expValue = toBoldUnicode(item.exp ? item.exp.split('-').reverse().join('/') : 'N/A');
-            detailMatos += `${typeLabel} : ${item.model} (REF: ${ref})\n• S/N : ${snValue} | EXP : ${expValue}\n• Provenance : ${item.stock}\n• Renouvellement : ${renewalText}\n\n`;
+            let renewalLine = "";
+            if (!isPharmacie) {
+                let renewalText = (item.reno === 'centre') ? `Stock du ${centre}` : (item.reno === 'ing') ? `Stock de ${ingenieur}` : "Aucun renouvellement";
+                renewalLine = `\n   • Renouvellement : ${renewalText}`;
+            }
+            detailMatos += `${idx + 1}) ${typeLabel} : ${item.model} (REF: ${ref})\n   • S/N : ${snValue} | EXP : ${expValue}\n   • Provenance : ${item.stock}${renewalLine}\n\n`;
         });
 
-        const subject = `[BL MICROPORT] Matériel Implanté - ${acte} - ${centre}`;
-        const body = `Bonjour,\n\nVous trouverez ci-joint le bon de livraison.\n\n📌 CONTEXTE\n• Centre : ${toBoldUnicode(centre)}\n• Médecin implanteur : ${medecin}\n• Acte : ${acte}\n• Date : ${toBoldUnicode(dateStr)}\n• Ingénieur d'application : ${ingenieur}\n\n📦 MATÉRIEL LIVRÉ (${basketItems.length} éléments)\n${detailMatos}Cordialement,`;
+        const contexteBlock = `${divider}\n📌 CONTEXTE\n${divider}\n• Centre : ${toBoldUnicode(centre)}\n• Médecin implanteur : ${medecin}\n• Acte : ${acte}\n• Date : ${toBoldUnicode(dateStr)}\n• Ingénieur d'application : ${ingenieur}`;
+        const materielBlock = `${divider}\n📦 MATÉRIEL LIVRÉ (${basketItems.length} éléments)\n${divider}\n\n${detailMatos}`;
 
+        if (isPharmacie) {
+            const subject = `[BL MICROPORT] Matériel Livré pour Implantation - ${centre} - ${dateStr}`;
+            const body = `Bonjour,\n\nVeuillez trouver ci-joint le bon de livraison du matériel ci-dessous, à destination de la Pharmacie du ${toBoldUnicode(centre)}.\n\n${contexteBlock}\n\n${materielBlock}Merci pour votre aide, n'hésitez pas si vous avez besoin d'informations complémentaires.\n\nCordialement,`;
+            return { subject, body };
+        }
+
+        const subject = `[BL MICROPORT] Matériel Implanté - ${acte} - ${centre}`;
+        const body = `Bonjour,\n\nVous trouverez ci-joint le bon de livraison.\n\n${contexteBlock}\n\n${materielBlock}Cordialement,`;
         return { subject, body };
     }
 
-    async function generateEmail() {
-        const { subject, body } = buildEmailContent();
-        const mailBtn = document.getElementById('btn-generate-email');
+    async function generateEmail(isPharmacie) {
+        const { subject, body } = buildEmailContent(!!isPharmacie);
+        const mailBtn = document.getElementById(isPharmacie ? 'btn-generate-email-pharma' : 'btn-generate-email');
+        const originalLabel = mailBtn ? mailBtn.innerText : "";
         if (mailBtn) { mailBtn.disabled = true; mailBtn.innerText = "⏳ Préparation du BL..."; }
 
         try {
@@ -2058,7 +2047,7 @@
             if (blFile) downloadBlFile(blFile);
             window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
         } finally {
-            if (mailBtn) { mailBtn.disabled = false; mailBtn.innerText = "📤 ENVOYER LE BL PAR EMAIL"; }
+            if (mailBtn) { mailBtn.disabled = false; mailBtn.innerText = originalLabel; }
         }
     }
 
