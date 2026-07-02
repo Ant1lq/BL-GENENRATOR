@@ -1549,16 +1549,13 @@
     function processInlineModalOCR(text, snapshot) {
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         let currentType = document.getElementById('man-type').value;
-        let matchedModel = "Inconnu";
         let targetList = (currentType === "SONDE") ? listSondes : ((currentType === "DAI") ? listDefis : listPaces);
 
-        for (let name of targetList) {
-            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
-        }
+        let matchedModel = matchModelInText(normalizedText, targetList);
         let sn = extractSerialNumber(text, currentType);
         let exp = extractExpirationDate(text);
 
-        if (matchedModel !== "Inconnu") document.getElementById('man-model').value = matchedModel;
+        if (matchedModel) document.getElementById('man-model').value = matchedModel;
         if (sn) document.getElementById('man-sn').value = sn;
         if (exp) document.getElementById('man-exp').value = exp;
         
@@ -1567,6 +1564,48 @@
         document.getElementById('manual-photo-status').innerText = "📸 Photo d'étiquette associée.";
         document.getElementById('manual-modal').style.display = 'flex';
         modalScannerActive = false;
+    }
+
+    function stripAccents(str) {
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    // Les codes REF de MicroPort n'utilisent jamais les lettres O, I, L, S, B, Z, G : on peut donc
+    // sans risque les assimiler à leur chiffre visuellement proche pour absorber les confusions OCR
+    // courantes (ex: REF "TDF061C" lu "TDFO6IC" par l'OCR doit quand même matcher).
+    function normalizeAmbiguousChars(str) {
+        return str.toUpperCase()
+            .replace(/O/g, '0')
+            .replace(/[IL]/g, '1')
+            .replace(/S/g, '5')
+            .replace(/B/g, '8')
+            .replace(/Z/g, '2')
+            .replace(/G/g, '6');
+    }
+
+    // Reconnaissance de modèle à 3 niveaux, du plus fiable au plus tolérant :
+    // 1) le nom du produit imprimé en gros (ex: "ALIZEA DR 1600") : c'est ce que l'OCR lit le mieux
+    // 2) le code REF, avec tolérance aux confusions de caractères classiques
+    // 3) la famille du produit seule (ex: "TALENTIA") combinée au numéro de variante s'il est présent
+    // — ce dernier niveau est ce qui manquait pour les étiquettes de boîtiers, où le REF est petit et
+    // noyé à côté du long code-barres GS1, contrairement aux sondes où l'étiquette est plus grande.
+    function matchModelInText(normalizedText, candidateList) {
+        for (let name of candidateList) {
+            let cleanName = stripAccents(name).toUpperCase().replace(/\s+/g, " ");
+            if (normalizedText.includes(cleanName)) return name;
+        }
+        let canonicalText = normalizeAmbiguousChars(normalizedText);
+        for (let name of candidateList) {
+            if (canonicalText.includes(normalizeAmbiguousChars(refsMap[name]))) return name;
+        }
+        for (let name of candidateList) {
+            let familyWord = stripAccents(name).toUpperCase().split(" ")[0];
+            if (familyWord.length >= 3 && normalizedText.includes(familyWord)) {
+                let numberPart = (name.match(/\d+/) || [])[0];
+                if (!numberPart || normalizedText.includes(numberPart)) return name;
+            }
+        }
+        return null;
     }
 
     function extractSerialNumber(text, type) {
@@ -1614,41 +1653,35 @@
     }
 
     function parseBoitierText(text, snapshot) {
-        let matchedModel = "Inconnu"; let detectedType = "DAI";
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         let listBoitiers = [...listDefis, ...listPaces];
-        
-        for (let name of listBoitiers) {
-            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
-        }
-        if (listPaces.includes(matchedModel)) detectedType = "PM";
+
+        let matchedModel = matchModelInText(normalizedText, listBoitiers);
+        let detectedType = matchedModel ? (listPaces.includes(matchedModel) ? "PM" : "DAI") : "DAI";
         let sn = extractSerialNumber(text, "BOITIER");
         let exp = extractExpirationDate(text);
 
         basketItems.push({
-            type: detectedType, model: matchedModel !== "Inconnu" ? matchedModel : listDefis[0], 
+            type: detectedType, model: matchedModel || listDefis[0], 
             sn: sn, exp: exp, stock: "Stock du centre", reno: "centre", img: snapshot
         });
         renderBasket();
-        if (matchedModel === "Inconnu" || !sn || !exp) openManualAddModal(basketItems.length - 1);
+        if (!matchedModel || !sn || !exp) openManualAddModal(basketItems.length - 1);
     }
 
     function parseSondeText(text, snapshot) {
-        let matchedModel = "Inconnu";
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
 
-        for (let name of listSondes) {
-            if (normalizedText.includes(refsMap[name].toUpperCase())) { matchedModel = name; break; }
-        }
+        let matchedModel = matchModelInText(normalizedText, listSondes);
         let sn = extractSerialNumber(text, "SONDE");
         let exp = extractExpirationDate(text);
 
         basketItems.push({
-            type: "SONDE", model: matchedModel !== "Inconnu" ? matchedModel : listSondes[0], 
+            type: "SONDE", model: matchedModel || listSondes[0], 
             sn: sn, exp: exp, stock: "Stock du centre", reno: "centre", img: snapshot
         });
         renderBasket();
-        if (matchedModel === "Inconnu" || !sn || !exp) openManualAddModal(basketItems.length - 1);
+        if (!matchedModel || !sn || !exp) openManualAddModal(basketItems.length - 1);
     }
 
     function renderBasket() {
