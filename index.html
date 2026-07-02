@@ -551,6 +551,10 @@
                     <input type="date" id="inDate" onchange="sync()">
                 </div>
             </div>
+            <div class="form-group" style="display:flex; align-items:center; gap:10px; background:#fef9e7; border:1.5px solid #fde68a; border-radius:14px; padding:12px 14px; margin-bottom:0;">
+                <input type="checkbox" id="inPharmacie" onchange="sync()" style="width:20px; height:20px; accent-color:var(--blue-mp); flex-shrink:0;">
+                <label for="inPharmacie" style="margin:0; text-transform:none; font-size:13px; font-weight:700; color:#92400e;">🏥 Commande Pharmacie (retire le renouvellement du BL)</label>
+            </div>
         </div>
 
         <div class="app-card">
@@ -719,10 +723,6 @@
                 <option value="Stock du centre" id="man-stock-centre" data-kind="centre">Stock du centre</option>
                 <option value="Stock MICROPORT CF" id="man-stock-ing" data-kind="ing">Stock MICROPORT CF</option>
             </select>
-        </div>
-        <div class="form-group" id="man-pharmacie-group" style="display:flex; align-items:center; gap:10px; background:#fef9e7; border:1.5px solid #fde68a; border-radius:14px; padding:12px 14px;">
-            <input type="checkbox" id="man-pharmacie" onchange="onPharmacieToggle()" style="width:20px; height:20px; accent-color:var(--blue-mp); flex-shrink:0;">
-            <label for="man-pharmacie" style="margin:0; text-transform:none; font-size:13px; font-weight:700; color:#92400e;">🏥 Fourni par la pharmacie (pas de renouvellement)</label>
         </div>
         <div class="form-group" id="man-reno-group">
             <label>Suivi / Renouvellement</label>
@@ -1480,11 +1480,6 @@
         document.getElementById('man-reno').value = kind; // pré-sélection pratique, reste modifiable
     }
 
-    function onPharmacieToggle() {
-        const checked = document.getElementById('man-pharmacie').checked;
-        document.getElementById('man-reno-group').style.display = checked ? 'none' : 'block';
-    }
-
     function triggerSmartAnalysis(scope) {
         modalScannerActive = false; currentScanScope = scope; 
         document.getElementById('ocr-status').innerText = (scope === "BOITIER") ? "Cadrer l'étiquette Boîtier." : "Cadrer l'étiquette Sonde.";
@@ -1729,7 +1724,7 @@
 
         basketItems.push({
             type: detectedType, model: matchedModel || listDefis[0], 
-            sn: sn, exp: exp, stock: `Stock du ${document.getElementById('inC').value || "centre"}`, reno: "centre", pharmacie: false, img: snapshot
+            sn: sn, exp: exp, stock: `Stock du ${document.getElementById('inC').value || "centre"}`, reno: "centre", img: snapshot
         });
         renderBasket();
         if (!matchedModel || !sn || !exp) openManualAddModal(basketItems.length - 1);
@@ -1744,7 +1739,7 @@
 
         basketItems.push({
             type: "SONDE", model: matchedModel || listSondes[0], 
-            sn: sn, exp: exp, stock: `Stock du ${document.getElementById('inC').value || "centre"}`, reno: "centre", pharmacie: false, img: snapshot
+            sn: sn, exp: exp, stock: `Stock du ${document.getElementById('inC').value || "centre"}`, reno: "centre", img: snapshot
         });
         renderBasket();
         if (!matchedModel || !sn || !exp) openManualAddModal(basketItems.length - 1);
@@ -1787,7 +1782,6 @@
             document.getElementById('man-model').value = item.model; document.getElementById('man-sn').value = item.sn;
             document.getElementById('man-exp').value = item.exp; document.getElementById('man-stock').value = item.stock;
             document.getElementById('man-reno').value = item.reno || "centre";
-            document.getElementById('man-pharmacie').checked = !!item.pharmacie;
             document.getElementById('manual-photo-status').innerText = item.img ? "📸 Photo d'étiquette associée." : "";
             temporaryModalSnapshot = item.img || null;
             setManualPhotoPreview(item.img || null);
@@ -1796,11 +1790,9 @@
             document.getElementById('man-sn').value = ""; document.getElementById('man-exp').value = "";
             document.getElementById('man-stock').value = document.getElementById('man-stock-centre').value;
             document.getElementById('man-reno').value = "centre";
-            document.getElementById('man-pharmacie').checked = false;
             document.getElementById('manual-photo-status').innerText = "";
             setManualPhotoPreview(null);
         }
-        onPharmacieToggle();
         modal.style.display = "flex";
     }
 
@@ -1819,7 +1811,7 @@
             type: document.getElementById('man-type').value, model: document.getElementById('man-model').value,
             sn: document.getElementById('man-sn').value, exp: document.getElementById('man-exp').value,
             stock: document.getElementById('man-stock').value, reno: document.getElementById('man-reno').value,
-            pharmacie: document.getElementById('man-pharmacie').checked, img: temporaryModalSnapshot 
+            img: temporaryModalSnapshot 
         };
         if (idx > -1) basketItems[idx] = itemData; else basketItems.push(itemData);
         closeManualModal(); renderBasket();
@@ -1920,6 +1912,7 @@
 
         const tableBody = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
         tableBody.innerHTML = "";
+        const pharmacieMode = document.getElementById('inPharmacie').checked;
         
         basketItems.forEach(item => {
             const row = tableBody.insertRow();
@@ -1931,18 +1924,18 @@
             else if (textType === "PM") textType = "Pacemaker (PM)";
 
             let suiviLine = "";
-            if (!item.pharmacie) {
-                let suiviText;
-                if (item.reno === 'centre') suiviText = `Renouvellement pour le Stock du ${c}`;
-                else if (item.reno === 'ing') suiviText = `Renouvellement pour le Stock de ${ing}`;
-                else suiviText = "Aucun renouvellement";
-                suiviLine = `<br>${suiviText}`;
+            if (!pharmacieMode) {
+                let suiviValue;
+                if (item.reno === 'centre') suiviValue = `Stock du ${c}`;
+                else if (item.reno === 'ing') suiviValue = `Stock de ${ing}`;
+                else suiviValue = "Aucun renouvellement";
+                suiviLine = `<br><b>Renouvellement pour :</b> ${suiviValue}`;
             }
             
             row.innerHTML = `
                 <td style="font-weight:bold; font-size:11px; text-align:center; background:#fafafa;">${textType}<br><span style="font-weight:normal; font-size:10px; color:#555;">${item.model}</span></td>
                 <td class="row-photo-flat">${item.img ? `<img src="${item.img}">` : '<div style="color:#ccc; font-size:10px;">Aucun visuel</div>'}</td>
-                <td style="font-size:10px; line-height:1.4; padding-left:10px;"><b>REF :</b> ${ref}<br><b>S/N :</b> ${item.sn || 'N/A'}<br><b>EXP :</b> ${formattedExp}<br><b>Stock :</b> ${item.stock}${suiviLine}</td>`;
+                <td style="font-size:10px; line-height:1.4; padding-left:10px;"><b>REF :</b> ${ref}<br><b>S/N :</b> ${item.sn || 'N/A'}<br><b>EXP :</b> ${formattedExp}<br><b>Provenance :</b> ${item.stock}${suiviLine}</td>`;
         });
         document.getElementById('v-total').innerText = basketItems.length;
     }
