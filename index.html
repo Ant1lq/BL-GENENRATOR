@@ -463,12 +463,13 @@
             cursor: pointer;
         }
         .checkbox-item:last-child { border-bottom: none; }
-        .checkbox-item input[type="checkbox"] {
+        input[type="checkbox"] {
             width: 20px;
             height: 20px;
             accent-color: var(--blue-mp);
             cursor: pointer;
             -webkit-appearance: checkbox;
+            appearance: checkbox;
         }
 
         @media print {
@@ -607,7 +608,7 @@
                 <button class="btn-refresh-ios" style="padding:13px; font-size:13px;" onclick="startNewBl()">🆕 NOUVEAU BL</button>
             </div>
             <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--text-muted); justify-content:center; margin-top:-2px;">
-                <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()" style="width:17px; height:17px; accent-color:var(--blue-mp);">
+                <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()">
                 Enregistrement automatique à chaque envoi
             </label>
         </div>
