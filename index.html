@@ -1438,13 +1438,31 @@
         document.getElementById('label-camera-input').click();
     }
 
+    // Supprime le fichier tampon correspondant dans le stockage, à partir de son URL publique.
+    // Évite d'accumuler des fichiers orphelins à chaque suppression/remplacement de tampon.
+    async function deleteTamponFile(tamponUrl) {
+        if (!tamponUrl) return;
+        try {
+            const marker = '/tampons/';
+            const idx = tamponUrl.indexOf(marker);
+            if (idx === -1) return;
+            const fileName = decodeURIComponent(tamponUrl.substring(idx + marker.length).split('?')[0]);
+            const { error } = await _supabase.storage.from('tampons').remove([fileName]);
+            if (error) console.error("Erreur suppression ancien fichier tampon:", error);
+        } catch (e) {
+            console.error("Erreur extraction du nom de fichier tampon:", e);
+        }
+    }
+
     async function removeCenterStamp() {
         if (!currentCenterDetail) return;
         if (!confirm("Retirer le tampon officiel de ce centre ?")) return;
         const status = document.getElementById('admin-global-status');
         try {
+            const oldTamponUrl = (dbCloudCentres.find(c => c.nom === currentCenterDetail) || {}).tampon_url;
             const { error } = await _supabase.from('centres').update({ tampon_url: null }).eq('nom', currentCenterDetail);
             if (error) throw error;
+            await deleteTamponFile(oldTamponUrl);
             status.innerText = "✅ Tampon retiré.";
             await synchroniserDonneesDepuisCloud();
             await renderCenterDetail();
@@ -1462,10 +1480,12 @@
         const status = document.getElementById('admin-global-status');
         status.innerText = "Suppression... ⏳";
         try {
+            const oldTamponUrl = (dbCloudCentres.find(c => c.nom === nom) || {}).tampon_url;
             await _supabase.from('medecins').delete().eq('centre_nom', nom);
             await _supabase.from('engineer_centers').delete().eq('center_name', nom);
             const { error } = await _supabase.from('centres').delete().eq('nom', nom);
             if (error) throw error;
+            await deleteTamponFile(oldTamponUrl);
 
             status.innerText = "✅ Centre supprimé.";
             closeCenterDetail();
@@ -1484,6 +1504,7 @@
         if (!centreCible) { closeCropModal(); return; }
 
         try {
+            const oldTamponUrl = (dbCloudCentres.find(c => c.nom === centreCible) || {}).tampon_url;
             const blob = await new Promise(res => canvasFull.toBlob(res, 'image/jpeg', 0.85));
             const cleanFileName = `tampon_${centreCible.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}.jpg`;
             document.getElementById('ocr-status').innerText = "Upload vers le stockage... 📤";
@@ -1497,6 +1518,10 @@
             const { data: urlData } = _supabase.storage.from('tampons').getPublicUrl(cleanFileName);
             const { error: updateError } = await _supabase.from('centres').update({ tampon_url: urlData.publicUrl }).eq('nom', centreCible);
             if (updateError) throw new Error(updateError.message || "erreur d'enregistrement en base");
+
+            // On ne supprime l'ancien fichier qu'une fois le nouveau bien enregistré, pour ne jamais
+            // se retrouver sans tampon du tout si une étape précédente avait échoué.
+            await deleteTamponFile(oldTamponUrl);
 
             status.innerText = "🎉 Tampon relié au centre avec succès !";
             await synchroniserDonneesDepuisCloud();
@@ -2138,11 +2163,7 @@
         if (sigSource['centre'] === 'none') {
             const sigCentreImg = document.getElementById('v-sig-centre');
             if (centreData.tampon_url) {
-                // crossOrigin doit être défini AVANT src : sinon le navigateur met l'image en cache
-                // comme ressource "non-CORS", et html2canvas doit alors la retirer silencieusement du
-                // rendu final (même avec useCORS activé) pour éviter une erreur de sécurité du canvas.
-                if (sigCentreImg.src !== centreData.tampon_url || !sigCentreImg.crossOrigin) {
-                    sigCentreImg.crossOrigin = "anonymous";
+                if (sigCentreImg.src !== centreData.tampon_url) {
                     sigCentreImg.src = centreData.tampon_url;
                 }
                 sigCentreImg.style.display = "block";
@@ -2191,24 +2212,56 @@
         }));
     }
 
-    function renderBlCanvasAsync() {
-        return new Promise((resolve, reject) => {
-            const previewZone = document.getElementById('container-preview-zone');
-            const scaler = document.getElementById('bl-scaler-container');
-            const oldTransform = scaler.style.transform;
-            previewZone.style.display = "block"; scaler.style.transform = "none";
+    // Précharge une copie locale (blob) d'une image distante potentiellement sujette au CORS/cache,
+    // pour garantir une capture html2canvas sans problème — une URL "blob:" est locale par nature,
+    // donc jamais concernée par les soucis de CORS ou de cache réutilisé sans validation.
+    async function prepareRemoteImageForCapture(imgEl) {
+        if (!imgEl || !imgEl.src || imgEl.src.startsWith('data:') || imgEl.src.startsWith('blob:')) return null;
+        const originalSrc = imgEl.src;
+        try {
+            const res = await fetch(originalSrc, { cache: 'no-store' });
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            await new Promise((resolve, reject) => {
+                const tmp = new Image();
+                tmp.onload = resolve; tmp.onerror = reject;
+                tmp.src = blobUrl;
+            });
+            imgEl.src = blobUrl;
+            await new Promise(resolve => { if (imgEl.complete) resolve(); else imgEl.onload = resolve; });
+            return { imgEl, originalSrc, blobUrl };
+        } catch (e) {
+            console.error("Impossible de précharger une image pour la capture (on continue quand même):", e);
+            return null;
+        }
+    }
 
-            const blCanvasEl = document.getElementById('bl-canvas');
-            waitForImagesLoaded(blCanvasEl).then(() => {
-                return html2canvas(blCanvasEl, { scale: 2.3, useCORS: true, allowTaint: false });
-            }).then(canvas => {
-                const container = document.getElementById('img-container'); container.innerHTML = '';
-                const img = new Image(); img.src = canvas.toDataURL("image/png"); container.appendChild(img);
-                document.getElementById('image-result').style.display = 'block';
-                previewZone.style.display = "none"; scaler.style.transform = oldTransform;
-                resolve(canvas);
-            }).catch(err => { previewZone.style.display = "none"; scaler.style.transform = oldTransform; reject(err); });
-        });
+    async function renderBlCanvasAsync() {
+        const previewZone = document.getElementById('container-preview-zone');
+        const scaler = document.getElementById('bl-scaler-container');
+        const oldTransform = scaler.style.transform;
+        previewZone.style.display = "block"; scaler.style.transform = "none";
+
+        const blCanvasEl = document.getElementById('bl-canvas');
+        const sigCentreImg = document.getElementById('v-sig-centre');
+        const sigTransImg = document.getElementById('v-sig-trans');
+        let swaps = [];
+
+        try {
+            const s1 = await prepareRemoteImageForCapture(sigCentreImg); if (s1) swaps.push(s1);
+            const s2 = await prepareRemoteImageForCapture(sigTransImg); if (s2) swaps.push(s2);
+
+            await waitForImagesLoaded(blCanvasEl);
+            const canvas = await html2canvas(blCanvasEl, { scale: 2.3, useCORS: true, allowTaint: false });
+
+            const container = document.getElementById('img-container'); container.innerHTML = '';
+            const img = new Image(); img.src = canvas.toDataURL("image/png"); container.appendChild(img);
+            document.getElementById('image-result').style.display = 'block';
+            return canvas;
+        } finally {
+            swaps.forEach(s => { s.imgEl.src = s.originalSrc; URL.revokeObjectURL(s.blobUrl); });
+            previewZone.style.display = "none"; scaler.style.transform = oldTransform;
+        }
     }
 
     async function getBlFileForSharing() {
