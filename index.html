@@ -701,22 +701,43 @@
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
-        <div class="crop-wrapper"><img id="crop-preview"></div>
-        <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin:10px 0 4px 0;">
-            <button type="button" class="btn-mini edit" style="padding:8px 16px;" onclick="rotateCropImage(-90)">⟲ -90°</button>
-            <button type="button" class="btn-mini edit" style="padding:8px 16px;" onclick="rotateCropImage(90)">⟳ +90°</button>
-        </div>
-        <div class="form-group" style="margin:6px 0 10px 0;">
-            <label style="font-size:11px;">Redresser légèrement (étiquette de travers)</label>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <input type="range" id="crop-fine-rotate" min="-15" max="15" step="0.5" value="0" oninput="document.getElementById('crop-fine-rotate-badge').innerText = this.value + '°'" onchange="fineRotateCropImage(this.value)" style="flex:1; height:36px;">
-                <span id="crop-fine-rotate-badge" style="font-size:12px; font-weight:700; color:var(--blue-mp); min-width:38px; text-align:right;">0°</span>
+
+        <div id="crop-phase-crop">
+            <div class="crop-wrapper"><img id="crop-preview"></div>
+            <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin:10px 0 4px 0;">
+                <button type="button" class="btn-mini edit" style="padding:8px 16px;" onclick="rotateCropImage(-90)">⟲ -90°</button>
+                <button type="button" class="btn-mini edit" style="padding:8px 16px;" onclick="rotateCropImage(90)">⟳ +90°</button>
+            </div>
+            <div class="form-group" style="margin:6px 0 10px 0;">
+                <label style="font-size:11px;">Redresser légèrement (étiquette de travers)</label>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="range" id="crop-fine-rotate" min="-15" max="15" step="0.5" value="0" oninput="document.getElementById('crop-fine-rotate-badge').innerText = this.value + '°'" onchange="fineRotateCropImage(this.value)" style="flex:1; height:36px;">
+                    <span id="crop-fine-rotate-badge" style="font-size:12px; font-weight:700; color:var(--blue-mp); min-width:38px; text-align:right;">0°</span>
+                </div>
+            </div>
+            <div class="grid-2">
+                <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeCropModal()">ANNULER</button>
+                <button class="btn-primary-ios" style="padding:14px; font-size:14px;" onclick="goToExclusionPhase()">SUIVANT ➜</button>
             </div>
         </div>
-        <div id="ocr-status" style="font-size:13px; text-align:center; font-weight:bold; color:var(--accent); margin-bottom:16px;">Cadrez le texte (SN, REF, EXP).</div>
-        <div class="grid-2">
-            <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeCropModal()">ANNULER</button>
-            <button class="btn-primary-ios" id="btn-validate-crop" style="padding:14px; font-size:14px;" onclick="processCroppedImage()">ANALYSER 🔍</button>
+
+        <div id="crop-phase-exclude" style="display:none;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--text-main); margin-bottom:10px;">
+                <input type="checkbox" id="exclusionEnabled" checked onchange="toggleExclusionBox()">
+                Exclure une zone de l'analyse (code-barres / datamatrix)
+            </label>
+            <div id="exclude-wrapper" style="position:relative; width:100%; border-radius:14px; overflow:hidden; background:#111; touch-action:none;">
+                <img id="exclude-preview" style="width:100%; display:block; pointer-events:none;">
+                <div id="exclude-box" style="position:absolute; border:2px solid #ef4444; background:rgba(239,68,68,0.28); touch-action:none; cursor:move;">
+                    <div id="exclude-resize-handle" style="position:absolute; right:-9px; bottom:-9px; width:22px; height:22px; background:#ef4444; border:2px solid white; border-radius:50%; touch-action:none;"></div>
+                </div>
+            </div>
+            <p style="font-size:11px; color:var(--text-muted); text-align:center; margin:8px 0 0 0;">Glissez le cadre rouge sur le code-barres, redimensionnez avec le rond.</p>
+            <div id="ocr-status" style="font-size:13px; text-align:center; font-weight:bold; color:var(--accent); margin:12px 0;">Cadrez le texte (SN, REF, EXP).</div>
+            <div class="grid-2">
+                <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="backToCropPhase()">← RETOUR</button>
+                <button class="btn-primary-ios" id="btn-validate-crop" style="padding:14px; font-size:14px;" onclick="processCroppedImage()">ANALYSER 🔍</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1554,6 +1575,13 @@
 
     let cropBaseRotation = 0; // cumul des rotations 90°, le réglage fin s'ajoute par-dessus
     let cropperIsReady = false; // évite d'appliquer une rotation avant que Cropper.js soit prêt (source de à-coups)
+    let cropFinalCanvas = null; // canvas issu du recadrage (phase 1), sur lequel on peint l'exclusion (phase 2)
+    let excludeBoxState = { leftPct: 0.6, topPct: 0.05, widthPct: 0.38, heightPct: 0.55 };
+
+    function resetCropPhases() {
+        document.getElementById('crop-phase-exclude').style.display = 'none';
+        document.getElementById('crop-phase-crop').style.display = 'block';
+    }
 
     function handleLabelFile(input) {
         if (input.files && input.files[0]) {
@@ -1566,6 +1594,8 @@
                 if (cropper) cropper.destroy();
                 cropBaseRotation = 0;
                 cropperIsReady = false;
+                cropFinalCanvas = null;
+                resetCropPhases();
                 document.getElementById('crop-fine-rotate').value = 0;
                 document.getElementById('crop-fine-rotate-badge').innerText = "0°";
 
@@ -1601,10 +1631,109 @@
         cropper.rotateTo(cropBaseRotation + parseFloat(val));
     }
 
+    // Construit le canvas final du recadrage, avec un agrandissement minimal garanti pour l'OCR
+    // (un cadrage trop serré transmettrait sinon une image en trop basse résolution).
+    function buildCroppedCanvas() {
+        const canvasClean = cropper.getCroppedCanvas();
+        const MIN_WIDTH = 1100;
+        const upscale = canvasClean.width < MIN_WIDTH ? (MIN_WIDTH / canvasClean.width) : 1;
+        const canvasOut = document.createElement('canvas');
+        canvasOut.width = Math.round(canvasClean.width * upscale);
+        canvasOut.height = Math.round(canvasClean.height * upscale);
+        const ctx = canvasOut.getContext('2d');
+        if (upscale > 1) ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(canvasClean, 0, 0, canvasOut.width, canvasOut.height);
+        return canvasOut;
+    }
+
+    function applyExcludeBoxStyle() {
+        const box = document.getElementById('exclude-box');
+        box.style.left = (excludeBoxState.leftPct * 100) + '%';
+        box.style.top = (excludeBoxState.topPct * 100) + '%';
+        box.style.width = (excludeBoxState.widthPct * 100) + '%';
+        box.style.height = (excludeBoxState.heightPct * 100) + '%';
+    }
+
+    function toggleExclusionBox() {
+        const enabled = document.getElementById('exclusionEnabled').checked;
+        document.getElementById('exclude-box').style.display = enabled ? 'block' : 'none';
+    }
+
+    function goToExclusionPhase() {
+        if (!cropper || !cropperIsReady) return;
+        cropFinalCanvas = buildCroppedCanvas();
+        document.getElementById('exclude-preview').src = cropFinalCanvas.toDataURL('image/jpeg', 0.9);
+
+        // Position par défaut : le code-barres des boîtiers occupe une bande large en bas de
+        // l'étiquette, le datamatrix des sondes est un carré à droite — d'après les étiquettes vues.
+        const isBoitier = (currentScanScope === "BOITIER");
+        excludeBoxState = isBoitier
+            ? { leftPct: 0.0, topPct: 0.58, widthPct: 1.0, heightPct: 0.30 }
+            : { leftPct: 0.58, topPct: 0.05, widthPct: 0.40, heightPct: 0.55 };
+
+        document.getElementById('exclusionEnabled').checked = true;
+        document.getElementById('exclude-box').style.display = 'block';
+        applyExcludeBoxStyle();
+        document.getElementById('ocr-status').innerText = "Cadrez le texte (SN, REF, EXP).";
+
+        document.getElementById('crop-phase-crop').style.display = 'none';
+        document.getElementById('crop-phase-exclude').style.display = 'block';
+    }
+
+    function backToCropPhase() {
+        document.getElementById('crop-phase-exclude').style.display = 'none';
+        document.getElementById('crop-phase-crop').style.display = 'block';
+    }
+
+    // Glisser-déposer et redimensionnement du cadre d'exclusion (souris + tactile unifiés via Pointer Events)
+    document.addEventListener('DOMContentLoaded', () => {
+        const wrapper = document.getElementById('exclude-wrapper');
+        const box = document.getElementById('exclude-box');
+        const handle = document.getElementById('exclude-resize-handle');
+        if (!wrapper || !box || !handle) return;
+
+        let mode = null; // 'drag' | 'resize' | null
+        let startX = 0, startY = 0, startState = null;
+
+        function onPointerDown(e, targetMode) {
+            e.stopPropagation();
+            mode = targetMode;
+            startX = e.clientX; startY = e.clientY;
+            startState = { ...excludeBoxState };
+            (e.currentTarget).setPointerCapture && (e.currentTarget).setPointerCapture(e.pointerId);
+        }
+
+        box.addEventListener('pointerdown', (e) => onPointerDown(e, 'drag'));
+        handle.addEventListener('pointerdown', (e) => onPointerDown(e, 'resize'));
+
+        wrapper.addEventListener('pointermove', (e) => {
+            if (!mode) return;
+            const rect = wrapper.getBoundingClientRect();
+            const dxPct = (e.clientX - startX) / rect.width;
+            const dyPct = (e.clientY - startY) / rect.height;
+
+            if (mode === 'drag') {
+                excludeBoxState.leftPct = Math.min(Math.max(startState.leftPct + dxPct, 0), 1 - excludeBoxState.widthPct);
+                excludeBoxState.topPct = Math.min(Math.max(startState.topPct + dyPct, 0), 1 - excludeBoxState.heightPct);
+            } else if (mode === 'resize') {
+                excludeBoxState.widthPct = Math.min(Math.max(startState.widthPct + dxPct, 0.08), 1 - excludeBoxState.leftPct);
+                excludeBoxState.heightPct = Math.min(Math.max(startState.heightPct + dyPct, 0.08), 1 - excludeBoxState.topPct);
+            }
+            applyExcludeBoxStyle();
+        });
+
+        function endInteraction() { mode = null; }
+        wrapper.addEventListener('pointerup', endInteraction);
+        wrapper.addEventListener('pointercancel', endInteraction);
+        wrapper.addEventListener('pointerleave', endInteraction);
+    });
+
     function closeCropModal() {
         document.getElementById('crop-modal').style.display = 'none';
         if (cropper) { cropper.destroy(); cropper = null; }
         cropperIsReady = false;
+        cropFinalCanvas = null;
+        resetCropPhases();
         if (modalScannerActive) document.getElementById('manual-modal').style.display = 'flex';
     }
 
@@ -1635,23 +1764,23 @@
     }
 
     async function processCroppedImage() {
-        if (!cropper) return;
+        if (!cropFinalCanvas) return;
         document.getElementById('ocr-status').innerText = "Analyse OCR... ⏳";
-        const canvasClean = cropper.getCroppedCanvas();
-
-        // Un cadrage trop serré transmet une image en trop basse résolution à l'OCR : on agrandit
-        // au besoin pour garantir une largeur minimale, l'OCR étant nettement plus fiable sur du texte
-        // net et suffisamment grand que sur une image minuscule étirée à l'affichage seulement.
-        const MIN_WIDTH = 1100;
-        const upscale = canvasClean.width < MIN_WIDTH ? (MIN_WIDTH / canvasClean.width) : 1;
-
-        const canvasOcr = document.createElement('canvas');
-        canvasOcr.width = Math.round(canvasClean.width * upscale);
-        canvasOcr.height = Math.round(canvasClean.height * upscale);
+        const canvasOcr = cropFinalCanvas;
         const ctxOcr = canvasOcr.getContext('2d');
-        if (upscale > 1) ctxOcr.imageSmoothingQuality = 'high';
-        ctxOcr.drawImage(canvasClean, 0, 0, canvasOcr.width, canvasOcr.height);
-        
+
+        // La zone d'exclusion (code-barres/datamatrix) est peinte en blanc avant l'OCR : elle est
+        // ainsi totalement ignorée de l'analyse plutôt que de générer du bruit.
+        if (document.getElementById('exclusionEnabled').checked) {
+            ctxOcr.fillStyle = '#FFFFFF';
+            ctxOcr.fillRect(
+                Math.round(excludeBoxState.leftPct * canvasOcr.width),
+                Math.round(excludeBoxState.topPct * canvasOcr.height),
+                Math.round(excludeBoxState.widthPct * canvasOcr.width),
+                Math.round(excludeBoxState.heightPct * canvasOcr.height)
+            );
+        }
+
         const imgData = ctxOcr.getImageData(0, 0, canvasOcr.width, canvasOcr.height);
         const data = imgData.data;
 
@@ -1703,6 +1832,8 @@
             }
             document.getElementById('crop-modal').style.display = 'none';
             if (cropper) { cropper.destroy(); cropper = null; }
+            cropFinalCanvas = null;
+            resetCropPhases();
         } catch (err) {
             console.error(err);
             closeCropModal();
