@@ -629,10 +629,7 @@
         <div class="sticky-actions">
             <button class="btn-mail-ios" id="btn-generate-email" onclick="generateEmail(false)">📤 ENVOYER LE BL PAR EMAIL</button>
             <button class="btn-mail-ios" id="btn-generate-email-pharma" onclick="generateEmail(true)" style="background: linear-gradient(135deg, var(--palette-purple), var(--palette-plum-magenta)); box-shadow: 0 4px 14px rgba(128,44,241,0.25);">🏥 ENVOYER VERSION PHARMACIE</button>
-            <div class="grid-2">
-                <button class="btn-refresh-ios" onclick="reactivateLivePreview()">🔄 ACTUALISER LE BL</button>
-                <button class="btn-secondary-ios" id="btn-download-bl" onclick="downloadCurrentBl()">📥 TÉLÉCHARGER LE BL</button>
-            </div>
+            <button class="btn-secondary-ios" id="btn-download-bl" onclick="downloadCurrentBl()">📥 TÉLÉCHARGER LE BL</button>
             <div class="grid-2">
                 <button class="btn-primary-ios" id="btn-save-bl" style="padding:13px; font-size:13px;" onclick="saveCurrentBlToHistory(false)">💾 ENREGISTRER CE BL</button>
                 <button class="btn-refresh-ios" style="padding:13px; font-size:13px;" onclick="startNewBl()">🆕 NOUVEAU BL</button>
@@ -2108,6 +2105,17 @@
         }
     }
 
+    // Filet de sécurité : la prévisualisation se met déjà à jour à chaque action (saisie, scan,
+    // ajout/suppression d'article...), mais un rafraîchissement périodique garantit qu'elle reste
+    // toujours synchronisée même en cas de cas limite non couvert par un déclencheur direct.
+    setInterval(() => {
+        const previewZone = document.getElementById('container-preview-zone');
+        const appContent = document.getElementById('app-content');
+        if (appContent && appContent.style.display !== 'none' && previewZone && previewZone.style.display !== 'none') {
+            sync();
+        }
+    }, 4000);
+
     function sync() {
         const c = document.getElementById('inC').value; if(!c) return;
         const centreData = dbCloudCentres.find(item => item.nom === c); if(!centreData) return;
@@ -2556,6 +2564,7 @@
             setTimeout(() => URL.revokeObjectURL(url), 30000);
         } finally {
             if (btn) { btn.disabled = false; btn.innerText = originalLabel; }
+            reactivateLivePreview(); // revient automatiquement à la prévisualisation live, sans action manuelle
         }
     }
 
