@@ -652,8 +652,7 @@
             <div class="bl-preview-header">
                 <span class="bl-preview-title">📋 Prévisualisation en temps réel (Format A4)</span>
                 <div class="zoom-controls-wrapper">
-                    <label>Zoom écran :</label>
-                    <input type="range" id="preview-zoom-slider" class="zoom-slider" min="0.4" max="2.0" step="0.05" value="0.45" oninput="adjustPreviewScale(this.value)">
+                    <label>🤏 Pincez pour zoomer</label>
                     <span id="zoom-val-badge" class="zoom-badge">100%</span>
                 </div>
             </div>
@@ -1533,13 +1532,13 @@
     }
 
 
+    let currentPreviewScale = 1;
+
     function initDefaultScale() {
         const wrapper = document.getElementById('bl-wrapper');
         if (!wrapper) return;
         let availableWidth = wrapper.clientWidth - 24; 
         let defaultScale = availableWidth / 794; 
-        const slider = document.getElementById('preview-zoom-slider');
-        if(slider) { slider.min = (defaultScale * 0.8).toFixed(2); slider.max = "2.0"; slider.value = defaultScale.toFixed(2); }
         adjustPreviewScale(defaultScale);
     }
 
@@ -1548,13 +1547,49 @@
         const scaler = document.getElementById('bl-scaler-container');
         const badge = document.getElementById('zoom-val-badge');
         if (!wrapper || !scaler) return;
-        let val = parseFloat(scaleValue);
-        scaler.style.transform = `scale(${val})`;
         let autoWidth = wrapper.clientWidth - 24;
         let baseScale = autoWidth / 794;
+        let val = Math.min(Math.max(parseFloat(scaleValue), baseScale * 0.8), baseScale * 4.5);
+        currentPreviewScale = val;
+        scaler.style.transform = `scale(${val})`;
         if(badge) badge.innerText = `${Math.round((val / baseScale) * 100)}%`;
         wrapper.style.height = `${(1123 * val) + 24}px`;
     }
+
+    // Zoom par pincement à 2 doigts directement sur la prévisualisation, en repli du curseur retiré.
+    document.addEventListener('DOMContentLoaded', () => {
+        const wrapper = document.getElementById('bl-wrapper');
+        if (!wrapper) return;
+        let startDist = null;
+        let startScale = 1;
+
+        function touchDistance(touches) {
+            const dx = touches[1].clientX - touches[0].clientX;
+            const dy = touches[1].clientY - touches[0].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        wrapper.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                startDist = touchDistance(e.touches);
+                startScale = currentPreviewScale;
+                isUserZooming = true;
+            }
+        }, { passive: true });
+
+        wrapper.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && startDist) {
+                e.preventDefault(); // évite que la page entière ne zoome/scrolle pendant le pincement
+                const newDist = touchDistance(e.touches);
+                const ratio = newDist / startDist;
+                adjustPreviewScale(startScale * ratio);
+            }
+        }, { passive: false });
+
+        wrapper.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) startDist = null;
+        }, { passive: true });
+    });
 
     function onStockChange() {
         const selected = document.getElementById('man-stock').selectedOptions[0];
