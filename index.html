@@ -704,11 +704,7 @@
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
 
         <div class="crop-wrapper"><img id="crop-preview"></div>
-        <label style="display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600; color:var(--text-muted); margin:10px 0;">
-            <input type="checkbox" id="exclusionEnabled" checked>
-            Ignorer automatiquement le code-barres/datamatrix pendant l'analyse
-        </label>
-        <div id="ocr-status" style="font-size:13px; text-align:center; font-weight:bold; color:var(--accent); margin-bottom:16px;">Cadrez le texte (SN, REF, EXP).</div>
+        <div id="ocr-status" style="font-size:13px; text-align:center; font-weight:bold; color:var(--accent); margin:10px 0 16px 0;">Cadrez le texte (SN, REF, EXP).</div>
         <div class="grid-2">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeCropModal()">ANNULER</button>
             <button class="btn-primary-ios" id="btn-validate-crop" style="padding:14px; font-size:14px;" onclick="processCroppedImage()">ANALYSER 🔍</button>
@@ -1566,13 +1562,6 @@
                 // qu'un point de départ pratique : il est libéré juste après pour un ajustement libre.
                 const isBoitier = (currentScanScope === "BOITIER");
 
-                // Sur les boîtiers, la ligne de chiffres GS1 (date d'expiration + S/N) est collée juste
-                // sous les barres du code-barres, sans marge fixe : l'exclusion automatique risquait de
-                // légèrement mordre dessus et effacer des données indispensables. Désactivée par défaut
-                // pour les boîtiers ; toujours active pour les sondes où le datamatrix n'a aucun texte
-                // utile à proximité (aucun risque à l'exclure).
-                document.getElementById('exclusionEnabled').checked = !isBoitier;
-
                 cropper = new Cropper(image, {
                     viewMode: 1,
                     autoCropArea: isBoitier ? 0.85 : 0.95,
@@ -1606,13 +1595,6 @@
     // Zone du code-barres/datamatrix à ignorer pendant l'OCR, appliquée automatiquement et
     // silencieusement (aucune étape supplémentaire) : bande basse pour les boîtiers, bloc à
     // droite pour les sondes — d'après le positionnement observé sur les étiquettes réelles.
-    function getExclusionZone() {
-        const isBoitier = (currentScanScope === "BOITIER");
-        return isBoitier
-            ? { leftPct: 0.0, topPct: 0.58, widthPct: 1.0, heightPct: 0.30 }
-            : { leftPct: 0.58, topPct: 0.05, widthPct: 0.40, heightPct: 0.55 };
-    }
-
     function closeCropModal() {
         document.getElementById('crop-modal').style.display = 'none';
         if (cropper) { cropper.destroy(); cropper = null; }
@@ -1668,26 +1650,10 @@
         }
         ctxFull.putImageData(imgData, 0, 0);
 
-        // Image conservée sur le BL final : l'étiquette complète, code-barres inclus — inchangée
-        // par rapport à avant l'ajout de l'exclusion, qui ne concerne que la copie d'analyse ci-dessous.
+        // Image utilisée à la fois pour l'OCR et conservée sur le BL final : l'étiquette complète,
+        // code-barres inclus.
         const savedCleanSnapshot = canvasFull.toDataURL('image/jpeg', 0.85);
-
-        // Copie de travail réservée à l'OCR : la zone code-barres/datamatrix y est peinte en blanc
-        // (donc totalement ignorée de l'analyse), sans jamais toucher à l'image sauvegardée ci-dessus.
-        const canvasOcr = document.createElement('canvas');
-        canvasOcr.width = canvasFull.width; canvasOcr.height = canvasFull.height;
-        const ctxOcr = canvasOcr.getContext('2d');
-        ctxOcr.drawImage(canvasFull, 0, 0);
-        if (document.getElementById('exclusionEnabled').checked) {
-            const zone = getExclusionZone();
-            ctxOcr.fillStyle = '#FFFFFF';
-            ctxOcr.fillRect(
-                Math.round(zone.leftPct * canvasOcr.width),
-                Math.round(zone.topPct * canvasOcr.height),
-                Math.round(zone.widthPct * canvasOcr.width),
-                Math.round(zone.heightPct * canvasOcr.height)
-            );
-        }
+        const canvasOcr = canvasFull;
 
         let text;
         try {
