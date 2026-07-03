@@ -702,7 +702,18 @@
     <div class="ios-modal-content">
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
         <div class="crop-wrapper"><img id="crop-preview"></div>
-        <div id="ocr-status" style="font-size:13px; text-align:center; font-weight:bold; color:var(--accent); margin-bottom:16px;">Cadrer les codes barres.</div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin:10px 0 4px 0;">
+            <button type="button" class="btn-mini edit" style="padding:8px 16px;" onclick="rotateCropImage(-90)">⟲ -90°</button>
+            <button type="button" class="btn-mini edit" style="padding:8px 16px;" onclick="rotateCropImage(90)">⟳ +90°</button>
+        </div>
+        <div class="form-group" style="margin:6px 0 10px 0;">
+            <label style="font-size:11px;">Redresser légèrement (étiquette de travers)</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <input type="range" id="crop-fine-rotate" min="-15" max="15" step="0.5" value="0" oninput="fineRotateCropImage(this.value)" style="flex:1; height:36px;">
+                <span id="crop-fine-rotate-badge" style="font-size:12px; font-weight:700; color:var(--blue-mp); min-width:38px; text-align:right;">0°</span>
+            </div>
+        </div>
+        <div id="ocr-status" style="font-size:13px; text-align:center; font-weight:bold; color:var(--accent); margin-bottom:16px;">Cadrez le texte (SN, REF, EXP).</div>
         <div class="grid-2">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeCropModal()">ANNULER</button>
             <button class="btn-primary-ios" id="btn-validate-crop" style="padding:14px; font-size:14px;" onclick="processCroppedImage()">ANALYSER 🔍</button>
@@ -1516,14 +1527,14 @@
 
     function triggerSmartAnalysis(scope) {
         modalScannerActive = false; currentScanScope = scope; 
-        document.getElementById('ocr-status').innerText = (scope === "BOITIER") ? "Cadrer l'étiquette Boîtier." : "Cadrer l'étiquette Sonde.";
+        document.getElementById('ocr-status').innerText = "Cadrez le texte (SN, REF, EXP), pas le code-barres.";
         document.getElementById('label-camera-input').click();
     }
 
     function triggerModalPhoto() {
         modalScannerActive = true;
         currentScanScope = (document.getElementById('man-type').value === "SONDE") ? "SONDE" : "BOITIER";
-        document.getElementById('ocr-status').innerText = "Cadrer l'étiquette.";
+        document.getElementById('ocr-status').innerText = "Cadrez le texte (SN, REF, EXP), pas le code-barres.";
         document.getElementById('label-camera-input').click();
     }
 
@@ -1541,6 +1552,8 @@
         else { img.removeAttribute('src'); wrap.style.display = "none"; }
     }
 
+    let cropBaseRotation = 0; // cumul des rotations 90°, le réglage fin s'ajoute par-dessus
+
     function handleLabelFile(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
@@ -1550,11 +1563,28 @@
                 const image = document.getElementById('crop-preview');
                 image.src = e.target.result; modal.style.display = 'flex';
                 if (cropper) cropper.destroy();
+                cropBaseRotation = 0;
+                document.getElementById('crop-fine-rotate').value = 0;
+                document.getElementById('crop-fine-rotate-badge').innerText = "0°";
                 cropper = new Cropper(image, { viewMode: 1, autoCropArea: 0.95 });
             };
             reader.readAsDataURL(input.files[0]);
             input.value = ""; // permet de reprendre la même photo (même nom de fichier) sans que l'input ignore le changement
         }
+    }
+
+    function rotateCropImage(deg) {
+        if (!cropper) return;
+        cropBaseRotation += deg;
+        document.getElementById('crop-fine-rotate').value = 0;
+        document.getElementById('crop-fine-rotate-badge').innerText = "0°";
+        cropper.rotateTo(cropBaseRotation);
+    }
+
+    function fineRotateCropImage(val) {
+        if (!cropper) return;
+        document.getElementById('crop-fine-rotate-badge').innerText = `${val}°`;
+        cropper.rotateTo(cropBaseRotation + parseFloat(val));
     }
 
     function closeCropModal() {
@@ -1589,13 +1619,23 @@
         return threshold;
     }
 
-    function processCroppedImage() {
+    async function processCroppedImage() {
         if (!cropper) return;
         document.getElementById('ocr-status').innerText = "Analyse OCR... ⏳";
         const canvasClean = cropper.getCroppedCanvas();
+
+        // Un cadrage trop serré transmet une image en trop basse résolution à l'OCR : on agrandit
+        // au besoin pour garantir une largeur minimale, l'OCR étant nettement plus fiable sur du texte
+        // net et suffisamment grand que sur une image minuscule étirée à l'affichage seulement.
+        const MIN_WIDTH = 1100;
+        const upscale = canvasClean.width < MIN_WIDTH ? (MIN_WIDTH / canvasClean.width) : 1;
+
         const canvasOcr = document.createElement('canvas');
-        canvasOcr.width = canvasClean.width; canvasOcr.height = canvasClean.height;
-        const ctxOcr = canvasOcr.getContext('2d'); ctxOcr.drawImage(canvasClean, 0, 0);
+        canvasOcr.width = Math.round(canvasClean.width * upscale);
+        canvasOcr.height = Math.round(canvasClean.height * upscale);
+        const ctxOcr = canvasOcr.getContext('2d');
+        if (upscale > 1) ctxOcr.imageSmoothingQuality = 'high';
+        ctxOcr.drawImage(canvasClean, 0, 0, canvasOcr.width, canvasOcr.height);
         
         const imgData = ctxOcr.getImageData(0, 0, canvasOcr.width, canvasOcr.height);
         const data = imgData.data;
@@ -1613,7 +1653,19 @@
         ctxOcr.putImageData(imgData, 0, 0);
         const savedCleanSnapshot = canvasOcr.toDataURL('image/jpeg', 0.85);
 
-        Tesseract.recognize(canvasOcr, 'eng').then(({ data: { text } }) => {
+        try {
+            // PSM 6 ("bloc de texte unique") est bien plus fiable que le mode par défaut pour une
+            // étiquette structurée en petites lignes, et la liste de caractères attendus filtre le
+            // bruit des icônes/logos. Ces réglages doivent passer par l'API worker explicite :
+            // le raccourci Tesseract.recognize() les ignore silencieusement.
+            const worker = await Tesseract.createWorker('eng');
+            await worker.setParameters({
+                tessedit_pageseg_mode: '6',
+                tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()/-:. '
+            });
+            const { data: { text } } = await worker.recognize(canvasOcr);
+            await worker.terminate();
+
             if (modalScannerActive) processInlineModalOCR(text, savedCleanSnapshot);
             else {
                 if (currentScanScope === "BOITIER") parseBoitierText(text, savedCleanSnapshot);
@@ -1621,7 +1673,10 @@
             }
             document.getElementById('crop-modal').style.display = 'none';
             if (cropper) { cropper.destroy(); cropper = null; }
-        }).catch(err => { console.error(err); closeCropModal(); });
+        } catch (err) {
+            console.error(err);
+            closeCropModal();
+        }
     }
 
     function processInlineModalOCR(text, snapshot) {
