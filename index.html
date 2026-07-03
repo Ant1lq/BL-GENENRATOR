@@ -321,12 +321,13 @@
         }
         .btn-mini.edit { background: #eef2f7; color: var(--text-main); border-color: #dbe3ec; }
         .btn-mini.delete { background: #ffe4e6; color: var(--palette-vibrant-red); border-color: #ffcdd3; }
+        .btn-mini.sign { background: #eaf0ff; color: var(--palette-royal-blue); border-color: #cddcff; }
         .btn-mini:active { opacity: 0.85; transform: scale(0.97); }
 
         .signature-box {
             border: 1.5px dashed #cbd5e1;
             border-radius: 16px;
-            padding: 14px;
+            padding: 18px;
             text-align: center;
             background: #fafafa;
         }
@@ -607,18 +608,18 @@
                 <div class="signature-box">
                     <label>Transporteur</label>
                     <canvas id="pad-trans" class="sig-canvas"></canvas>
-                    <div style="display:flex; gap:4px; margin-top:8px;">
-                        <button class="btn-mini edit" style="flex:1; justify-content:center;" onclick="openFullscreenSig('trans')">Signer</button>
-                        <button class="btn-mini edit" style="flex:1; justify-content:center; font-size:11px;" onclick="document.getElementById('import-sig-trans').click()">Image</button>
+                    <div class="grid-2" style="gap:6px; margin-top:8px;">
+                        <button class="btn-mini sign" onclick="openFullscreenSig('trans')">✍️ Signer</button>
+                        <button class="btn-mini edit" onclick="document.getElementById('import-sig-trans').click()">🖼️ Image</button>
                     </div>
                     <input type="file" id="import-sig-trans" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'trans')">
                 </div>
                 <div class="signature-box">
                     <label>Centre / Tampon</label>
                     <canvas id="pad-centre" class="sig-canvas"></canvas>
-                    <div style="display:flex; gap:4px; margin-top:8px;">
-                        <button class="btn-mini edit" style="flex:1; justify-content:center;" onclick="openFullscreenSig('centre')">Signer</button>
-                        <button class="btn-mini edit" style="flex:1; justify-content:center; font-size:11px;" onclick="document.getElementById('import-sig-centre').click()">Image</button>
+                    <div class="grid-2" style="gap:6px; margin-top:8px;">
+                        <button class="btn-mini sign" onclick="openFullscreenSig('centre')">✍️ Signer</button>
+                        <button class="btn-mini edit" onclick="document.getElementById('import-sig-centre').click()">🖼️ Image</button>
                     </div>
                     <input type="file" id="import-sig-centre" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
                 </div>
