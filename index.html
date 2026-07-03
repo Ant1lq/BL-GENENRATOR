@@ -7,7 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Cardioflow">
-    <meta name="theme-color" content="#032b69">
+    <meta name="theme-color" content="#042a72">
     <meta name="format-detection" content="telephone=no">
     <title>MicroPort Cardioflow</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -21,23 +21,23 @@
 
     <style>
         :root { 
-            --palette-dark-navy: #0f172a;       
+            --palette-dark-navy: #12182c;       
             --palette-white: #ffffff;           
-            --palette-muted-gray: #6b7280;      
-            --palette-light-gray: #f3f4f6;      
-            --palette-vibrant-red: #ef4444;     
-            --palette-plum-magenta: #be185d;    
-            --palette-purple: #7c3aed;          
-            --palette-cyan: #06b6d4;            
-            --palette-royal-blue: #3b82f6;      
-            --palette-deep-blue: #032b69;       
+            --palette-muted-gray: #909191;      
+            --palette-light-gray: #e0e0e0;      
+            --palette-vibrant-red: #ff144b;     
+            --palette-plum-magenta: #c72676;    
+            --palette-purple: #802cf1;          
+            --palette-cyan: #00dbff;            
+            --palette-royal-blue: #4870ff;      
+            --palette-deep-blue: #042a72;       
 
             --blue-mp: var(--palette-deep-blue);
             --accent: var(--palette-royal-blue);
             --neutral-bg: #f8fafc;
             --card-bg: var(--palette-white);
             --text-main: var(--palette-dark-navy);
-            --text-muted: var(--palette-muted-gray);
+            --text-muted: #6b7280;
             --border-color: #e2e8f0;
 
             --dai-color: var(--palette-plum-magenta);
@@ -144,10 +144,10 @@
         .btn-header-icon {
             background: #f1f5f9;
             border: none;
-            width: 38px;
-            height: 38px;
+            width: 42px;
+            height: 42px;
             border-radius: 12px;
-            font-size: 16px;
+            font-size: 17px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -167,7 +167,7 @@
             color: white;
             border: none;
             padding: 18px;
-            border-radius: 16px;
+            border-radius: 18px;
             font-weight: 750;
             font-size: 14px;
             width: 100%;
@@ -178,23 +178,24 @@
             gap: 12px;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             letter-spacing: 0.3px;
+            min-height: 58px;
         }
         .btn-scan-boitier {
             background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue));
-            box-shadow: 0 4px 12px rgba(3, 43, 105, 0.2);
+            box-shadow: 0 4px 14px rgba(4, 42, 114, 0.25);
         }
         .btn-scan-sonde {
             background: linear-gradient(135deg, var(--palette-royal-blue), var(--palette-cyan));
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+            box-shadow: 0 4px 14px rgba(72, 112, 255, 0.25);
         }
-        .btn-smart-scan:active { transform: scale(0.98); opacity: 0.95; }
+        .btn-smart-scan:active { transform: scale(0.97); opacity: 0.92; }
 
         .app-card {
             background: var(--card-bg);
             border-radius: 20px;
             padding: 20px;
             margin-bottom: 16px;
-            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
+            box-shadow: 0 4px 20px rgba(18, 24, 44, 0.03);
             border: 1px solid rgba(226, 232, 240, 0.8);
         }
 
@@ -245,7 +246,7 @@
         input:focus, select:focus {
             outline: none;
             border-color: var(--accent);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+            box-shadow: 0 0 0 4px rgba(72, 112, 255, 0.12);
             background: #fff;
         }
 
@@ -253,18 +254,19 @@
 
         .btn-action-block {
             background: #f0f7ff;
-            border: 1.5px dashed var(--palette-royal-blue);
+            border: 1.5px solid var(--palette-royal-blue);
             color: var(--palette-royal-blue);
             padding: 16px;
             border-radius: 14px;
             font-size: 13.5px;
-            font-weight: 700;
+            font-weight: 750;
             width: 100%;
             cursor: pointer;
             margin-top: 8px;
             transition: all 0.2s ease;
+            min-height: 50px;
         }
-        .btn-action-block:active { background: #e0f0ff; }
+        .btn-action-block:active { background: #e0f0ff; transform: scale(0.98); }
 
         .detected-item-card {
             background: #fdfdfd;
@@ -275,9 +277,9 @@
             position: relative;
             transition: all 0.2s ease;
         }
-        .detected-item-card.DAI { background: var(--dai-light); border-left: 5px solid var(--dai-color); border-color: rgba(190,24,93,0.15); }
-        .detected-item-card.PM { background: var(--pm-light); border-left: 5px solid var(--pm-color); border-color: rgba(124,58,237,0.15); }
-        .detected-item-card.SONDE { background: var(--sonde-light); border-left: 5px solid var(--sonde-color); border-color: rgba(6,182,212,0.15); }
+        .detected-item-card.DAI { background: var(--dai-light); border-left: 5px solid var(--dai-color); border-color: rgba(199,38,118,0.15); }
+        .detected-item-card.PM { background: var(--pm-light); border-left: 5px solid var(--pm-color); border-color: rgba(128,44,241,0.15); }
+        .detected-item-card.SONDE { background: var(--sonde-light); border-left: 5px solid var(--sonde-color); border-color: rgba(0,219,255,0.15); }
 
         .detected-header {
             display: flex;
@@ -295,20 +297,22 @@
         .detected-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
         
         .btn-mini {
-            padding: 8px 14px;
-            font-size: 12px;
-            border-radius: 10px;
-            border: none;
+            padding: 11px 16px;
+            font-size: 12.5px;
+            border-radius: 12px;
+            border: 1.5px solid transparent;
             cursor: pointer;
-            font-weight: 700;
+            font-weight: 750;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
-            transition: opacity 0.2s;
+            min-height: 42px;
+            transition: opacity 0.2s, transform 0.15s ease;
         }
-        .btn-mini.edit { background: #e2e8f0; color: var(--text-main); }
-        .btn-mini.delete { background: #ffe4e6; color: var(--palette-vibrant-red); }
-        .btn-mini:active { opacity: 0.8; }
+        .btn-mini.edit { background: #eef2f7; color: var(--text-main); border-color: #dbe3ec; }
+        .btn-mini.delete { background: #ffe4e6; color: var(--palette-vibrant-red); border-color: #ffcdd3; }
+        .btn-mini:active { opacity: 0.85; transform: scale(0.97); }
 
         .signature-box {
             border: 1.5px dashed #cbd5e1;
@@ -330,7 +334,7 @@
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.65);
+            background: rgba(18, 24, 44, 0.65);
             backdrop-filter: blur(8px);
             z-index: 9999;
             justify-content: center;
@@ -357,12 +361,13 @@
         .btn-primary-ios, .btn-secondary-ios, .btn-mail-ios, .btn-refresh-ios {
             border: none; padding: 16px; border-radius: 16px; font-weight: 750; font-size: 15px; cursor: pointer; text-align: center; width: 100%;
             transition: transform 0.15s ease, opacity 0.15s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
+            min-height: 54px;
         }
-        .btn-primary-ios { background: var(--blue-mp); color: white; box-shadow: 0 4px 12px rgba(3,43,105,0.15); }
-        .btn-secondary-ios { background: #334155; color: white; }
-        .btn-refresh-ios { background: #e2e8f0; color: #1e293b; border: 1.5px solid #cbd5e1; }
-        .btn-mail-ios { background: linear-gradient(135deg, #1e3a8a, var(--palette-royal-blue)); color: white; box-shadow: 0 4px 12px rgba(30,58,138,0.15); }
-        .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active, .btn-refresh-ios:active { transform: scale(0.98); opacity: 0.95; }
+        .btn-primary-ios { background: var(--blue-mp); color: white; box-shadow: 0 4px 14px rgba(4,42,114,0.22); }
+        .btn-secondary-ios { background: #ffffff; color: var(--text-main); border: 1.5px solid #cbd5e1; box-shadow: 0 2px 8px rgba(18,24,44,0.04); }
+        .btn-refresh-ios { background: #eef2f7; color: var(--text-main); border: 1.5px solid #dbe3ec; }
+        .btn-mail-ios { background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue)); color: white; box-shadow: 0 4px 14px rgba(4,42,114,0.22); }
+        .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active, .btn-refresh-ios:active { transform: scale(0.97); opacity: 0.92; }
 
         #container-preview-zone { display: block; }
 
@@ -599,7 +604,7 @@
 
         <div class="sticky-actions">
             <button class="btn-mail-ios" id="btn-generate-email" onclick="generateEmail(false)">📤 ENVOYER LE BL PAR EMAIL</button>
-            <button class="btn-mail-ios" id="btn-generate-email-pharma" onclick="generateEmail(true)" style="background: linear-gradient(135deg, #b45309, #d97706);">🏥 ENVOYER VERSION PHARMACIE</button>
+            <button class="btn-mail-ios" id="btn-generate-email-pharma" onclick="generateEmail(true)" style="background: linear-gradient(135deg, #b45309, #d97706); box-shadow: 0 4px 14px rgba(180,83,9,0.25);">🏥 ENVOYER VERSION PHARMACIE</button>
             <div class="grid-2">
                 <button class="btn-refresh-ios" onclick="reactivateLivePreview()">🔄 ACTUALISER LE BL</button>
                 <button class="btn-secondary-ios" id="btn-download-bl" onclick="downloadCurrentBl()">📥 TÉLÉCHARGER LE BL</button>
