@@ -722,7 +722,6 @@
 
 <input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
 <input type="file" id="label-gallery-input" accept="image/*" style="display: none;" onchange="handleLabelFile(this)">
-<input type="file" id="admin-tampon-camera" accept="image/*" capture="environment" style="display: none;" onchange="handleAdminTamponUpload(this)">
 
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
@@ -1433,7 +1432,10 @@
 
     function triggerCenterDetailStampPhoto() {
         if (!currentCenterDetail) return;
-        document.getElementById('admin-tampon-camera').click();
+        cropPurpose = 'tampon';
+        document.getElementById('admin-modal').style.display = 'none'; // réaffiché après le recadrage
+        document.getElementById('ocr-status').innerText = "Cadrez le tampon.";
+        document.getElementById('label-camera-input').click();
     }
 
     async function removeCenterStamp() {
@@ -1475,59 +1477,37 @@
         }
     }
 
-    async function handleAdminTamponUpload(input) {
+    async function finalizeTamponUpload(canvasFull) {
         const centreCible = currentCenterDetail;
         const status = document.getElementById('admin-global-status');
-        if (!input.files || !input.files[0] || !centreCible) { input.value = ""; return; }
 
-        status.innerText = "Filtre contraste & Blanchiment... ⏳";
-        const file = input.files[0];
-        const reader = new FileReader();
+        if (!centreCible) { closeCropModal(); return; }
 
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = async function() {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width; canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
+        try {
+            const blob = await new Promise(res => canvasFull.toBlob(res, 'image/jpeg', 0.85));
+            const cleanFileName = `tampon_${centreCible.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}.jpg`;
+            document.getElementById('ocr-status').innerText = "Upload vers le stockage... 📤";
 
-                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imgData.data;
-                for (let i = 0; i < data.length; i += 4) {
-                    let grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-                    let finalColor = (grayscale > 130) ? 255 : 0; 
-                    data[i] = data[i+1] = data[i+2] = finalColor;
-                }
-                ctx.putImageData(imgData, 0, 0);
+            const { error: uploadError } = await _supabase.storage
+                .from('tampons')
+                .upload(cleanFileName, blob, { contentType: 'image/jpeg' });
 
-                canvas.toBlob(async function(blob) {
-                    const cleanFileName = `tampon_${centreCible.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}.jpg`;
-                    status.innerText = "Upload Cloud Storage Sécurisé... 📤";
+            if (uploadError) throw new Error(uploadError.message || "erreur de stockage");
 
-                    let { error: uploadError } = await _supabase.storage
-                        .from('tampons')
-                        .upload(cleanFileName, blob, { contentType: 'image/jpeg' });
+            const { data: urlData } = _supabase.storage.from('tampons').getPublicUrl(cleanFileName);
+            const { error: updateError } = await _supabase.from('centres').update({ tampon_url: urlData.publicUrl }).eq('nom', centreCible);
+            if (updateError) throw new Error(updateError.message || "erreur d'enregistrement en base");
 
-                    if (uploadError) { status.innerText = "❌ Erreur de stockage."; return; }
-
-                    const { data: urlData } = _supabase.storage.from('tampons').getPublicUrl(cleanFileName);
-                    const publicUrl = urlData.publicUrl;
-
-                    const { error: updateError } = await _supabase.from('centres').update({ tampon_url: publicUrl }).eq('nom', centreCible);
-                    if (updateError) { status.innerText = "❌ Erreur d'enregistrement en base."; return; }
-
-                    status.innerText = "🎉 Tampon relié au centre avec succès !";
-                    await synchroniserDonneesDepuisCloud();
-                    await renderCenterDetail();
-                }, 'image/jpeg', 0.85);
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-        input.value = "";
+            status.innerText = "🎉 Tampon relié au centre avec succès !";
+            await synchroniserDonneesDepuisCloud();
+            closeCropModal();
+            await renderCenterDetail();
+        } catch (e) {
+            console.error("Erreur upload tampon:", e);
+            status.innerText = `❌ Échec de l'envoi du tampon : ${e.message}`;
+            closeCropModal();
+        }
     }
-
 
     let currentPreviewScale = 1;
 
@@ -1594,14 +1574,16 @@
         document.getElementById('man-reno').value = kind; // pré-sélection pratique, reste modifiable
     }
 
+    let cropPurpose = 'label'; // 'label' (sonde/boîtier, avec OCR) ou 'tampon' (centre, sans OCR)
+
     function triggerSmartAnalysis(scope) {
-        modalScannerActive = false; currentScanScope = scope; 
+        modalScannerActive = false; currentScanScope = scope; cropPurpose = 'label';
         document.getElementById('ocr-status').innerText = "Cadrez le texte (SN, REF, EXP), pas le code-barres.";
         document.getElementById('label-camera-input').click();
     }
 
     function triggerModalPhoto() {
-        modalScannerActive = true;
+        modalScannerActive = true; cropPurpose = 'label';
         currentScanScope = (document.getElementById('man-type').value === "SONDE") ? "SONDE" : "BOITIER";
         document.getElementById('ocr-status').innerText = "Cadrez le texte (SN, REF, EXP), pas le code-barres.";
         document.getElementById('label-camera-input').click();
@@ -1638,12 +1620,13 @@
                 // Zone de départ adaptée au format de l'étiquette : les sondes sont plutôt carrées,
                 // les boîtiers ont une étiquette en bande large (code-barres GS1 inclus). Le ratio n'est
                 // qu'un point de départ pratique : il est libéré juste après pour un ajustement libre.
+                // Pour un tampon, pas de format prédéfini : recadrage libre dès le départ.
                 const isBoitier = (currentScanScope === "BOITIER");
 
                 cropper = new Cropper(image, {
                     viewMode: 1,
-                    autoCropArea: isBoitier ? 0.85 : 0.95,
-                    aspectRatio: isBoitier ? 3.6 : 1,
+                    autoCropArea: cropPurpose === 'tampon' ? 0.9 : (isBoitier ? 0.85 : 0.95),
+                    aspectRatio: cropPurpose === 'tampon' ? NaN : (isBoitier ? 3.6 : 1),
                     zoomOnTouch: true, // pincement à 2 doigts pour zoomer (natif à Cropper.js)
                     ready: function() {
                         cropperIsReady = true;
@@ -1676,6 +1659,8 @@
         if (cropper) { cropper.destroy(); cropper = null; }
         cropperIsReady = false;
         if (modalScannerActive) document.getElementById('manual-modal').style.display = 'flex';
+        if (cropPurpose === 'tampon') document.getElementById('admin-modal').style.display = 'flex';
+        cropPurpose = 'label';
     }
 
     // Rotation à 2 doigts (torsion) directement sur la photo, en complément du pincement pour zoomer
@@ -1742,7 +1727,7 @@
 
     async function processCroppedImage() {
         if (!cropper || !cropperIsReady) return;
-        document.getElementById('ocr-status').innerText = "Analyse OCR... ⏳";
+        document.getElementById('ocr-status').innerText = (cropPurpose === 'tampon') ? "Traitement de l'image... ⏳" : "Analyse OCR... ⏳";
 
         const canvasFull = buildCroppedCanvas();
         const ctxFull = canvasFull.getContext('2d');
@@ -1761,6 +1746,13 @@
             data[i] = data[i+1] = data[i+2] = bw;
         }
         ctxFull.putImageData(imgData, 0, 0);
+
+        // Pour un tampon, pas d'OCR : on réutilise juste le même recadrage + filtre noir et blanc que
+        // les étiquettes (cohérence visuelle), puis on l'envoie directement au stockage.
+        if (cropPurpose === 'tampon') {
+            await finalizeTamponUpload(canvasFull);
+            return;
+        }
 
         // Image utilisée à la fois pour l'OCR et conservée sur le BL final : l'étiquette complète,
         // code-barres inclus.
