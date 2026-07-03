@@ -1804,15 +1804,21 @@
     function extractExpirationDate(text) {
         let cleanText = text.replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
 
+        // Même tolérance que pour le S/N et le REF : les confusions OCR classiques sur les chiffres
+        // (0 lu comme O, 1 lu comme I ou L...) faisaient disparaître toute la date dès qu'un seul
+        // caractère était mal lu. On cherche la date sur une version "canonisée" du texte ; les
+        // chiffres obtenus sont fiables même si l'original contenait ce type de confusion.
+        let canonicalText = normalizeAmbiguousChars(cleanText);
+
         // 1. Date ISO imprimée en clair à côté du pictogramme sablier (ex: "2028-08-01")
-        const isoDateMatch = cleanText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
+        const isoDateMatch = canonicalText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
         if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
 
         // 2. Repli sur le code GS1/UDI : l'identifiant (17) encode la date de péremption au format AAMMJJ
         // (ex: "(17)280417" = 17/04/2028). C'est la SEULE source d'expiration sur certaines étiquettes
         // de boîtiers (Talentia, Alizéa...) qui n'impriment aucune date lisible séparément — sans ce
         // repli, le champ EXP restait systématiquement vide pour ces modèles.
-        const gs1ExpMatch = cleanText.match(/\(17\)\s*(\d{2})(\d{2})(\d{2})\b/);
+        const gs1ExpMatch = canonicalText.match(/\(17\)\s*(\d{2})(\d{2})(\d{2})\b/);
         if (gs1ExpMatch) {
             let yyyy = "20" + gs1ExpMatch[1]; // format GS1 sur 2 chiffres, toujours 20xx pour du matériel en cours d'utilisation
             return `${yyyy}-${gs1ExpMatch[2]}-${gs1ExpMatch[3]}`;
