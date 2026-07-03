@@ -129,17 +129,25 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 8px;
             padding: calc(15px + env(safe-area-inset-top)) 4px 10px 4px;
             margin-bottom: 8px;
             border-bottom: 1px solid rgba(226, 232, 240, 0.6);
         }
         header h1 {
-            font-size: 18px;
+            font-size: 16.5px;
             color: var(--blue-mp);
             margin: 0;
             font-weight: 850;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.4px;
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
+        header > div { flex-shrink: 0; }
         
         .btn-header-icon {
             background: #f1f5f9;
@@ -153,6 +161,7 @@
             justify-content: center;
             cursor: pointer;
             transition: background 0.2s;
+            flex-shrink: 0;
         }
         .btn-header-icon:active { background: #e2e8f0; }
 
@@ -352,6 +361,22 @@
             box-shadow: 0 -10px 25px rgba(0,0,0,0.1);
         }
 
+        /* Écran de gestion des centres/secteur : plein écran plutôt que feuille limitée, pour donner
+           toute la place disponible à la liste (plus de petite boîte de défilement perdue au milieu
+           d'un grand espace vide). */
+        #admin-modal { align-items: stretch; }
+        #admin-modal-content {
+            max-width: 100%;
+            width: 100%;
+            height: 100dvh;
+            max-height: 100dvh;
+            border-radius: 0;
+            padding: calc(20px + env(safe-area-inset-top)) 20px calc(16px + env(safe-area-inset-bottom)) 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
         .crop-wrapper { width: 100%; max-height: 58vh; overflow: hidden; background: #000; border-radius: 16px; margin-bottom: 16px; }
         #crop-preview { max-width: 100%; display: block; }
         #crop-modal .ios-modal-content { max-width: 100%; padding: 18px; }
@@ -451,8 +476,6 @@
         .btn-mini:disabled { opacity: 0.35; cursor: not-allowed; }
         
         .checkbox-container-list {
-            max-height: 160px;
-            overflow-y: auto;
             border: 1.5px solid #e2e8f0;
             border-radius: 14px;
             padding: 12px;
@@ -604,7 +627,7 @@
 
         <div class="sticky-actions">
             <button class="btn-mail-ios" id="btn-generate-email" onclick="generateEmail(false)">📤 ENVOYER LE BL PAR EMAIL</button>
-            <button class="btn-mail-ios" id="btn-generate-email-pharma" onclick="generateEmail(true)" style="background: linear-gradient(135deg, #b45309, #d97706); box-shadow: 0 4px 14px rgba(180,83,9,0.25);">🏥 ENVOYER VERSION PHARMACIE</button>
+            <button class="btn-mail-ios" id="btn-generate-email-pharma" onclick="generateEmail(true)" style="background: linear-gradient(135deg, var(--palette-purple), var(--palette-plum-magenta)); box-shadow: 0 4px 14px rgba(128,44,241,0.25);">🏥 ENVOYER VERSION PHARMACIE</button>
             <div class="grid-2">
                 <button class="btn-refresh-ios" onclick="reactivateLivePreview()">🔄 ACTUALISER LE BL</button>
                 <button class="btn-secondary-ios" id="btn-download-bl" onclick="downloadCurrentBl()">📥 TÉLÉCHARGER LE BL</button>
@@ -776,38 +799,40 @@
 </div>
 
 <div id="admin-modal" class="ios-modal">
-    <div class="ios-modal-content" style="max-height: 95vh;">
-        <h3 style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; text-align:center; margin-bottom:14px;">⚙️ Fiches Réseau & Établissements</h3>
+    <div class="ios-modal-content" id="admin-modal-content">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; text-align:center; margin-bottom:14px; flex-shrink:0;">⚙️ Fiches Réseau & Établissements</h3>
         
-        <div class="admin-tabs">
+        <div class="admin-tabs" style="flex-shrink:0;">
             <button id="tab-btn-view" class="admin-tab-btn active" onclick="switchAdminTab('view')">🏢 CENTRES</button>
             <button id="tab-btn-edit" class="admin-tab-btn" onclick="switchAdminTab('edit')">🌐 MON SECTEUR</button>
         </div>
 
-        <div id="admin-global-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:10px;"></div>
+        <div id="admin-global-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:10px; flex-shrink:0;"></div>
 
-        <div id="admin-tab-content-view">
-            <div id="centers-list-view">
-                <button class="btn-action-block" style="margin-top:0;" onclick="openNewCenterModal()">➕ CRÉER UN NOUVEAU CENTRE</button>
-                <div class="form-group" style="margin-top:14px; margin-bottom:8px;">
-                    <input type="text" id="centers-search" placeholder="🔎 Rechercher un établissement..." oninput="renderCentersList()">
+        <div style="flex:1; overflow-y:auto; min-height:0;">
+            <div id="admin-tab-content-view">
+                <div id="centers-list-view">
+                    <button class="btn-action-block" style="margin-top:0;" onclick="openNewCenterModal()">➕ CRÉER UN NOUVEAU CENTRE</button>
+                    <div class="form-group" style="margin-top:14px; margin-bottom:8px;">
+                        <input type="text" id="centers-search" placeholder="🔎 Rechercher un établissement..." oninput="renderCentersList()">
+                    </div>
+                    <div id="centers-list"></div>
                 </div>
-                <div id="centers-list"></div>
+                <div id="center-detail-view" style="display:none;"></div>
             </div>
-            <div id="center-detail-view" style="display:none;"></div>
+
+            <div id="admin-tab-content-edit" style="display:none;">
+                <div class="admin-section-title">🔒 MON SECTEUR (CENTRES VISIBLES AU BL)</div>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0; line-height: 1.3;">
+                    Cochez les centres qui doivent apparaître dans votre liste déroulante d'établissement lors de la création d'un BL.<br>
+                    <b>⚠️ Si vous ne cochez aucun centre, votre liste affichera tous les établissements sans restriction.</b>
+                </p>
+                <div id="ing-centers-checkboxes" class="checkbox-container-list"></div>
+                <button class="btn-primary-ios" id="btn-save-sector" style="padding:12px; font-size:13px; margin-bottom: 15px;" onclick="saveEngineerCentersProfile()">Enregistrer mon affectation sectorielle 📁</button>
+            </div>
         </div>
 
-        <div id="admin-tab-content-edit" style="display:none;">
-            <div class="admin-section-title">🔒 MON SECTEUR (CENTRES VISIBLES AU BL)</div>
-            <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0; line-height: 1.3;">
-                Cochez les centres qui doivent apparaître dans votre liste déroulante d'établissement lors de la création d'un BL.<br>
-                <b>⚠️ Si vous ne cochez aucun centre, votre liste affichera tous les établissements sans restriction.</b>
-            </p>
-            <div id="ing-centers-checkboxes" class="checkbox-container-list"></div>
-            <button class="btn-primary-ios" id="btn-save-sector" style="padding:12px; font-size:13px; margin-bottom: 15px;" onclick="saveEngineerCentersProfile()">Enregistrer mon affectation sectorielle 📁</button>
-        </div>
-
-        <div style="margin-top:24px; border-top:1px solid #e2e8f0; padding-top:15px;">
+        <div style="margin-top:16px; padding-top:15px; border-top:1px solid #e2e8f0; flex-shrink:0;">
             <button class="btn-secondary-ios" style="padding:14px;" onclick="closeAdminModal()">FERMER LA GESTION</button>
         </div>
     </div>
