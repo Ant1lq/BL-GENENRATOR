@@ -2102,6 +2102,13 @@
     let cachedHistoryRows = null;
 
     function startNewBl() {
+        const hasData = basketItems.length > 0 || document.getElementById('inC').value || document.getElementById('inD').value;
+        if (hasData) {
+            const confirmMsg = currentBlId
+                ? "Repartir sur un nouveau BL ? Les modifications non enregistrées sur le BL actuellement chargé seront perdues."
+                : "Repartir sur un nouveau BL ? Les données en cours de saisie (non enregistrées) seront perdues.";
+            if (!confirm(confirmMsg)) return;
+        }
         currentBlId = null;
         basketItems = [];
         renderBasket();
@@ -2169,7 +2176,7 @@
             }
         } catch (e) {
             console.error("Erreur enregistrement BL:", e);
-            if (!silent) alert("❌ Erreur lors de l'enregistrement du BL. Vérifiez votre connexion.");
+            if (!silent) alert(`❌ Erreur lors de l'enregistrement du BL :\n${e.message || e.details || 'connexion impossible'}`);
         } finally {
             if (saveBtn) { saveBtn.disabled = false; if (silent) saveBtn.innerText = originalLabel; }
         }
@@ -2205,7 +2212,7 @@
                 status.innerText = "";
             } catch (e) {
                 console.error("Erreur chargement historique:", e);
-                status.innerText = "❌ Erreur de chargement. Vérifiez votre connexion.";
+                status.innerText = `❌ Erreur de chargement : ${e.message || e.details || 'connexion impossible'}`;
                 cachedHistoryRows = [];
             }
         }
