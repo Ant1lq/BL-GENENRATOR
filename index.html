@@ -1869,9 +1869,15 @@
 
         basketItems.forEach((item, index) => {
             const div = document.createElement('div'); div.className = `detected-item-card ${item.type}`;
+            const thumb = item.img ? `<img src="${item.img}" style="width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid rgba(0,0,0,0.08); flex-shrink:0;">` : '';
             div.innerHTML = `
-                <div class="detected-header"><span>${item.type} &bull; ${item.model}</span><span>REF: ${refsMap[item.model]||'??'}</span></div>
-                <div class="detected-details"><b>S/N :</b> ${item.sn || '<span style="color:red;">⚠️</span>'} | <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}<br><b>Stock :</b> ${item.stock || 'N/A'}</div>
+                <div style="display:flex; gap:10px; align-items:flex-start;">
+                    ${thumb}
+                    <div style="flex:1; min-width:0;">
+                        <div class="detected-header"><span>${item.type} &bull; ${item.model}</span><span>REF: ${refsMap[item.model]||'??'}</span></div>
+                        <div class="detected-details"><b>S/N :</b> ${item.sn || '<span style="color:red;">⚠️</span>'} | <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}<br><b>Stock :</b> ${item.stock || 'N/A'}</div>
+                    </div>
+                </div>
                 <div class="detected-actions">
                     <button class="btn-mini edit" onclick="openManualAddModal(${index})">✏️ Ajuster</button>
                     <button class="btn-mini delete" onclick="deleteBasketItem(${index})">🗑️ Retirer</button>
@@ -2202,18 +2208,18 @@
     // Un item peut contenir une photo en base64 (juste après un scan) : on l'upload vers le stockage
     // Supabase pour ne pas alourdir la table avec de gros blobs, et on ne garde que l'URL publique.
     async function uploadItemPhotoIfNeeded(item, idxHint) {
-        if (!item.img || !item.img.startsWith('data:')) return item.img || null; // déjà une URL (BL rechargé) ou pas de photo
+        if (!item.img || !item.img.startsWith('data:')) return { url: item.img || null, error: null }; // déjà une URL (BL rechargé) ou pas de photo
         try {
             const res = await fetch(item.img);
             const blob = await res.blob();
             const fileName = `item_${Date.now()}_${idxHint}_${Math.random().toString(36).slice(2, 8)}.jpg`;
             const { error: upErr } = await _supabase.storage.from('bl-items').upload(fileName, blob, { contentType: 'image/jpeg' });
-            if (upErr) { console.error("Erreur upload photo article:", upErr); return null; }
+            if (upErr) { console.error("Erreur upload photo article:", upErr); return { url: null, error: upErr.message || 'erreur de stockage' }; }
             const { data: urlData } = _supabase.storage.from('bl-items').getPublicUrl(fileName);
-            return urlData.publicUrl;
+            return { url: urlData.publicUrl, error: null };
         } catch (e) {
             console.error("Erreur conversion/upload photo article:", e);
-            return null;
+            return { url: null, error: e.message || 'erreur inconnue' };
         }
     }
 
@@ -2223,9 +2229,11 @@
         if (saveBtn) { saveBtn.disabled = true; saveBtn.innerText = "⏳ Enregistrement..."; }
 
         try {
+            let photoErrors = [];
             const itemsToSave = await Promise.all(basketItems.map(async (item, idx) => {
-                const photoUrl = await uploadItemPhotoIfNeeded(item, idx);
-                return { ...item, img: photoUrl };
+                const { url, error } = await uploadItemPhotoIfNeeded(item, idx);
+                if (error) photoErrors.push(`Article ${idx + 1} (${item.model}) : ${error}`);
+                return { ...item, img: url };
             }));
 
             const payload = {
@@ -2252,7 +2260,9 @@
             basketItems = itemsToSave;
             renderBasket();
 
-            if (!silent) {
+            if (photoErrors.length > 0) {
+                alert(`⚠️ BL enregistré, mais certaines photos n'ont pas pu être sauvegardées :\n\n${photoErrors.join('\n')}\n\nLe reste des données est bien enregistré.`);
+            } else if (!silent) {
                 if (saveBtn) saveBtn.innerText = "✅ Enregistré !";
                 setTimeout(() => { if (saveBtn) saveBtn.innerText = "💾 ENREGISTRER CE BL"; }, 2000);
             }
