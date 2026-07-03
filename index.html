@@ -709,7 +709,7 @@
         <div class="form-group" style="margin:6px 0 10px 0;">
             <label style="font-size:11px;">Redresser légèrement (étiquette de travers)</label>
             <div style="display:flex; align-items:center; gap:10px;">
-                <input type="range" id="crop-fine-rotate" min="-15" max="15" step="0.5" value="0" oninput="fineRotateCropImage(this.value)" style="flex:1; height:36px;">
+                <input type="range" id="crop-fine-rotate" min="-15" max="15" step="0.5" value="0" oninput="document.getElementById('crop-fine-rotate-badge').innerText = this.value + '°'" onchange="fineRotateCropImage(this.value)" style="flex:1; height:36px;">
                 <span id="crop-fine-rotate-badge" style="font-size:12px; font-weight:700; color:var(--blue-mp); min-width:38px; text-align:right;">0°</span>
             </div>
         </div>
@@ -1553,6 +1553,7 @@
     }
 
     let cropBaseRotation = 0; // cumul des rotations 90°, le réglage fin s'ajoute par-dessus
+    let cropperIsReady = false; // évite d'appliquer une rotation avant que Cropper.js soit prêt (source de à-coups)
 
     function handleLabelFile(input) {
         if (input.files && input.files[0]) {
@@ -1564,9 +1565,23 @@
                 image.src = e.target.result; modal.style.display = 'flex';
                 if (cropper) cropper.destroy();
                 cropBaseRotation = 0;
+                cropperIsReady = false;
                 document.getElementById('crop-fine-rotate').value = 0;
                 document.getElementById('crop-fine-rotate-badge').innerText = "0°";
-                cropper = new Cropper(image, { viewMode: 1, autoCropArea: 0.95 });
+
+                // Zone de départ adaptée au format de l'étiquette : les sondes sont plutôt carrées,
+                // les boîtiers ont une étiquette en bande large (code-barres GS1 inclus). Le ratio n'est
+                // qu'un point de départ pratique : il est libéré juste après pour un ajustement libre.
+                const isBoitier = (currentScanScope === "BOITIER");
+                cropper = new Cropper(image, {
+                    viewMode: 1,
+                    autoCropArea: isBoitier ? 0.85 : 0.95,
+                    aspectRatio: isBoitier ? 3.6 : 1,
+                    ready: function() {
+                        cropperIsReady = true;
+                        this.cropper.setAspectRatio(NaN); // libère le ratio pour un recadrage 100% libre ensuite
+                    }
+                });
             };
             reader.readAsDataURL(input.files[0]);
             input.value = ""; // permet de reprendre la même photo (même nom de fichier) sans que l'input ignore le changement
@@ -1574,7 +1589,7 @@
     }
 
     function rotateCropImage(deg) {
-        if (!cropper) return;
+        if (!cropper || !cropperIsReady) return;
         cropBaseRotation += deg;
         document.getElementById('crop-fine-rotate').value = 0;
         document.getElementById('crop-fine-rotate-badge').innerText = "0°";
@@ -1582,14 +1597,14 @@
     }
 
     function fineRotateCropImage(val) {
-        if (!cropper) return;
-        document.getElementById('crop-fine-rotate-badge').innerText = `${val}°`;
+        if (!cropper || !cropperIsReady) return;
         cropper.rotateTo(cropBaseRotation + parseFloat(val));
     }
 
     function closeCropModal() {
         document.getElementById('crop-modal').style.display = 'none';
         if (cropper) { cropper.destroy(); cropper = null; }
+        cropperIsReady = false;
         if (modalScannerActive) document.getElementById('manual-modal').style.display = 'flex';
     }
 
@@ -1653,19 +1668,34 @@
         ctxOcr.putImageData(imgData, 0, 0);
         const savedCleanSnapshot = canvasOcr.toDataURL('image/jpeg', 0.85);
 
+        let text;
         try {
             // PSM 6 ("bloc de texte unique") est bien plus fiable que le mode par défaut pour une
             // étiquette structurée en petites lignes, et la liste de caractères attendus filtre le
-            // bruit des icônes/logos. Ces réglages doivent passer par l'API worker explicite :
-            // le raccourci Tesseract.recognize() les ignore silencieusement.
+            // bruit des icônes/logos. Ces réglages doivent passer par l'API worker explicite.
             const worker = await Tesseract.createWorker('eng');
             await worker.setParameters({
                 tessedit_pageseg_mode: '6',
                 tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()/-:. '
             });
-            const { data: { text } } = await worker.recognize(canvasOcr);
+            const result = await worker.recognize(canvasOcr);
+            text = result.data.text;
             await worker.terminate();
+        } catch (workerErr) {
+            // Repli : si l'API worker pose souci (réseau, version de librairie...), on retombe sur
+            // l'appel simple plutôt que d'échouer complètement et de faire disparaître le scan.
+            console.error("Erreur worker OCR, repli sur l'appel simple:", workerErr);
+            try {
+                const fallbackResult = await Tesseract.recognize(canvasOcr, 'eng');
+                text = fallbackResult.data.text;
+            } catch (fallbackErr) {
+                console.error(fallbackErr);
+                document.getElementById('ocr-status').innerText = "❌ Échec de l'analyse OCR, réessayez.";
+                return;
+            }
+        }
 
+        try {
             if (modalScannerActive) processInlineModalOCR(text, savedCleanSnapshot);
             else {
                 if (currentScanScope === "BOITIER") parseBoitierText(text, savedCleanSnapshot);
