@@ -1332,9 +1332,15 @@
             ? medecins.map(m => `<div class="cd-doctor-row"><span>👨‍⚕️ Dr ${m.nom}</span><button class="btn-mini delete" onclick="deleteDoctor(${m.id})">🗑️</button></div>`).join("")
             : "<p style='font-size:12px; color:var(--text-muted); font-style:italic;'>Aucun médecin rattaché pour le moment.</p>";
 
-        let tamponHtml = centreData.tampon_url
-            ? `<div class="tampon-preview-box"><img src="${centreData.tampon_url}" alt="Tampon officiel" onerror="handleTamponImgError(this)"></div>`
-            : "<p style='font-size:12px; color:var(--text-muted); font-style:italic; margin:6px 0 0 0;'>Aucun tampon enregistré pour ce centre.</p>";
+        let tamponHtml;
+        if (centreData.tampon_url) {
+            const displayTamponUrl = await getDisplayableTamponUrl(centreData.tampon_url);
+            tamponHtml = displayTamponUrl
+                ? `<div class="tampon-preview-box"><img src="${displayTamponUrl}" alt="Tampon officiel" onerror="handleTamponImgError(this)"></div>`
+                : `<p style="font-size:12px; color:var(--palette-vibrant-red); font-weight:700; margin:6px 0 0 0;">⚠️ Impossible de générer le lien d'accès au tampon.</p>`;
+        } else {
+            tamponHtml = "<p style='font-size:12px; color:var(--text-muted); font-style:italic; margin:6px 0 0 0;'>Aucun tampon enregistré pour ce centre.</p>";
+        }
 
         detail.innerHTML = `
             <button class="btn-mini edit" onclick="closeCenterDetail()">← Retour à la liste</button>
@@ -1443,19 +1449,54 @@
         document.getElementById('label-camera-input').click();
     }
 
+    // Chemin du fichier dans le bucket 'tampons', extrait d'une URL déjà enregistrée (peu importe
+    // qu'elle ait été stockée sous forme d'URL publique ou générée par un ancien import). Retourne
+    // null si l'URL ne pointe pas vers ce bucket (ex: ancienne donnée externe historique).
+    function extractTamponPath(tamponUrl) {
+        if (!tamponUrl) return null;
+        const marker = '/tampons/';
+        const idx = tamponUrl.indexOf(marker);
+        if (idx === -1) return null;
+        return decodeURIComponent(tamponUrl.substring(idx + marker.length).split('?')[0]);
+    }
+
     // Supprime le fichier tampon correspondant dans le stockage, à partir de son URL publique.
     // Évite d'accumuler des fichiers orphelins à chaque suppression/remplacement de tampon.
     async function deleteTamponFile(tamponUrl) {
-        if (!tamponUrl) return;
+        const fileName = extractTamponPath(tamponUrl);
+        if (!fileName) return;
         try {
-            const marker = '/tampons/';
-            const idx = tamponUrl.indexOf(marker);
-            if (idx === -1) return;
-            const fileName = decodeURIComponent(tamponUrl.substring(idx + marker.length).split('?')[0]);
             const { error } = await _supabase.storage.from('tampons').remove([fileName]);
             if (error) console.error("Erreur suppression ancien fichier tampon:", error);
         } catch (e) {
-            console.error("Erreur extraction du nom de fichier tampon:", e);
+            console.error("Erreur suppression fichier tampon:", e);
+        }
+    }
+
+    // Le bucket 'tampons' est privé : on génère un lien d'accès signé à la demande plutôt que
+    // d'utiliser une URL publique fixe. Durée volontairement très longue (10 ans) pour ne jamais
+    // avoir à s'en soucier au quotidien, tout en gardant l'avantage d'un lien à jeton (non devinable,
+    // révocable en le régénérant) plutôt qu'une URL publique permanente. Mis en cache en mémoire pour
+    // éviter de regénérer un lien à chaque rafraîchissement de l'aperçu.
+    const TAMPON_SIGNED_URL_SECONDS = 10 * 365 * 24 * 3600;
+    let tamponSignedUrlCache = {};
+
+    async function getDisplayableTamponUrl(rawTamponUrl) {
+        if (!rawTamponUrl) return null;
+        const path = extractTamponPath(rawTamponUrl);
+        if (!path) return rawTamponUrl; // ne vient pas de notre bucket : utilisée telle quelle
+
+        const cached = tamponSignedUrlCache[rawTamponUrl];
+        if (cached && cached.expiresAt > Date.now()) return cached.signedUrl;
+
+        try {
+            const { data, error } = await _supabase.storage.from('tampons').createSignedUrl(path, TAMPON_SIGNED_URL_SECONDS);
+            if (error || !data) throw error || new Error("lien introuvable");
+            tamponSignedUrlCache[rawTamponUrl] = { signedUrl: data.signedUrl, expiresAt: Date.now() + (TAMPON_SIGNED_URL_SECONDS - 3600) * 1000 };
+            return data.signedUrl;
+        } catch (e) {
+            console.error("Erreur génération du lien signé du tampon:", e);
+            return null;
         }
     }
 
@@ -2168,12 +2209,17 @@
         if (sigSource['centre'] === 'none') {
             const sigCentreImg = document.getElementById('v-sig-centre');
             if (centreData.tampon_url) {
-                if (sigCentreImg.src !== centreData.tampon_url) {
-                    sigCentreImg.src = centreData.tampon_url;
-                }
+                sigCentreImg.dataset.rawTamponUrl = centreData.tampon_url;
+                getDisplayableTamponUrl(centreData.tampon_url).then(url => {
+                    // évite d'écraser si l'utilisateur a changé de centre pendant la génération du lien
+                    if (url && sigCentreImg.dataset.rawTamponUrl === centreData.tampon_url && sigCentreImg.src !== url) {
+                        sigCentreImg.src = url;
+                    }
+                });
                 sigCentreImg.style.display = "block";
             } else {
                 sigCentreImg.removeAttribute('src');
+                delete sigCentreImg.dataset.rawTamponUrl;
             }
         }
 
