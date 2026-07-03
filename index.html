@@ -506,7 +506,10 @@
     </div>
     <div class="app-container">
         <header>
-            <button class="btn-header-icon" onclick="openAdminModal()">⚙️</button>
+            <div style="display:flex; gap:6px;">
+                <button class="btn-header-icon" onclick="openAdminModal()">⚙️</button>
+                <button class="btn-header-icon" onclick="openHistoryModal()">🕘</button>
+            </div>
             <h1>⚡ MicroPort Cardioflow</h1>
             <button class="btn-header-icon" onclick="handleLogout()">🔒</button>
         </header>
@@ -599,6 +602,14 @@
                 <button class="btn-refresh-ios" onclick="reactivateLivePreview()">🔄 ACTUALISER LE BL</button>
                 <button class="btn-secondary-ios" id="btn-download-bl" onclick="downloadCurrentBl()">📥 TÉLÉCHARGER LE BL</button>
             </div>
+            <div class="grid-2">
+                <button class="btn-primary-ios" id="btn-save-bl" style="padding:13px; font-size:13px;" onclick="saveCurrentBlToHistory(false)">💾 ENREGISTRER CE BL</button>
+                <button class="btn-refresh-ios" style="padding:13px; font-size:13px;" onclick="startNewBl()">🆕 NOUVEAU BL</button>
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--text-muted); justify-content:center; margin-top:-2px;">
+                <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()" style="width:17px; height:17px; accent-color:var(--blue-mp);">
+                Enregistrement automatique à chaque envoi
+            </label>
         </div>
 
         <div id="image-result">
@@ -808,6 +819,26 @@
     </div>
 </div>
 
+<div id="history-modal" class="ios-modal">
+    <div class="ios-modal-content" style="max-height: 95vh;">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; text-align:center; margin-bottom:14px;">🕘 Historique des BL</h3>
+
+        <div id="history-list-view">
+            <div class="form-group" style="margin-bottom:8px;">
+                <input type="text" id="history-search" placeholder="🔎 Centre, médecin, ingénieur, acte..." oninput="renderHistoryList()">
+            </div>
+            <div id="history-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:8px;"></div>
+            <div id="history-list"></div>
+        </div>
+
+        <div id="history-detail-view" style="display:none;"></div>
+
+        <div style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:15px;">
+            <button class="btn-secondary-ios" style="padding:14px;" onclick="closeHistoryModal()">FERMER</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const supabaseUrl = "https://qwdwgrmhobkrstrnbcao.supabase.co";
     const supabaseKey = "sb_publishable_fVGjFgTs7hsG_RIYljFSKQ_-ljz2sJ4";
@@ -850,6 +881,11 @@
     window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('inDate').valueAsDate = new Date();
         window.addEventListener('resize', () => { if(!isUserZooming) initDefaultScale(); });
+
+        try {
+            const savedAutoSave = localStorage.getItem('bl_autosave_enabled');
+            document.getElementById('autoSaveToggle').checked = (savedAutoSave === 'true');
+        } catch (e) { console.error("Préférence auto-save indisponible:", e); }
 
         try {
             const { data: { session }, error } = await _supabase.auth.getSession();
@@ -1900,7 +1936,13 @@
         if (sigSource['centre'] === 'none') {
             const sigCentreImg = document.getElementById('v-sig-centre');
             if (centreData.tampon_url) {
-                sigCentreImg.src = centreData.tampon_url;
+                // crossOrigin doit être défini AVANT src : sinon le navigateur met l'image en cache
+                // comme ressource "non-CORS", et html2canvas doit alors la retirer silencieusement du
+                // rendu final (même avec useCORS activé) pour éviter une erreur de sécurité du canvas.
+                if (sigCentreImg.src !== centreData.tampon_url || !sigCentreImg.crossOrigin) {
+                    sigCentreImg.crossOrigin = "anonymous";
+                    sigCentreImg.src = centreData.tampon_url;
+                }
                 sigCentreImg.style.display = "block";
             } else {
                 sigCentreImg.removeAttribute('src');
@@ -2036,6 +2078,239 @@
         // Pour la pièce jointe, utiliser le bouton "📥 TÉLÉCHARGER LE BL" puis la joindre manuellement.
         const { subject, body } = buildEmailContent(!!isPharmacie);
         window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+    }
+
+    function generateEmail(isPharmacie) {
+        // mailto direct : Outlook remplit correctement l'objet immédiatement.
+        // Pour la pièce jointe, utiliser le bouton "📥 TÉLÉCHARGER LE BL" puis la joindre manuellement.
+        const { subject, body } = buildEmailContent(!!isPharmacie);
+        window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+
+        if (document.getElementById('autoSaveToggle').checked) {
+            saveCurrentBlToHistory(true); // silencieux : ne bloque pas l'envoi du mail
+        }
+    }
+
+    function onAutoSaveToggleChange() {
+        const checked = document.getElementById('autoSaveToggle').checked;
+        try { localStorage.setItem('bl_autosave_enabled', checked ? 'true' : 'false'); }
+        catch (e) { console.error("Impossible d'enregistrer la préférence auto-save:", e); }
+    }
+
+    // ====== HISTORIQUE DES BL ======
+    let currentBlId = null; // null = nouveau BL (l'enregistrement créera une nouvelle ligne)
+    let cachedHistoryRows = null;
+
+    function startNewBl() {
+        currentBlId = null;
+        basketItems = [];
+        renderBasket();
+        document.getElementById('history-status').innerText = "";
+        const saveBtn = document.getElementById('btn-save-bl');
+        if (saveBtn) saveBtn.innerText = "💾 ENREGISTRER CE BL";
+    }
+
+    // Un item peut contenir une photo en base64 (juste après un scan) : on l'upload vers le stockage
+    // Supabase pour ne pas alourdir la table avec de gros blobs, et on ne garde que l'URL publique.
+    async function uploadItemPhotoIfNeeded(item, idxHint) {
+        if (!item.img || !item.img.startsWith('data:')) return item.img || null; // déjà une URL (BL rechargé) ou pas de photo
+        try {
+            const res = await fetch(item.img);
+            const blob = await res.blob();
+            const fileName = `item_${Date.now()}_${idxHint}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+            const { error: upErr } = await _supabase.storage.from('bl-items').upload(fileName, blob, { contentType: 'image/jpeg' });
+            if (upErr) { console.error("Erreur upload photo article:", upErr); return null; }
+            const { data: urlData } = _supabase.storage.from('bl-items').getPublicUrl(fileName);
+            return urlData.publicUrl;
+        } catch (e) {
+            console.error("Erreur conversion/upload photo article:", e);
+            return null;
+        }
+    }
+
+    async function saveCurrentBlToHistory(silent) {
+        const saveBtn = document.getElementById('btn-save-bl');
+        const originalLabel = saveBtn ? saveBtn.innerText : "";
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.innerText = "⏳ Enregistrement..."; }
+
+        try {
+            const itemsToSave = await Promise.all(basketItems.map(async (item, idx) => {
+                const photoUrl = await uploadItemPhotoIfNeeded(item, idx);
+                return { ...item, img: photoUrl };
+            }));
+
+            const payload = {
+                ingenieur: document.getElementById('inIng').value || "",
+                centre: document.getElementById('inC').value || "",
+                medecin: document.getElementById('inD').value || "",
+                acte: document.getElementById('inActe').value || "",
+                date_acte: document.getElementById('inDate').value || null,
+                items: itemsToSave,
+                updated_at: new Date().toISOString()
+            };
+
+            if (currentBlId) {
+                const { error } = await _supabase.from('bons_livraison').update(payload).eq('id', currentBlId);
+                if (error) throw error;
+            } else {
+                const { data, error } = await _supabase.from('bons_livraison').insert([payload]).select().single();
+                if (error) throw error;
+                currentBlId = data.id;
+            }
+
+            // On remplace les photos base64 en mémoire par leurs URL définitives, pour ne pas les
+            // re-uploader à chaque nouvel enregistrement du même BL.
+            basketItems = itemsToSave;
+            renderBasket();
+
+            if (!silent) {
+                if (saveBtn) saveBtn.innerText = "✅ Enregistré !";
+                setTimeout(() => { if (saveBtn) saveBtn.innerText = "💾 ENREGISTRER CE BL"; }, 2000);
+            }
+        } catch (e) {
+            console.error("Erreur enregistrement BL:", e);
+            if (!silent) alert("❌ Erreur lors de l'enregistrement du BL. Vérifiez votre connexion.");
+        } finally {
+            if (saveBtn) { saveBtn.disabled = false; if (silent) saveBtn.innerText = originalLabel; }
+        }
+    }
+
+    function openHistoryModal() {
+        document.getElementById('history-modal').style.display = 'flex';
+        document.getElementById('history-detail-view').style.display = 'none';
+        document.getElementById('history-list-view').style.display = 'block';
+        document.getElementById('history-search').value = "";
+        cachedHistoryRows = null;
+        renderHistoryList();
+    }
+
+    function closeHistoryModal() { document.getElementById('history-modal').style.display = 'none'; }
+
+    async function renderHistoryList() {
+        const listDiv = document.getElementById('history-list');
+        const status = document.getElementById('history-status');
+        const search = (document.getElementById('history-search').value || "").trim().toUpperCase();
+
+        if (cachedHistoryRows === null) {
+            status.innerText = "Chargement de l'historique... ⏳";
+            listDiv.innerHTML = "";
+            try {
+                const { data, error } = await _supabase
+                    .from('bons_livraison')
+                    .select('id, created_at, ingenieur, centre, medecin, acte, date_acte, items')
+                    .order('created_at', { ascending: false })
+                    .limit(200);
+                if (error) throw error;
+                cachedHistoryRows = data || [];
+                status.innerText = "";
+            } catch (e) {
+                console.error("Erreur chargement historique:", e);
+                status.innerText = "❌ Erreur de chargement. Vérifiez votre connexion.";
+                cachedHistoryRows = [];
+            }
+        }
+
+        let filtered = cachedHistoryRows.filter(row => {
+            if (!search) return true;
+            let haystack = `${row.centre || ''} ${row.medecin || ''} ${row.ingenieur || ''} ${row.acte || ''}`.toUpperCase();
+            return haystack.includes(search);
+        });
+
+        listDiv.innerHTML = "";
+        if (filtered.length === 0) {
+            listDiv.innerHTML = "<p style='text-align:center; font-size:12px; color:var(--text-muted); padding:20px 0;'>Aucun BL trouvé.</p>";
+            return;
+        }
+
+        filtered.forEach(row => {
+            const dateAffichee = row.date_acte ? row.date_acte.split('-').reverse().join('/') : '?';
+            const nbItems = Array.isArray(row.items) ? row.items.length : 0;
+            const el = document.createElement('div');
+            el.className = 'center-list-item';
+            el.onclick = () => openHistoryDetail(row);
+            el.innerHTML = `
+                <div class="center-list-item-info">
+                    <div class="center-list-item-name">🏥 ${row.centre || 'Centre non renseigné'}</div>
+                    <div class="center-list-item-meta">${dateAffichee} • ${row.acte || ''} • ${nbItems} élément(s) • ${row.ingenieur || ''}</div>
+                </div>
+                <span class="center-list-item-chevron">›</span>`;
+            listDiv.appendChild(el);
+        });
+    }
+
+    function openHistoryDetail(row) {
+        document.getElementById('history-list-view').style.display = 'none';
+        const detail = document.getElementById('history-detail-view');
+        detail.style.display = 'block';
+
+        const dateAffichee = row.date_acte ? row.date_acte.split('-').reverse().join('/') : 'Non renseignée';
+        let itemsHtml = (row.items || []).map(item => `
+            <div class="cd-doctor-row" style="align-items:flex-start;">
+                <span>${item.type === 'SONDE' ? '🔸' : '🔹'} ${item.model}<br>
+                    <span style="font-size:11px; color:var(--text-muted);">S/N : ${item.sn || 'N/A'} — EXP : ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}</span>
+                </span>
+            </div>`).join('') || "<p style='font-size:12px; color:var(--text-muted); font-style:italic;'>Aucun article.</p>";
+
+        detail.innerHTML = `
+            <button class="btn-mini edit" onclick="closeHistoryDetail()">← Retour à la liste</button>
+            <div class="admin-section-title" style="margin-top:14px;">🏥 ${row.centre || ''}</div>
+            <p style="font-size:12.5px; line-height:1.6; margin:0 0 14px 0;">
+                <b>Date :</b> ${dateAffichee}<br>
+                <b>Acte :</b> ${row.acte || 'N/A'}<br>
+                <b>Médecin :</b> ${row.medecin || 'N/A'}<br>
+                <b>Ingénieur :</b> ${row.ingenieur || 'N/A'}
+            </p>
+            <div class="admin-section-title">📦 Matériel (${(row.items||[]).length})</div>
+            ${itemsHtml}
+            <div class="grid-2" style="margin-top:18px;">
+                <button class="btn-mini delete" style="justify-content:center;" onclick="deleteBlFromHistory('${row.id}')">🗑️ Supprimer</button>
+                <button class="btn-primary-ios" style="padding:12px; font-size:13px;" onclick="loadBlFromHistory('${row.id}')">📂 Charger pour modifier</button>
+            </div>`;
+    }
+
+    function closeHistoryDetail() {
+        document.getElementById('history-detail-view').style.display = 'none';
+        document.getElementById('history-list-view').style.display = 'block';
+    }
+
+    function loadBlFromHistory(id) {
+        const row = (cachedHistoryRows || []).find(r => r.id === id);
+        if (!row) return;
+
+        currentBlId = row.id;
+        if (row.centre) document.getElementById('inC').value = row.centre;
+        loadMedecinsDuCentre().then(() => {
+            if (row.medecin) document.getElementById('inD').value = row.medecin;
+            sync();
+        });
+        if (row.ingenieur) document.getElementById('inIng').value = row.ingenieur;
+        if (row.acte) document.getElementById('inActe').value = row.acte;
+        if (row.date_acte) document.getElementById('inDate').value = row.date_acte;
+
+        basketItems = JSON.parse(JSON.stringify(row.items || []));
+        renderBasket();
+        updateDynamicStocksAndFilter();
+
+        const saveBtn = document.getElementById('btn-save-bl');
+        if (saveBtn) saveBtn.innerText = "💾 METTRE À JOUR CE BL";
+
+        closeHistoryModal();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function deleteBlFromHistory(id) {
+        if (!confirm("Supprimer définitivement ce BL de l'historique ? Cette action est irréversible.")) return;
+        const status = document.getElementById('history-status');
+        try {
+            const { error } = await _supabase.from('bons_livraison').delete().eq('id', id);
+            if (error) throw error;
+            cachedHistoryRows = null;
+            closeHistoryDetail();
+            renderHistoryList();
+        } catch (e) {
+            console.error("Erreur suppression BL:", e);
+            status.innerText = "❌ Échec de la suppression.";
+        }
     }
 
     async function downloadCurrentBl() {
