@@ -348,8 +348,9 @@
             box-shadow: 0 -10px 25px rgba(0,0,0,0.1);
         }
 
-        .crop-wrapper { width: 100%; max-height: 38vh; overflow: hidden; background: #000; border-radius: 16px; margin-bottom: 16px; }
+        .crop-wrapper { width: 100%; max-height: 58vh; overflow: hidden; background: #000; border-radius: 16px; margin-bottom: 16px; }
         #crop-preview { max-width: 100%; display: block; }
+        #crop-modal .ios-modal-content { max-width: 100%; padding: 18px; }
 
         .sticky-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
         
@@ -703,9 +704,12 @@
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
 
         <div class="crop-wrapper"><img id="crop-preview"></div>
-        <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin:10px 0 16px 0;">
-            <button type="button" class="btn-mini edit" style="padding:8px 16px;" onclick="rotateCropImage(-90)">⟲ -90°</button>
-            <button type="button" class="btn-mini edit" style="padding:8px 16px;" onclick="rotateCropImage(90)">⟳ +90°</button>
+        <div class="form-group" style="margin:6px 0 12px 0;">
+            <label style="font-size:11px;">Redresser l'étiquette (si photo légèrement de travers)</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <input type="range" id="crop-fine-rotate" min="-25" max="25" step="0.5" value="0" oninput="document.getElementById('crop-fine-rotate-badge').innerText = this.value + '°'" onchange="fineRotateCropImage(this.value)" style="flex:1; height:36px;">
+                <span id="crop-fine-rotate-badge" style="font-size:12px; font-weight:700; color:var(--blue-mp); min-width:38px; text-align:right;">0°</span>
+            </div>
         </div>
         <label style="display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600; color:var(--text-muted); margin-bottom:10px;">
             <input type="checkbox" id="exclusionEnabled" checked>
@@ -1550,7 +1554,6 @@
         else { img.removeAttribute('src'); wrap.style.display = "none"; }
     }
 
-    let cropBaseRotation = 0; // cumul des rotations 90°, le réglage fin s'ajoute par-dessus
     let cropperIsReady = false; // évite d'appliquer une rotation avant que Cropper.js soit prêt (source de à-coups)
 
     function handleLabelFile(input) {
@@ -1562,8 +1565,9 @@
                 const image = document.getElementById('crop-preview');
                 image.src = e.target.result; modal.style.display = 'flex';
                 if (cropper) cropper.destroy();
-                cropBaseRotation = 0;
                 cropperIsReady = false;
+                document.getElementById('crop-fine-rotate').value = 0;
+                document.getElementById('crop-fine-rotate-badge').innerText = "0°";
                 document.getElementById('exclusionEnabled').checked = true;
                 document.getElementById('ocr-status').innerText = "Cadrez le texte (SN, REF, EXP).";
 
@@ -1586,10 +1590,9 @@
         }
     }
 
-    function rotateCropImage(deg) {
+    function fineRotateCropImage(val) {
         if (!cropper || !cropperIsReady) return;
-        cropBaseRotation += deg;
-        cropper.rotateTo(cropBaseRotation);
+        cropper.rotateTo(parseFloat(val));
     }
 
     // Construit un canvas à partir du recadrage, avec un agrandissement minimal garanti pour l'OCR
@@ -1802,21 +1805,23 @@
         // 1. Le plus fiable : l'identifiant GS1/UDI (21) imprimé sous le code-barres = numéro de série.
         // Tolérance sur ce qui sépare "(21)" de la valeur : les bordures d'encadré sont parfois
         // lues par l'OCR comme des caractères parasites (|, [, ], espaces multiples...).
-        const udiMatch = cleanText.match(/\(21\)[^A-Za-z0-9]{0,4}([A-Z0-9]{5,14})/i);
+        // Un numéro de série est toujours imprimé en MAJUSCULE : on ne matche jamais de minuscule
+        // dans la valeur capturée, ce qui évite de confondre avec du bruit OCR.
+        const udiMatch = cleanText.match(/\(21\)[^A-Za-z0-9]{0,4}([A-Z0-9]{5,14})/);
         if (udiMatch) return udiMatch[1].trim();
 
         // 2. Le champ "SN" / "S/N" encadré, présent sur la quasi-totalité des étiquettes MicroPort.
         // Le "S" est accepté aussi sous la forme "5" (confusion OCR très fréquente sur cette lettre
-        // seule dans un encadré), en plus de la tolérance habituelle sur la bordure du cadre.
-        let labeledMatch = cleanText.match(/\b[S5]\s*[\/\.]?\s*N\b[^A-Za-z0-9]{0,4}([A-Z0-9]{5,14})/i);
+        // seule dans un encadré). Tolérance de casse uniquement sur le libellé lui-même.
+        let labeledMatch = cleanText.match(/\b[Ss5]\s*[\/\.]?\s*[Nn]\b[^A-Za-z0-9]{0,4}([A-Z0-9]{5,14})/);
         if (labeledMatch) return labeledMatch[1].trim();
 
         // 3. Si le mot "SN" n'a pas du tout été lu : formats connus par cœur (spécifiques à certains modèles)
         if (type === "SONDE") {
-            let vegaMatch = cleanText.match(/\b([A-Z]{3}\d{6})\b/i);
+            let vegaMatch = cleanText.match(/\b([A-Z]{3}\d{6})\b/);
             if (vegaMatch) return vegaMatch[1].trim();
         }
-        let mpBoxMatch = cleanText.match(/\b(\d{3}[A-Z]{2}\d{3})\b/i);
+        let mpBoxMatch = cleanText.match(/\b(\d{3}[A-Z]{2}\d{3})\b/);
         if (mpBoxMatch) return mpBoxMatch[1].trim();
 
         // 4. Dernier recours pour les formats de série irréguliers (Invicta, Navigo...) qui ne
@@ -1824,9 +1829,9 @@
         // caractères, mélangeant lettres et chiffres. Les codes REF de MicroPort font toujours 7
         // caractères et les codes catalogue (ex: "1CR68", "IS4-LLLL") 5 à 7 avec un tiret : ils sont
         // donc naturellement exclus par la longueur, sans avoir besoin de lire le mot "SN".
-        let refValueMatch = cleanText.match(/\bREF\b[^A-Za-z0-9]{0,4}([A-Z0-9]{5,10})/i);
+        let refValueMatch = cleanText.match(/\b[Rr][Ee][Ff]\b[^A-Za-z0-9]{0,4}([A-Z0-9]{5,10})/);
         let refValue = refValueMatch ? refValueMatch[1].toUpperCase() : null;
-        let candidates = cleanText.match(/\b[A-Z0-9]{8,12}\b/gi) || [];
+        let candidates = cleanText.match(/\b[A-Z0-9]{8,12}\b/g) || [];
         for (let tok of candidates) {
             let upper = tok.toUpperCase();
             if (refValue && upper === refValue) continue;
