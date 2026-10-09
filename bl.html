@@ -1652,6 +1652,8 @@ function trimCanvas(c){
 function removeBg(src,sens){
   const w=src.width,h=src.height;
   const img=src.getContext("2d").getImageData(0,0,w,h), d=img.data;
+  // Pixels transparents = papier blanc (sinon leurs valeurs 0,0,0 sont lues comme de l'encre noire)
+  for(let i=0;i<d.length;i+=4){ const al=d[i+3]; if(al<255){ const k=al/255; d[i]=d[i]*k+255*(1-k); d[i+1]=d[i+1]*k+255*(1-k); d[i+2]=d[i+2]*k+255*(1-k); d[i+3]=255; } }
   const cell=Math.max(16,Math.round(Math.max(w,h)/18));
   const gx=Math.ceil(w/cell), gy=Math.ceil(h/cell);
   const grid=[new Float32Array(gx*gy),new Float32Array(gx*gy),new Float32Array(gx*gy)];
@@ -1703,9 +1705,22 @@ function removeBg(src,sens){
             const oldTamponUrl = doctorTarget ? doctorTarget.old : (dbCloudCentres.find(c => c.nom === centreCible) || {}).tampon_url;
             const wantRemoveBg = document.getElementById('crop-removebg').checked;
             const base = tamponToCanvasMax(canvasFull, 1000);
-            const cleaned = wantRemoveBg ? trimCanvas(removeBg(base, 50)) : base;
-            const outType = wantRemoveBg ? 'image/png' : 'image/jpeg';
-            const outExt = wantRemoveBg ? 'png' : 'jpg';
+            // Image déjà détourée (transparence présente) : on la garde telle quelle, sans y toucher.
+            // (Les pixels transparents sont "noirs" pour le calcul : les traiter ou les enregistrer en JPEG donnait un tampon noir.)
+            const bd = base.getContext('2d').getImageData(0, 0, base.width, base.height).data;
+            let hasAlpha = false;
+            for (let i = 3; i < bd.length; i += 16) { if (bd[i] < 250) { hasAlpha = true; break; } }
+            let cleaned, outType, outExt;
+            if (hasAlpha) { cleaned = trimCanvas(base); outType = 'image/png'; outExt = 'png'; }
+            else if (wantRemoveBg) {
+                const flat = document.createElement('canvas'); flat.width = base.width; flat.height = base.height;
+                const fctx = flat.getContext('2d'); fctx.fillStyle = '#fff'; fctx.fillRect(0, 0, flat.width, flat.height); fctx.drawImage(base, 0, 0);
+                cleaned = trimCanvas(removeBg(flat, 50)); outType = 'image/png'; outExt = 'png';
+            } else {
+                const flat = document.createElement('canvas'); flat.width = base.width; flat.height = base.height;
+                const fctx = flat.getContext('2d'); fctx.fillStyle = '#fff'; fctx.fillRect(0, 0, flat.width, flat.height); fctx.drawImage(base, 0, 0);
+                cleaned = flat; outType = 'image/jpeg'; outExt = 'jpg';
+            }
             const blob = await new Promise(res => cleaned.toBlob(res, outType, 0.9));
             const cleanFileName = `tampon_${doctorTarget ? 'med_' + doctorTarget.id + '_' : ''}${centreCible.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}.${outExt}`;
             document.getElementById('ocr-status').innerText = "Upload vers le stockage... 📤";
