@@ -1092,25 +1092,30 @@
         }
     }
 
+    // Tampons propres à certains médecins (prioritaires sur le tampon du centre) : { nom du médecin: url }
+    let doctorStampMap = {};
+    let currentStampDoctor = null; // {id, nom, old} quand le recadrage en cours concerne un médecin
+
     async function loadMedecinsDuCentre() {
         const centreChoisi = document.getElementById('inC').value;
         refreshStockOptionLabels();
         const dSel = document.getElementById('inD');
         if(!dSel) return;
         
-        dSel.innerHTML = "";
+        dSel.innerHTML = ""; doctorStampMap = {};
         if (!centreChoisi) return;
 
         try {
             let { data: medecins, error: errM } = await _supabase
                 .from('medecins')
-                .select('nom')
+                .select('nom, tampon_url')
                 .eq('centre_nom', centreChoisi)
                 .order('nom', { ascending: true });
             
             if (errM) throw errM;
             if (medecins && medecins.length > 0) {
-                medecins.forEach(m => dSel.add(new Option(m.nom, m.nom)));
+                doctorStampMap = {};
+                medecins.forEach(m => { if (m.tampon_url) doctorStampMap[m.nom] = m.tampon_url; dSel.add(new Option(m.nom + (m.tampon_url ? ' 🖋️' : ''), m.nom)); });
             } else {
                 dSel.add(new Option("Aucun médecin", ""));
             }
@@ -1337,14 +1342,27 @@
         let medecins = [];
         try {
             let { data, error } = await _supabase
-                .from('medecins').select('id, nom')
+                .from('medecins').select('id, nom, tampon_url')
                 .eq('centre_nom', currentCenterDetail).order('nom', { ascending: true });
             if (error) throw error;
             medecins = data || [];
         } catch (e) { console.error("Erreur chargement médecins:", e); }
 
+        const docThumbs = await Promise.all(medecins.map(m => m.tampon_url ? getDisplayableTamponUrl(m.tampon_url) : null));
         let docsHtml = medecins.length > 0
-            ? medecins.map(m => `<div class="cd-doctor-row"><span>👨‍⚕️ Dr ${m.nom}</span><button class="btn-mini delete" onclick="deleteDoctor(${m.id})">🗑️</button></div>`).join("")
+            ? medecins.map((m, i) => `
+                <div class="cd-doctor-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                        <span>👨‍⚕️ Dr ${m.nom}</span>
+                        <button class="btn-mini delete" onclick="deleteDoctor(${m.id})">🗑️</button>
+                    </div>
+                    ${docThumbs[i] ? `<div class="tampon-preview-box" style="margin-top:0;"><img src="${docThumbs[i]}" alt="Tampon du Dr ${m.nom}"></div>` : ''}
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button class="btn-mini sign" onclick="triggerDoctorStamp(${m.id}, 'photo')">📷 ${m.tampon_url ? 'Photo' : 'Tampon : photo'}</button>
+                        <button class="btn-mini sign" onclick="triggerDoctorStamp(${m.id}, 'import')">🖼️ ${m.tampon_url ? 'Image' : 'Tampon : importer'}</button>
+                        ${m.tampon_url ? `<button class="btn-mini delete" onclick="removeDoctorStamp(${m.id})">Retirer le tampon</button>` : ''}
+                    </div>
+                </div>`).join("")
             : "<p style='font-size:12px; color:var(--text-muted); font-style:italic;'>Aucun médecin rattaché pour le moment.</p>";
 
         let tamponHtml;
@@ -1450,6 +1468,7 @@
             const { error, data } = await _supabase.from('medecins').delete().eq('id', id).select();
             if (error) throw error;
             if (!data || data.length === 0) throw new Error("droits d'accès insuffisants côté base.");
+            if (data[0] && data[0].tampon_url) await deleteTamponFile(data[0].tampon_url);
             status.innerText = "✅ Médecin retiré.";
             await renderCenterDetail();
         } catch (e) {
@@ -1458,8 +1477,38 @@
         }
     }
 
+    async function triggerDoctorStamp(id, mode) {
+        if (!currentCenterDetail) return;
+        try {
+            const { data } = await _supabase.from('medecins').select('id, nom, tampon_url').eq('id', id).single();
+            currentStampDoctor = { id: id, nom: data ? data.nom : '', old: data ? data.tampon_url : null };
+        } catch (e) { currentStampDoctor = { id: id, nom: '', old: null }; }
+        cropPurpose = 'tampon';
+        document.getElementById('ocr-status').innerText = "Cadrez le tampon.";
+        const inp = document.getElementById(mode === 'import' ? 'label-gallery-input' : 'label-camera-input');
+        inp.value = ''; inp.click();
+    }
+
+    async function removeDoctorStamp(id) {
+        if (!confirm("Retirer le tampon de ce médecin ? Le tampon du centre sera alors utilisé.")) return;
+        const status = document.getElementById('admin-global-status');
+        try {
+            const { data: cur } = await _supabase.from('medecins').select('tampon_url').eq('id', id).single();
+            const { error } = await _supabase.from('medecins').update({ tampon_url: null }).eq('id', id);
+            if (error) throw error;
+            if (cur && cur.tampon_url) await deleteTamponFile(cur.tampon_url);
+            status.innerText = "✅ Tampon du médecin retiré.";
+            await renderCenterDetail();
+            if (document.getElementById('inC').value === currentCenterDetail) await loadMedecinsDuCentre();
+        } catch (e) {
+            console.error(e);
+            status.innerText = "❌ Erreur lors du retrait du tampon.";
+        }
+    }
+
     function triggerCenterDetailStampPhoto() {
         if (!currentCenterDetail) return;
+        currentStampDoctor = null;
         cropPurpose = 'tampon';
         document.getElementById('ocr-status').innerText = "Cadrez le tampon.";
         const cam = document.getElementById('label-camera-input'); cam.value = ''; cam.click();
@@ -1467,6 +1516,7 @@
 
     function triggerCenterDetailStampImport() {
         if (!currentCenterDetail) return;
+        currentStampDoctor = null;
         cropPurpose = 'tampon';
         document.getElementById('ocr-status').innerText = "Cadrez le tampon.";
         const inp = document.getElementById('label-gallery-input');
@@ -1643,10 +1693,11 @@ function removeBg(src,sens){
         if (!centreCible) { closeCropModal(); return; }
 
         try {
-            const oldTamponUrl = (dbCloudCentres.find(c => c.nom === centreCible) || {}).tampon_url;
+            const doctorTarget = currentStampDoctor;
+            const oldTamponUrl = doctorTarget ? doctorTarget.old : (dbCloudCentres.find(c => c.nom === centreCible) || {}).tampon_url;
             const cleaned = trimCanvas(removeBg(tamponToCanvasMax(canvasFull, 1000), 50));
             const blob = await new Promise(res => cleaned.toBlob(res, 'image/png'));
-            const cleanFileName = `tampon_${centreCible.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}.png`;
+            const cleanFileName = `tampon_${doctorTarget ? 'med_' + doctorTarget.id + '_' : ''}${centreCible.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}.png`;
             document.getElementById('ocr-status').innerText = "Upload vers le stockage... 📤";
 
             const { error: uploadError } = await _supabase.storage
@@ -1656,17 +1707,20 @@ function removeBg(src,sens){
             if (uploadError) throw new Error(uploadError.message || "erreur de stockage");
 
             const { data: urlData } = _supabase.storage.from('tampons').getPublicUrl(cleanFileName);
-            const { error: updateError } = await _supabase.from('centres').update({ tampon_url: urlData.publicUrl }).eq('nom', centreCible);
+            const { error: updateError } = doctorTarget
+                ? await _supabase.from('medecins').update({ tampon_url: urlData.publicUrl }).eq('id', doctorTarget.id)
+                : await _supabase.from('centres').update({ tampon_url: urlData.publicUrl }).eq('nom', centreCible);
             if (updateError) throw new Error(updateError.message || "erreur d'enregistrement en base");
 
             // On ne supprime l'ancien fichier qu'une fois le nouveau bien enregistré, pour ne jamais
             // se retrouver sans tampon du tout si une étape précédente avait échoué.
             await deleteTamponFile(oldTamponUrl);
 
-            status.innerText = "🎉 Tampon relié au centre avec succès !";
+            status.innerText = doctorTarget ? "🎉 Tampon relié au médecin avec succès !" : "🎉 Tampon relié au centre avec succès !";
             await synchroniserDonneesDepuisCloud();
             closeCropModal();
             await renderCenterDetail();
+            if (doctorTarget && document.getElementById('inC').value === centreCible) await loadMedecinsDuCentre();
         } catch (e) {
             console.error("Erreur upload tampon:", e);
             status.innerText = `❌ Échec de l'envoi du tampon : ${e.message}`;
@@ -1827,6 +1881,7 @@ function removeBg(src,sens){
         if (modalScannerActive) document.getElementById('manual-modal').style.display = 'flex';
         if (cropPurpose === 'tampon') document.getElementById('admin-modal').style.display = 'flex';
         cropPurpose = 'label';
+        currentStampDoctor = null;
     }
 
     // Rotation à 2 doigts (torsion) directement sur la photo, en complément du pincement pour zoomer
@@ -2318,11 +2373,12 @@ function removeBg(src,sens){
 
         if (sigSource['centre'] === 'none') {
             const sigCentreImg = document.getElementById('v-sig-centre');
-            if (centreData.tampon_url) {
-                sigCentreImg.dataset.rawTamponUrl = centreData.tampon_url;
-                getDisplayableTamponUrl(centreData.tampon_url).then(url => {
-                    // évite d'écraser si l'utilisateur a changé de centre pendant la génération du lien
-                    if (url && sigCentreImg.dataset.rawTamponUrl === centreData.tampon_url && sigCentreImg.src !== url) {
+            const effectiveStamp = doctorStampMap[doc] || centreData.tampon_url; // tampon du médecin s'il en a un, sinon celui du centre
+            if (effectiveStamp) {
+                sigCentreImg.dataset.rawTamponUrl = effectiveStamp;
+                getDisplayableTamponUrl(effectiveStamp).then(url => {
+                    // évite d'écraser si l'utilisateur a changé de centre/médecin pendant la génération du lien
+                    if (url && sigCentreImg.dataset.rawTamponUrl === effectiveStamp && sigCentreImg.src !== url) {
                         sigCentreImg.src = url;
                     }
                 });
