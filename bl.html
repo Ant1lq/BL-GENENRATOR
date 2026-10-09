@@ -768,6 +768,11 @@
                 <option value="aucun">Aucun renouvellement</option>
             </select>
         </div>
+        <div class="form-group" id="man-echec-group" style="display:none;">
+            <label style="display:flex; align-items:center; gap:10px; text-transform:none; font-size:14px; letter-spacing:0; color:var(--palette-vibrant-red); font-weight:750;">
+                <input type="checkbox" id="man-echec" style="width:22px; height:22px; flex-shrink:0;"> ⚠️ Échec de pose
+            </label>
+        </div>
         <div class="form-group">
             <label>Photo de l'étiquette</label>
             <div id="man-photo-preview-wrap" style="display:none; position:relative; margin-bottom:10px;">
@@ -2140,7 +2145,7 @@ function removeBg(src,sens){
                     ${thumb}
                     <div style="flex:1; min-width:0;">
                         <div class="detected-header"><span>${item.type} &bull; ${item.model}</span><span>REF: ${refsMap[item.model]||'??'}</span></div>
-                        <div class="detected-details"><b>S/N :</b> ${item.sn || '<span style="color:red;">⚠️</span>'} | <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}<br><b>Stock :</b> ${item.stock || 'N/A'}</div>
+                        <div class="detected-details"><b>S/N :</b> ${item.sn || '<span style="color:red;">⚠️</span>'} | <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}<br><b>Stock :</b> ${item.stock || 'N/A'}${item.echec ? '<br><b style="color:var(--palette-vibrant-red);">⚠️ ÉCHEC DE POSE</b>' : ''}</div>
                     </div>
                 </div>
                 <div class="detected-actions">
@@ -2167,6 +2172,7 @@ function removeBg(src,sens){
             document.getElementById('man-model').value = item.model; document.getElementById('man-sn').value = item.sn;
             document.getElementById('man-exp').value = item.exp; document.getElementById('man-stock').value = item.stock;
             document.getElementById('man-reno').value = item.reno || "centre";
+            document.getElementById('man-echec').checked = !!item.echec;
             document.getElementById('manual-photo-status').innerText = item.img ? "📸 Photo d'étiquette associée." : "";
             temporaryModalSnapshot = item.img || null;
             setManualPhotoPreview(item.img || null);
@@ -2175,6 +2181,7 @@ function removeBg(src,sens){
             document.getElementById('man-sn').value = ""; document.getElementById('man-exp').value = "";
             document.getElementById('man-stock').value = document.getElementById('man-stock-centre').value;
             document.getElementById('man-reno').value = "centre";
+            document.getElementById('man-echec').checked = false;
             document.getElementById('manual-photo-status').innerText = "";
             setManualPhotoPreview(null);
         }
@@ -2186,6 +2193,7 @@ function removeBg(src,sens){
         const modelSel = document.getElementById('man-model'); modelSel.innerHTML = "";
         let targetList = (type === "SONDE") ? listSondes : ((type === "DAI") ? listDefis : listPaces);
         targetList.forEach(m => modelSel.add(new Option(m, m)));
+        const eg = document.getElementById('man-echec-group'); if (eg) eg.style.display = (type === 'SONDE') ? 'block' : 'none';
     }
 
     function closeManualModal() { document.getElementById('manual-modal').style.display = "none"; }
@@ -2196,7 +2204,8 @@ function removeBg(src,sens){
             type: document.getElementById('man-type').value, model: document.getElementById('man-model').value,
             sn: document.getElementById('man-sn').value, exp: document.getElementById('man-exp').value,
             stock: document.getElementById('man-stock').value, reno: document.getElementById('man-reno').value,
-            img: temporaryModalSnapshot 
+            img: temporaryModalSnapshot,
+            echec: document.getElementById('man-type').value === 'SONDE' && document.getElementById('man-echec').checked
         };
         if (idx > -1) basketItems[idx] = itemData; else basketItems.push(itemData);
         closeManualModal(); renderBasket();
@@ -2269,6 +2278,15 @@ function removeBg(src,sens){
         }
     }, 4000);
 
+    // Version pharmacie : le BL (aperçu, téléchargement, partage) n'affiche pas la ligne Renouvellement.
+    let blPharmaMode = false;
+    function setPharmaMode(on) {
+        blPharmaMode = !!on;
+        const dl = document.getElementById('btn-download-bl');
+        if (dl) dl.innerText = blPharmaMode ? '📥 TÉLÉCHARGER LE BL (VERSION PHARMACIE)' : '📥 TÉLÉCHARGER LE BL';
+        sync();
+    }
+
     function sync() {
         const c = document.getElementById('inC').value; if(!c) return;
         const centreData = dbCloudCentres.find(item => item.nom === c); if(!centreData) return;
@@ -2333,7 +2351,7 @@ function removeBg(src,sens){
             row.innerHTML = `
                 <td style="font-weight:bold; font-size:11px; text-align:center; background:#fafafa;">${textType}<br><span style="font-weight:normal; font-size:10px; color:#555;">${item.model}</span></td>
                 <td class="row-photo-flat">${item.img ? `<img src="${item.img}">` : '<div style="color:#ccc; font-size:10px;">Aucun visuel</div>'}</td>
-                <td style="font-size:10px; line-height:1.4; padding-left:10px;"><b>REF :</b> ${ref}<br><b>S/N :</b> ${item.sn || 'N/A'}<br><b>EXP :</b> ${formattedExp}<br><b>PROVENANCE :</b> ${item.stock}<br><b>RENOUVELLEMENT :</b> ${suiviValue}</td>`;
+                <td style="font-size:10px; line-height:1.4; padding-left:10px;"><b>REF :</b> ${ref}<br><b>S/N :</b> ${item.sn || 'N/A'}<br><b>EXP :</b> ${formattedExp}<br><b>PROVENANCE :</b> ${item.stock}${blPharmaMode ? '' : `<br><b>RENOUVELLEMENT :</b> ${suiviValue}`}${item.echec ? '<br><b style="color:#d60b3a;">⚠️ ÉCHEC DE POSE</b>' : ''}</td>`;
         });
         document.getElementById('v-total').innerText = basketItems.length;
     }
@@ -2452,7 +2470,8 @@ function removeBg(src,sens){
                 let renewalText = (item.reno === 'centre') ? `Stock du ${centre}` : (item.reno === 'ing') ? `Stock de ${ingenieur}` : "Aucun renouvellement";
                 renewalLine = `\n   • Renouvellement : ${renewalText}`;
             }
-            detailMatos += `${idx + 1}) ${typeLabel} : ${item.model} (REF: ${ref})\n   • S/N : ${snValue} | EXP : ${expValue}\n   • Provenance : ${item.stock}${renewalLine}\n\n`;
+            const echecLine = item.echec ? `\n   • ⚠️ ${toBoldUnicode('ÉCHEC DE POSE')}` : "";
+            detailMatos += `${idx + 1}) ${typeLabel} : ${item.model} (REF: ${ref})\n   • S/N : ${snValue} | EXP : ${expValue}\n   • Provenance : ${item.stock}${renewalLine}${echecLine}\n\n`;
         });
 
         const contexteBlock = `${divider}\n📌 CONTEXTE\n${divider}\n• Centre : ${toBoldUnicode(centre)}\n• Médecin implanteur : ${medecin}\n• Acte : ${acte}\n• Date : ${toBoldUnicode(dateStr)}\n• Ingénieur d'application : ${ingenieur}`;
@@ -2472,6 +2491,7 @@ function removeBg(src,sens){
     function generateEmail(isPharmacie) {
         // mailto direct : Outlook remplit correctement l'objet immédiatement.
         // Pour la pièce jointe, utiliser le bouton "📥 TÉLÉCHARGER LE BL" puis la joindre manuellement.
+        setPharmaMode(!!isPharmacie); // l'image du BL suit la version choisie (sans ligne Renouvellement pour la pharmacie)
         const { subject, body } = buildEmailContent(!!isPharmacie);
         window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
     }
@@ -2479,6 +2499,7 @@ function removeBg(src,sens){
     function generateEmail(isPharmacie) {
         // mailto direct : Outlook remplit correctement l'objet immédiatement.
         // Pour la pièce jointe, utiliser le bouton "📥 TÉLÉCHARGER LE BL" puis la joindre manuellement.
+        setPharmaMode(!!isPharmacie); // l'image du BL suit la version choisie (sans ligne Renouvellement pour la pharmacie)
         const { subject, body } = buildEmailContent(!!isPharmacie);
         window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
 
@@ -2507,6 +2528,7 @@ function removeBg(src,sens){
         }
         currentBlId = null;
         basketItems = [];
+        setPharmaMode(false);
         renderBasket();
         document.getElementById('history-status').innerText = "";
         const saveBtn = document.getElementById('btn-save-bl');
@@ -2656,7 +2678,7 @@ function removeBg(src,sens){
             <div class="cd-doctor-row" style="align-items:flex-start; gap:10px;">
                 ${item.img ? `<img src="${item.img}" style="width:52px; height:52px; object-fit:cover; border-radius:8px; border:1px solid #e2e8f0; flex-shrink:0;">` : ''}
                 <span>${item.type === 'SONDE' ? '🔸' : '🔹'} ${item.model}<br>
-                    <span style="font-size:11px; color:var(--text-muted);">S/N : ${item.sn || 'N/A'} — EXP : ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}</span>
+                    <span style="font-size:11px; color:var(--text-muted);">S/N : ${item.sn || 'N/A'} — EXP : ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}</span>${item.echec ? '<br><b style="font-size:11px; color:var(--palette-vibrant-red);">⚠️ ÉCHEC DE POSE</b>' : ''}
                 </span>
             </div>`).join('') || "<p style='font-size:12px; color:var(--text-muted); font-style:italic;'>Aucun article.</p>";
 
