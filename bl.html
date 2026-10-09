@@ -1027,7 +1027,7 @@
 
     async function synchroniserDonneesDepuisCloud() {
         try {
-            let { data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url').order('nom', { ascending: true });
+            let { data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url, mail_bl, mail_pharmacie').order('nom', { ascending: true });
             if (errC) throw errC;
             dbCloudCentres = centres || [];
 
@@ -1387,6 +1387,8 @@
             <div class="admin-section-title" style="margin-top:14px;">🏥 Informations générales</div>
             <div class="form-group"><label>Nom de l'établissement</label><input type="text" id="cd-nom" value="${(centreData.nom||'').replace(/"/g,'&quot;')}"></div>
             <div class="form-group"><label>Adresse postale complète</label><input type="text" id="cd-adr" value="${(centreData.adresse||'').replace(/"/g,'&quot;')}"></div>
+            <div class="form-group"><label>✉️ Destinataires du BL (e-mails, séparés par une virgule)</label><input type="text" id="cd-mail-bl" inputmode="email" autocapitalize="off" placeholder="cardiologie@hopital.fr, ..." value="${(centreData.mail_bl||'').replace(/"/g,'&quot;')}"></div>
+            <div class="form-group"><label>✉️ Destinataires version pharmacie</label><input type="text" id="cd-mail-pharma" inputmode="email" autocapitalize="off" placeholder="pharmacie@hopital.fr, ..." value="${(centreData.mail_pharmacie||'').replace(/"/g,'&quot;')}"></div>
             <button class="btn-primary-ios" id="cd-save-info-btn" style="padding:12px; font-size:13px; margin-bottom:22px;" onclick="saveCenterDetailInfo()">💾 Enregistrer les infos</button>
 
             <div class="admin-section-title">👨‍⚕️ Médecins implanteurs</div>
@@ -1423,7 +1425,7 @@
         if (btn) btn.disabled = true;
 
         try {
-            const { error } = await _supabase.from('centres').update({ nom: newNom, adresse: newAdr }).eq('nom', originalName);
+            const { error } = await _supabase.from('centres').update({ nom: newNom, adresse: newAdr, mail_bl: (document.getElementById('cd-mail-bl').value.trim() || null), mail_pharmacie: (document.getElementById('cd-mail-pharma').value.trim() || null) }).eq('nom', originalName);
             if (error) throw error;
 
             // Le nom du centre sert de clé "texte" dans plusieurs tables (médecins, secteurs).
@@ -2573,12 +2575,12 @@ function removeBg(src,sens){
         return { subject, body };
     }
 
-    function generateEmail(isPharmacie) {
-        // mailto direct : Outlook remplit correctement l'objet immédiatement.
-        // Pour la pièce jointe, utiliser le bouton "📥 TÉLÉCHARGER LE BL" puis la joindre manuellement.
-        setPharmaMode(!!isPharmacie); // l'image du BL suit la version choisie (sans ligne Renouvellement pour la pharmacie)
-        const { subject, body } = buildEmailContent(!!isPharmacie);
-        window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+    // Destinataires enregistrés sur la fiche du centre (BL ou pharmacie), insérés dans le mailto.
+    function getMailRecipients(isPharmacie) {
+        const c = dbCloudCentres.find(x => x.nom === document.getElementById('inC').value);
+        if (!c) return '';
+        const raw = (isPharmacie ? c.mail_pharmacie : c.mail_bl) || '';
+        return raw.split(/[;,\s]+/).filter(a => a.includes('@')).map(a => encodeURIComponent(a).replace(/%40/g, '@')).join(',');
     }
 
     function generateEmail(isPharmacie) {
@@ -2586,7 +2588,15 @@ function removeBg(src,sens){
         // Pour la pièce jointe, utiliser le bouton "📥 TÉLÉCHARGER LE BL" puis la joindre manuellement.
         setPharmaMode(!!isPharmacie); // l'image du BL suit la version choisie (sans ligne Renouvellement pour la pharmacie)
         const { subject, body } = buildEmailContent(!!isPharmacie);
-        window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+        window.open(`mailto:${getMailRecipients(!!isPharmacie)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+    }
+
+    function generateEmail(isPharmacie) {
+        // mailto direct : Outlook remplit correctement l'objet immédiatement.
+        // Pour la pièce jointe, utiliser le bouton "📥 TÉLÉCHARGER LE BL" puis la joindre manuellement.
+        setPharmaMode(!!isPharmacie); // l'image du BL suit la version choisie (sans ligne Renouvellement pour la pharmacie)
+        const { subject, body } = buildEmailContent(!!isPharmacie);
+        window.open(`mailto:${getMailRecipients(!!isPharmacie)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
 
         if (document.getElementById('autoSaveToggle').checked) {
             saveCurrentBlToHistory(true); // silencieux : ne bloque pas l'envoi du mail
