@@ -953,6 +953,8 @@
     let isUserZooming = false;
     let modalScannerActive = false; 
     let temporaryModalSnapshot = null; 
+    let temporaryModalBc = null; // {gtin, sn} lus par code-barres pour le matériel en cours d'édition
+
 
     let refsMap = {
         "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M", 
@@ -1941,14 +1943,14 @@ function removeBg(src,sens){
 
     function triggerSmartAnalysis(scope) {
         modalScannerActive = false; currentScanScope = scope; cropPurpose = 'label';
-        document.getElementById('ocr-status').innerText = "Cadrez le texte (SN, REF, EXP), pas le code-barres.";
+        document.getElementById('ocr-status').innerText = "Photo de l'étiquette entière (code-barres inclus) : cadrage automatique.";
         document.getElementById('label-camera-input').click();
     }
 
     function triggerModalPhoto() {
         modalScannerActive = true; cropPurpose = 'label';
         currentScanScope = (document.getElementById('man-type').value === "SONDE") ? "SONDE" : "BOITIER";
-        document.getElementById('ocr-status').innerText = "Cadrez le texte (SN, REF, EXP), pas le code-barres.";
+        document.getElementById('ocr-status').innerText = "Photo de l'étiquette entière (code-barres inclus) : cadrage automatique.";
         document.getElementById('label-camera-input').click();
     }
 
@@ -1981,7 +1983,7 @@ function removeBg(src,sens){
                 document.getElementById('btn-validate-crop').innerText = (cropPurpose === 'tampon') ? 'VALIDER LE TAMPON ✅' : 'ANALYSER 🔍';
                 if (cropper) cropper.destroy();
                 cropperIsReady = false;
-                document.getElementById('ocr-status').innerText = (cropPurpose === 'tampon') ? "Cadrez le tampon." : "Cadrez le texte (SN, REF, EXP).";
+                document.getElementById('ocr-status').innerText = (cropPurpose === 'tampon') ? "Cadrez le tampon." : "Recherche du code-barres…";
 
                 // Zone de départ adaptée au format de l'étiquette : les sondes sont plutôt carrées,
                 // les boîtiers ont une étiquette en bande large (code-barres GS1 inclus). Le ratio n'est
@@ -1997,8 +1999,10 @@ function removeBg(src,sens){
                     ready: function() {
                         cropperIsReady = true;
                         this.cropper.setAspectRatio(NaN); // libère le ratio pour un recadrage 100% libre ensuite
+                        if (pendingAutoCrop) applyAutoCrop();   // cadrage automatique de l'étiquette (réglable ensuite à la main)
                     }
                 });
+                if (cropPurpose !== 'tampon') startLabelAnalysis(e.target.result);
             };
             reader.readAsDataURL(input.files[0]);
             input.value = ""; // permet de reprendre la même photo (même nom de fichier) sans que l'input ignore le changement
@@ -2024,6 +2028,7 @@ function removeBg(src,sens){
         document.getElementById('crop-modal').style.display = 'none';
         if (cropper) { cropper.destroy(); cropper = null; }
         cropperIsReady = false;
+        labelAnalysisToken++; labelAnalysis = null; labelAnalysisPromise = null; pendingAutoCrop = null;
         if (modalScannerActive) document.getElementById('manual-modal').style.display = 'flex';
         if (cropPurpose === 'tampon') document.getElementById('admin-modal').style.display = 'flex';
         cropPurpose = 'label';
@@ -2092,6 +2097,262 @@ function removeBg(src,sens){
         return threshold;
     }
 
+    // =====================================================================================
+    //  LECTURE DES ÉTIQUETTES PAR CODE-BARRES (UDI / GS1) + CADRAGE AUTOMATIQUE
+    //  Les étiquettes MicroPort portent un code GS1 : Data Matrix sur les sondes, Code 128 sur les boîtiers.
+    //  Il contient la référence produit (01), la date de péremption (17) et le numéro de série (21),
+    //  sans aucune confusion de caractères (8/6, S/5...). L'OCR ne sert plus que de secours.
+    // =====================================================================================
+    const ZXING_URL = 'https://cdn.jsdelivr.net/npm/zxing-wasm@2/dist/iife/reader/index.js';
+    let zxingLoading = null;
+    function loadZXing() {
+        if (window.ZXingWASM && window.ZXingWASM.readBarcodes) return Promise.resolve(window.ZXingWASM);
+        if (zxingLoading) return zxingLoading;
+        zxingLoading = new Promise((resolve) => {
+            const done = () => resolve((window.ZXingWASM && window.ZXingWASM.readBarcodes) ? window.ZXingWASM : null);
+            const s = document.createElement('script');
+            s.src = ZXING_URL; s.onload = done;
+            s.onerror = () => { zxingLoading = null; resolve(null); };
+            document.head.appendChild(s);
+            setTimeout(done, 20000);
+        });
+        return zxingLoading;
+    }
+    window.addEventListener('load', () => { setTimeout(() => { loadZXing(); }, 1500); }); // préchargement en arrière-plan
+
+    // Référence produit (GTIN du code GS1) -> modèle. Table de départ + correspondances apprises quand
+    // vous validez un matériel à la main (stockées sur cet appareil).
+    const GTIN_MODELS_BUILTIN = {
+        "08031527016511": "Invicta 1CR68", "08031527016474": "Invicta 1CR58",
+        "08031527016603": "Vega R52", "08031527016610": "Vega R58",
+        "08031527020907": "Talentia VR 3240", "08031527020914": "Talentia DR 3540",
+        "08031527018591": "Alizéa DR 1600"
+    };
+    function getLearnedGtins() { try { return JSON.parse(localStorage.getItem('gtinModels') || '{}') || {}; } catch (e) { return {}; } }
+    function modelFromGtin(gtin) {
+        if (!gtin) return null;
+        const g = String(gtin).padStart(14, '0');
+        const m = getLearnedGtins()[g] || GTIN_MODELS_BUILTIN[g] || null;
+        return (m && (listDefis.includes(m) || listPaces.includes(m) || listSondes.includes(m))) ? m : null;
+    }
+    function learnGtinModel(gtin, model) {
+        if (!gtin || !model) return;
+        try { const t = getLearnedGtins(); t[String(gtin).padStart(14, '0')] = model; localStorage.setItem('gtinModels', JSON.stringify(t)); } catch (e) {}
+    }
+
+    // Découpe d'un texte GS1 (avec ou sans parenthèses) en identifiants d'application.
+    function parseGS1(text) {
+        if (!text) return null;
+        let t = String(text).replace(/^\][A-Za-z]\d/, '');
+        const out = {};
+        if (t.indexOf('(') >= 0) {
+            const re = /\((\d{2,4})\)([^()\x1d]+)/g; let m;
+            while ((m = re.exec(t))) out[m[1]] = m[2];
+        } else {
+            const FIX = { '00': 18, '01': 14, '02': 14, '11': 6, '12': 6, '13': 6, '15': 6, '16': 6, '17': 6, '20': 2 };
+            let i = 0;
+            while (i < t.length) {
+                if (t[i] === '\x1d') { i++; continue; }
+                const ai = t.substr(i, 2); i += 2;
+                if (FIX[ai]) { out[ai] = t.substr(i, FIX[ai]); i += FIX[ai]; }
+                else { let j = t.indexOf('\x1d', i); if (j < 0) j = t.length; out[ai] = t.substring(i, j); i = j + 1; }
+            }
+        }
+        if (!out['01'] && !out['21']) return null;
+        let exp = '';
+        const e = out['17'];
+        if (e && /^\d{6}$/.test(e)) {
+            const yy = e.substr(0, 2), mm = parseInt(e.substr(2, 2), 10); let dd = parseInt(e.substr(4, 2), 10);
+            if (mm >= 1 && mm <= 12) {
+                if (dd === 0) dd = new Date(2000 + parseInt(yy, 10), mm, 0).getDate(); // jour « 00 » = fin de mois (norme GS1)
+                if (dd >= 1 && dd <= 31) exp = `20${yy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+            }
+        }
+        const sn = out['21'] ? String(out['21']).toUpperCase().trim() : '';
+        const gtin = out['01'] || '';
+        return { gtin, sn, exp, model: modelFromGtin(gtin), raw: t };
+    }
+
+    // Les numéros de série MicroPort suivent un gabarit fixe : on s'en sert pour corriger l'OCR quand il n'y a
+    // pas de code-barres (un « S » à la place d'un 5 dans une case chiffre, un 8 pris pour B...).
+    const SN_MASKS = ['DDDLLDDD',      // boîtiers : 525JQ082
+                      'DDLLDDDDDD',    // Invicta  : 68TR105857
+                      'LLLDDDDDD'];    // Vega     : DRG102215
+    function fixSerialByPattern(sn) {
+        if (!sn) return sn;
+        const s = String(sn).toUpperCase();
+        const toDigit = { O: '0', Q: '0', D: '0', I: '1', L: '1', Z: '2', S: '5', G: '6', B: '8' };
+        const toLetter = { '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '6': 'G', '8': 'B' };
+        let best = null;
+        for (const mask of SN_MASKS) {
+            if (mask.length !== s.length) continue;
+            let out = '', fixes = 0, ok = true;
+            for (let i = 0; i < s.length; i++) {
+                const c = s[i], isD = /\d/.test(c), isL = /[A-Z]/.test(c);
+                if (mask[i] === 'D') { if (isD) out += c; else if (toDigit[c]) { out += toDigit[c]; fixes++; } else { ok = false; break; } }
+                else { if (isL) out += c; else if (toLetter[c]) { out += toLetter[c]; fixes++; } else { ok = false; break; } }
+            }
+            if (ok && (!best || fixes < best.fixes)) best = { out, fixes };
+        }
+        return best ? best.out : s;
+    }
+
+    // Décodage d'un canvas : plusieurs échelles (certaines photos ne se lisent qu'en réduisant l'image).
+    async function decodeLabelBarcode(srcCanvas) {
+        const Z = await loadZXing();
+        if (!Z) return null;
+        const maxSide = Math.max(srcCanvas.width, srcCanvas.height);
+        const scales = [];
+        [2600, 1500, 900].forEach(target => { const sc = Math.min(1, target / maxSide); if (!scales.some(x => Math.abs(x - sc) < 0.05)) scales.push(sc); });
+        for (const sc of scales) {
+            try {
+                const w = Math.max(1, Math.round(srcCanvas.width * sc)), h = Math.max(1, Math.round(srcCanvas.height * sc));
+                const c = document.createElement('canvas'); c.width = w; c.height = h;
+                const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(srcCanvas, 0, 0, w, h);
+                const res = await Z.readBarcodes(ctx.getImageData(0, 0, w, h), {
+                    formats: ['DataMatrix', 'Code128'], tryHarder: true, tryRotate: true, tryInvert: true, tryDownscale: true, maxNumberOfSymbols: 3
+                });
+                for (const r of (res || [])) {
+                    if (r.isValid === false || !r.text) continue;
+                    const parsed = parseGS1(r.text);
+                    if (!parsed) continue;
+                    const p = r.position;
+                    parsed.format = /matrix/i.test(r.format || '') ? 'dm' : 'linear';
+                    parsed.position = p ? [p.topLeft, p.topRight, p.bottomRight, p.bottomLeft].map(pt => ({ x: pt.x / sc, y: pt.y / sc })) : null;
+                    return parsed;
+                }
+            } catch (err) { console.error('Décodage code-barres :', err); }
+        }
+        return null;
+    }
+
+    // Position approximative de l'étiquette, déduite de celle du code-barres (taille et forme d'étiquette constantes).
+    // Renvoie centre, taille et angle (en degrés) dans le repère de la photo.
+    function labelBoxFromBarcode(bc) {
+        const P = bc && bc.position; if (!P) return null;
+        const d = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+        const ang = Math.atan2(P[1].y - P[0].y, P[1].x - P[0].x);
+        const ex = { x: Math.cos(ang), y: Math.sin(ang) }, ey = { x: -Math.sin(ang), y: Math.cos(ang) };
+        const mid = { x: (P[0].x + P[1].x + P[2].x + P[3].x) / 4, y: (P[0].y + P[1].y + P[2].y + P[3].y) / 4 };
+        let W, H, off;
+        if (bc.format === 'dm') {            // sondes : étiquette carrée, Data Matrix en bas à droite (~30 % de la largeur)
+            const side = (d(P[0], P[1]) + d(P[3], P[2]) + d(P[0], P[3]) + d(P[1], P[2])) / 4;
+            W = side / 0.30; H = W; off = { x: -0.29 * W, y: -0.15 * H };
+        } else {                             // boîtiers : étiquette en bande (~3,7:1), code-barres ~69 % de la largeur
+            const L = d(P[0], P[1]); W = L / 0.69; H = W / 3.72; off = { x: -0.02 * W, y: -0.02 * H };
+        }
+        return { cx: mid.x + ex.x * off.x + ey.x * off.y, cy: mid.y + ex.y * off.x + ey.y * off.y, w: W, h: H, angle: ang * 180 / Math.PI };
+    }
+
+    // Repli sans code-barres : zone claire (papier de l'étiquette) la plus grande de la photo.
+    function labelBoxFromBrightness(img) {
+        try {
+            const S = 320, sc = Math.min(1, S / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+            const w = Math.max(8, Math.round((img.naturalWidth || img.width) * sc)), h = Math.max(8, Math.round((img.naturalHeight || img.height) * sc));
+            const c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0, w, h);
+            const px = ctx.getImageData(0, 0, w, h).data, g = new Uint8Array(w * h);
+            for (let i = 0, p = 0; i < px.length; i += 4, p++) g[p] = (px[i] * 299 + px[i + 1] * 587 + px[i + 2] * 114) / 1000;
+            // seuil sur les pixels clairs : milieu entre le 25e et le 90e centile
+            const sorted = Array.from(g).sort((a, b) => a - b), lo = sorted[Math.floor(sorted.length * 0.25)], hi = sorted[Math.floor(sorted.length * 0.9)];
+            const thr = Math.max(60, (lo + hi) / 2);
+            // dilatation 5x5 pour que le texte de l'étiquette ne la découpe pas en morceaux
+            const m0 = new Uint8Array(w * h); for (let i = 0; i < g.length; i++) m0[i] = g[i] > thr ? 1 : 0;
+            const m = new Uint8Array(w * h), R = 2;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                let v = 0;
+                for (let dy = -R; dy <= R && !v; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue; for (let dx = -R; dx <= R; dx++) { const xx = x + dx; if (xx >= 0 && xx < w && m0[yy * w + xx]) { v = 1; break; } } }
+                m[y * w + x] = v;
+            }
+            // plus grande composante connexe
+            const lab = new Int32Array(w * h), stack = []; let best = { n: 0, minx: 0, miny: 0, maxx: 0, maxy: 0 }, id = 0;
+            for (let s0 = 0; s0 < w * h; s0++) {
+                if (!m[s0] || lab[s0]) continue; id++; stack.push(s0); lab[s0] = id; let n = 0, minx = w, miny = h, maxx = 0, maxy = 0;
+                while (stack.length) {
+                    const p = stack.pop(), x = p % w, y = (p / w) | 0; n++; if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y;
+                    if (x > 0 && m[p - 1] && !lab[p - 1]) { lab[p - 1] = id; stack.push(p - 1); }
+                    if (x < w - 1 && m[p + 1] && !lab[p + 1]) { lab[p + 1] = id; stack.push(p + 1); }
+                    if (y > 0 && m[p - w] && !lab[p - w]) { lab[p - w] = id; stack.push(p - w); }
+                    if (y < h - 1 && m[p + w] && !lab[p + w]) { lab[p + w] = id; stack.push(p + w); }
+                }
+                if (n > best.n) best = { n, minx, miny, maxx, maxy };
+            }
+            const bw = best.maxx - best.minx + 1, bh = best.maxy - best.miny + 1, frac = (bw * bh) / (w * h);
+            if (best.n < w * h * 0.06 || frac > 0.95) return null; // rien de net, ou l'image entière : pas de cadrage automatique
+            return { cx: (best.minx + bw / 2) / sc, cy: (best.miny + bh / 2) / sc, w: bw / sc, h: bh / sc, angle: 0 };
+        } catch (e) { console.error(e); return null; }
+    }
+
+    function loadImageFromUrl(url) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; }); }
+
+    let labelAnalysis = null;       // résultat de l'analyse de la photo en cours : { bc, auto, rotatedUrl }
+    let labelAnalysisPromise = null;
+    let pendingAutoCrop = null;     // zone à appliquer quand Cropper est prêt (repère de l'image affichée)
+
+    // Analyse de la photo dès sa prise : lecture du code-barres, redressement, proposition de recadrage.
+    async function analyzeLabelPhoto(dataUrl, token) {
+        const st = document.getElementById('ocr-status');
+        const setSt = (t) => { if (token === labelAnalysisToken) st.innerText = t; };
+        setSt("🔍 Recherche du code-barres…");
+        const img = await loadImageFromUrl(dataUrl);
+        // image de travail plafonnée à 3000 px (mémoire du téléphone)
+        const k = Math.min(1, 3000 / Math.max(img.naturalWidth, img.naturalHeight));
+        const base = document.createElement('canvas'); base.width = Math.round(img.naturalWidth * k); base.height = Math.round(img.naturalHeight * k);
+        base.getContext('2d').drawImage(img, 0, 0, base.width, base.height);
+        const bc = await decodeLabelBarcode(base);
+        let box = bc ? labelBoxFromBarcode(bc) : null;
+        let source = box ? 'barcode' : null;
+        if (!box) { box = labelBoxFromBrightness(base); if (box) source = 'bright'; }
+        const out = { bc, auto: null, rotatedUrl: null, source };
+        if (box) {
+            let workCanvas = base, cx = box.cx, cy = box.cy;
+            // redressement si l'étiquette est penchée (ou la photo tournée) : on tourne la photo, puis on cadre à l'horizontale
+            if (Math.abs(((box.angle + 180) % 360 + 360) % 360 - 180) > 1.5 && source === 'barcode') {
+                const th = -box.angle * Math.PI / 180, cw = base.width, ch = base.height;
+                const nw = Math.ceil(Math.abs(cw * Math.cos(th)) + Math.abs(ch * Math.sin(th))), nh = Math.ceil(Math.abs(cw * Math.sin(th)) + Math.abs(ch * Math.cos(th)));
+                const rc = document.createElement('canvas'); rc.width = nw; rc.height = nh;
+                const rx = rc.getContext('2d'); rx.fillStyle = '#ffffff'; rx.fillRect(0, 0, nw, nh);
+                rx.translate(nw / 2, nh / 2); rx.rotate(th); rx.drawImage(base, -cw / 2, -ch / 2);
+                const dx = cx - cw / 2, dy = cy - ch / 2;
+                cx = nw / 2 + dx * Math.cos(th) - dy * Math.sin(th); cy = nh / 2 + dx * Math.sin(th) + dy * Math.cos(th);
+                workCanvas = rc; out.rotatedUrl = rc.toDataURL('image/jpeg', 0.92);
+            } else if (k < 1) {
+                out.rotatedUrl = base.toDataURL('image/jpeg', 0.92); // même repère que le canvas plafonné
+            }
+            const pad = 0.04;
+            let w = box.w * (1 + 2 * pad), h = box.h * (1 + 2 * pad);
+            let x = cx - w / 2, y = cy - h / 2;
+            x = Math.max(0, x); y = Math.max(0, y); w = Math.min(w, workCanvas.width - x); h = Math.min(h, workCanvas.height - y);
+            out.auto = { x, y, width: w, height: h };
+        }
+        return out;
+    }
+    let labelAnalysisToken = 0;
+
+    function startLabelAnalysis(dataUrl) {
+        const token = ++labelAnalysisToken;
+        labelAnalysis = null; pendingAutoCrop = null;
+        labelAnalysisPromise = analyzeLabelPhoto(dataUrl, token).then(res => {
+            if (token !== labelAnalysisToken) return null; // une autre photo a pris le relais
+            labelAnalysis = res;
+            const st = document.getElementById('ocr-status');
+            if (res.auto && cropper) {
+                pendingAutoCrop = res.auto;
+                if (res.rotatedUrl) { cropperIsReady = false; cropper.replace(res.rotatedUrl); }   // « ready » appliquera le cadrage
+                else if (cropperIsReady) applyAutoCrop();
+            }
+            if (res.bc) st.innerText = "✅ Code-barres lu" + (res.bc.sn ? " (S/N " + res.bc.sn + ")" : "") + (res.auto ? " · cadrage automatique, ajustez si besoin" : "") + ".";
+            else st.innerText = res.auto ? "Cadrage automatique proposé, ajustez si besoin (code-barres non lu : lecture du texte)." : "Cadrez l'étiquette entière (SN, REF, EXP et code-barres).";
+            return res;
+        }).catch(err => { console.error('Analyse photo :', err); if (token === labelAnalysisToken) document.getElementById('ocr-status').innerText = "Cadrez l'étiquette entière (SN, REF, EXP et code-barres)."; return null; });
+        return labelAnalysisPromise;
+    }
+
+    function applyAutoCrop() {
+        if (!cropper || !pendingAutoCrop) return;
+        try { cropper.setData({ x: pendingAutoCrop.x, y: pendingAutoCrop.y, width: pendingAutoCrop.width, height: pendingAutoCrop.height, rotate: 0 }); } catch (e) { console.error(e); }
+        pendingAutoCrop = null;
+    }
+
     async function processCroppedImage() {
         if (!cropper || !cropperIsReady) return;
         document.getElementById('ocr-status').innerText = (cropPurpose === 'tampon') ? "Traitement de l'image... ⏳" : "Analyse OCR... ⏳";
@@ -2100,6 +2361,15 @@ function removeBg(src,sens){
         const ctxFull = canvasFull.getContext('2d');
 
         if (cropPurpose === 'tampon') { await finalizeTamponUpload(canvasFull); return; }
+
+        // Code-barres : lu d'abord sur le recadrage en couleur ; à défaut, sur la photo entière (analyse faite à la prise de vue).
+        const colorCanvas = document.createElement('canvas'); colorCanvas.width = canvasFull.width; colorCanvas.height = canvasFull.height;
+        colorCanvas.getContext('2d').drawImage(canvasFull, 0, 0);
+        try { if (labelAnalysisPromise) await labelAnalysisPromise; } catch (e) {}
+        let bc = null;
+        try { document.getElementById('ocr-status').innerText = "Lecture du code-barres… ⏳"; bc = await decodeLabelBarcode(colorCanvas); } catch (e) { console.error(e); }
+        if (!bc && labelAnalysis && labelAnalysis.bc) bc = labelAnalysis.bc;
+        const barcodeComplete = !!(bc && bc.sn && bc.exp && bc.model);
 
         const imgData = ctxFull.getImageData(0, 0, canvasFull.width, canvasFull.height);
         const data = imgData.data;
@@ -2128,8 +2398,10 @@ function removeBg(src,sens){
         const savedCleanSnapshot = canvasFull.toDataURL('image/jpeg', 0.85);
         const canvasOcr = canvasFull;
 
-        let text;
-        try {
+        let text = '';
+        if (barcodeComplete) {
+            document.getElementById('ocr-status').innerText = "✅ Lu par code-barres.";
+        } else try {
             // PSM 6 ("bloc de texte unique") est bien plus fiable que le mode par défaut pour une
             // étiquette structurée en petites lignes, et la liste de caractères attendus filtre le
             // bruit des icônes/logos. Ces réglages doivent passer par l'API worker explicite.
@@ -2156,27 +2428,33 @@ function removeBg(src,sens){
         }
 
         try {
-            if (modalScannerActive) processInlineModalOCR(text, savedCleanSnapshot);
+            if (modalScannerActive) processInlineModalOCR(text, savedCleanSnapshot, bc);
             else {
-                if (currentScanScope === "BOITIER") parseBoitierText(text, savedCleanSnapshot);
-                else parseSondeText(text, savedCleanSnapshot);
+                if (currentScanScope === "BOITIER") parseBoitierText(text, savedCleanSnapshot, bc);
+                else parseSondeText(text, savedCleanSnapshot, bc);
             }
             document.getElementById('crop-modal').style.display = 'none';
             if (cropper) { cropper.destroy(); cropper = null; }
+            labelAnalysisToken++; labelAnalysis = null; labelAnalysisPromise = null; pendingAutoCrop = null;
         } catch (err) {
             console.error(err);
             closeCropModal();
         }
     }
 
-    function processInlineModalOCR(text, snapshot) {
+    function processInlineModalOCR(text, snapshot, bc) {
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         let currentType = document.getElementById('man-type').value;
+        if (bc && bc.model) { // le code-barres impose le type réel du matériel
+            const t = listSondes.includes(bc.model) ? 'SONDE' : (listPaces.includes(bc.model) ? 'PM' : 'DAI');
+            if (t !== currentType) { document.getElementById('man-type').value = t; updateManualModelOptions(); currentType = t; }
+        }
         let targetList = (currentType === "SONDE") ? listSondes : ((currentType === "DAI") ? listDefis : listPaces);
 
-        let matchedModel = matchModelInText(normalizedText, targetList);
-        let sn = extractSerialNumber(text, currentType);
-        let exp = extractExpirationDate(text);
+        let matchedModel = (bc && bc.model && targetList.includes(bc.model)) ? bc.model : matchModelInText(normalizedText, targetList);
+        let sn = (bc && bc.sn) || extractSerialNumber(text, currentType);
+        let exp = (bc && bc.exp) || extractExpirationDate(text);
+        temporaryModalBc = bc ? { gtin: bc.gtin, sn: bc.sn } : null;
 
         if (matchedModel) document.getElementById('man-model').value = matchedModel;
         if (sn) document.getElementById('man-sn').value = sn;
@@ -2231,7 +2509,8 @@ function removeBg(src,sens){
         return null;
     }
 
-    function extractSerialNumber(text, type) {
+    function extractSerialNumber(text, type) { return fixSerialByPattern(extractSerialNumberRaw(text, type)); }
+    function extractSerialNumberRaw(text, type) {
         let cleanText = text.replace(/[^A-Za-z0-9\(\)\[\]\|\s\-\/\._:]/g, "").replace(/\s+/g, " ");
 
         // 1. Le plus fiable : l'identifiant GS1/UDI (21) imprimé sous le code-barres = numéro de série.
@@ -2300,33 +2579,37 @@ function removeBg(src,sens){
         return "";
     }
 
-    function parseBoitierText(text, snapshot) {
+    function parseBoitierText(text, snapshot, bc) {
+        if (bc && bc.model && listSondes.includes(bc.model)) return parseSondeText(text, snapshot, bc); // mauvais bouton : le code-barres tranche
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
         let listBoitiers = [...listDefis, ...listPaces];
 
-        let matchedModel = matchModelInText(normalizedText, listBoitiers);
+        let matchedModel = (bc && bc.model && listBoitiers.includes(bc.model)) ? bc.model : matchModelInText(normalizedText, listBoitiers);
         let detectedType = matchedModel ? (listPaces.includes(matchedModel) ? "PM" : "DAI") : "DAI";
-        let sn = extractSerialNumber(text, "BOITIER");
-        let exp = extractExpirationDate(text);
+        let sn = (bc && bc.sn) || extractSerialNumber(text, "BOITIER");
+        let exp = (bc && bc.exp) || extractExpirationDate(text);
 
         basketItems.push({
             type: detectedType, model: matchedModel || listDefis[0], 
-            sn: sn, exp: exp, stock: `Stock du ${document.getElementById('inC').value || "centre"}`, reno: "centre", img: snapshot
+            sn: sn, exp: exp, stock: `Stock du ${document.getElementById('inC').value || "centre"}`, reno: "centre", img: snapshot,
+            gtin: bc ? bc.gtin : undefined, bcSn: (bc && bc.sn) ? bc.sn : undefined
         });
         renderBasket();
         if (!matchedModel || !sn || !exp) openManualAddModal(basketItems.length - 1);
     }
 
-    function parseSondeText(text, snapshot) {
+    function parseSondeText(text, snapshot, bc) {
+        if (bc && bc.model && (listDefis.includes(bc.model) || listPaces.includes(bc.model))) return parseBoitierText(text, snapshot, bc);
         let normalizedText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
 
-        let matchedModel = matchModelInText(normalizedText, listSondes);
-        let sn = extractSerialNumber(text, "SONDE");
-        let exp = extractExpirationDate(text);
+        let matchedModel = (bc && bc.model && listSondes.includes(bc.model)) ? bc.model : matchModelInText(normalizedText, listSondes);
+        let sn = (bc && bc.sn) || extractSerialNumber(text, "SONDE");
+        let exp = (bc && bc.exp) || extractExpirationDate(text);
 
         basketItems.push({
             type: "SONDE", model: matchedModel || listSondes[0], 
-            sn: sn, exp: exp, stock: `Stock du ${document.getElementById('inC').value || "centre"}`, reno: "centre", img: snapshot
+            sn: sn, exp: exp, stock: `Stock du ${document.getElementById('inC').value || "centre"}`, reno: "centre", img: snapshot,
+            gtin: bc ? bc.gtin : undefined, bcSn: (bc && bc.sn) ? bc.sn : undefined
         });
         renderBasket();
         if (!matchedModel || !sn || !exp) openManualAddModal(basketItems.length - 1);
@@ -2348,7 +2631,7 @@ function removeBg(src,sens){
                     ${thumb}
                     <div style="flex:1; min-width:0;">
                         <div class="detected-header"><span>${item.type} &bull; ${item.model}</span><span>REF: ${refsMap[item.model]||'??'}</span></div>
-                        <div class="detected-details"><b>S/N :</b> ${item.sn || '<span style="color:red;">⚠️</span>'} | <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}<br><b>Stock :</b> ${item.stock || 'N/A'}${item.echec ? '<br><b style="color:var(--palette-vibrant-red);">⚠️ ÉCHEC DE POSE</b>' : ''}</div>
+                        <div class="detected-details"><b>S/N :</b> ${item.sn || '<span style="color:red;">⚠️</span>'}${(item.bcSn && item.bcSn === item.sn) ? ' <span title="Lu par code-barres" style="font-size:11px;">🔳</span>' : ''} | <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}<br><b>Stock :</b> ${item.stock || 'N/A'}${item.echec ? '<br><b style="color:var(--palette-vibrant-red);">⚠️ ÉCHEC DE POSE</b>' : ''}</div>
                     </div>
                 </div>
                 <div class="detected-actions">
@@ -2386,6 +2669,7 @@ function removeBg(src,sens){
             document.getElementById('man-echec').checked = !!item.echec;
             document.getElementById('manual-photo-status').innerText = item.img ? "📸 Photo d'étiquette associée." : "";
             temporaryModalSnapshot = item.img || null;
+            temporaryModalBc = item.gtin ? { gtin: item.gtin, sn: item.bcSn } : null;
             setManualPhotoPreview(item.img || null);
         } else {
             document.getElementById('manual-modal-title').innerText = "➕ Ajout manuel";
@@ -2395,6 +2679,7 @@ function removeBg(src,sens){
             document.getElementById('man-stock-autre').value = ""; document.getElementById('man-reno-autre').value = ""; renoTextManual = false;
             document.getElementById('man-echec').checked = false;
             document.getElementById('manual-photo-status').innerText = "";
+            temporaryModalBc = null;
             setManualPhotoPreview(null);
         }
         syncOtherInputs();
@@ -2420,8 +2705,10 @@ function removeBg(src,sens){
             reno: document.getElementById('man-reno').value,
             renoTexte: (document.getElementById('man-reno').value === 'autre') ? (document.getElementById('man-reno-autre').value.trim() || 'Autre') : undefined,
             img: temporaryModalSnapshot,
+            gtin: temporaryModalBc ? temporaryModalBc.gtin : undefined, bcSn: temporaryModalBc ? temporaryModalBc.sn : undefined,
             echec: document.getElementById('man-type').value === 'SONDE' && document.getElementById('man-echec').checked
         };
+        if (itemData.gtin) learnGtinModel(itemData.gtin, itemData.model); // la prochaine étiquette de cette référence sera reconnue seule
         if (idx > -1) basketItems[idx] = itemData; else basketItems.push(itemData);
         closeManualModal(); renderBasket();
     }
