@@ -639,6 +639,10 @@
                 <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()">
                 Enregistrement automatique à chaque envoi
             </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--text-muted); justify-content:center;">
+                <input type="checkbox" id="attachToggle" onchange="onAttachToggleChange()">
+                📎 Joindre l'image du BL (menu Partager, sans destinataires pré-remplis)
+            </label>
         </div>
 
         <div id="image-result">
@@ -723,6 +727,15 @@
 
 <input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
 <input type="file" id="label-gallery-input" accept="image/*" style="display: none;" onchange="handleLabelFile(this)">
+
+<div id="share-ready-modal" class="ios-modal">
+    <div class="ios-modal-content">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">✅ Image du BL prête</h3>
+        <p style="font-size:13px; text-align:center; color:var(--text-muted); margin:0 0 16px 0;">Appuyez pour ouvrir le partage, puis choisissez Mail ou Outlook. Les destinataires sont copiés : collez-les dans le champ « À ».</p>
+        <button class="btn-mail-ios" onclick="runPendingShare()">📎 OUVRIR LE PARTAGE</button>
+        <button class="btn-secondary-ios" style="margin-top:10px;" onclick="cancelPendingShare()">ANNULER</button>
+    </div>
+</div>
 
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
@@ -935,6 +948,7 @@
         try {
             const savedAutoSave = localStorage.getItem('bl_autosave_enabled');
             document.getElementById('autoSaveToggle').checked = (savedAutoSave === 'true');
+            document.getElementById('attachToggle').checked = (localStorage.getItem('bl_attach_enabled') === 'true');
         } catch (e) { console.error("Préférence auto-save indisponible:", e); }
 
         try {
@@ -2672,24 +2686,71 @@ function removeBg(src,sens){
         return raw.split(/[;,\s]+/).filter(a => a.includes('@')).map(a => encodeURIComponent(a).replace(/%40/g, '@')).join(',');
     }
 
-    function generateEmail(isPharmacie) {
-        // mailto direct : Outlook remplit correctement l'objet immédiatement.
-        // Pour la pièce jointe, utiliser le bouton "📥 TÉLÉCHARGER LE BL" puis la joindre manuellement.
-        setPharmaMode(!!isPharmacie); // l'image du BL suit la version choisie (sans ligne Renouvellement pour la pharmacie)
-        const { subject, body } = buildEmailContent(!!isPharmacie);
+    // Envoi par e-mail. Deux modes (réglage « Joindre l'image du BL ») :
+    //  - mailto (par défaut) : destinataires + texte remplis dans l'app Mail/Outlook, image à joindre à la main ;
+    //  - partage : l'image du BL est jointe via le menu Partager d'iOS (Mail / Outlook), mais iOS ne permet alors
+    //    pas de pré-remplir les destinataires : ils sont copiés dans le presse-papiers pour être collés.
+    let pendingShare = null;
+    function openMailto(isPharmacie, subject, body) {
         window.open(`mailto:${getMailRecipients(!!isPharmacie)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
     }
-
-    function generateEmail(isPharmacie) {
-        // mailto direct : Outlook remplit correctement l'objet immédiatement.
-        // Pour la pièce jointe, utiliser le bouton "📥 TÉLÉCHARGER LE BL" puis la joindre manuellement.
+    async function generateEmail(isPharmacie) {
         setPharmaMode(!!isPharmacie); // l'image du BL suit la version choisie (sans ligne Renouvellement pour la pharmacie)
         const { subject, body } = buildEmailContent(!!isPharmacie);
-        window.open(`mailto:${getMailRecipients(!!isPharmacie)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+        const attach = document.getElementById('attachToggle') && document.getElementById('attachToggle').checked;
+
+        if (!attach || !navigator.share || !navigator.canShare) {
+            openMailto(isPharmacie, subject, body);
+        } else {
+            const btn = document.getElementById(isPharmacie ? 'btn-generate-email-pharma' : 'btn-generate-email');
+            const label = btn ? btn.innerText : "";
+            if (btn) { btn.disabled = true; btn.innerText = "⏳ Préparation de l'image..."; }
+            try {
+                const file = await getBlFileForSharing();
+                if (!file || !navigator.canShare({ files: [file] })) {
+                    openMailto(isPharmacie, subject, body); // repli : pas de pièce jointe possible
+                } else {
+                    const recipients = decodeURIComponent(getMailRecipients(!!isPharmacie)).replace(/,/g, '; ');
+                    pendingShare = { file, subject, body, recipients, isPharmacie };
+                    await runPendingShare();
+                }
+            } catch (e) {
+                console.error("Préparation de la pièce jointe impossible, repli sur le mail simple:", e);
+                openMailto(isPharmacie, subject, body);
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerText = label; }
+                reactivateLivePreview();
+            }
+        }
 
         if (document.getElementById('autoSaveToggle').checked) {
             saveCurrentBlToHistory(true); // silencieux : ne bloque pas l'envoi du mail
         }
+    }
+
+    async function runPendingShare() {
+        if (!pendingShare) return;
+        const { file, subject, body, recipients } = pendingShare;
+        try { if (recipients && navigator.clipboard) await navigator.clipboard.writeText(recipients); } catch (e) {}
+        try {
+            await navigator.share({ files: [file], title: subject, text: body });
+            pendingShare = null; closeShareReady();
+        } catch (err) {
+            if (err && err.name === 'AbortError') { pendingShare = null; closeShareReady(); return; }
+            if (err && err.name === 'NotAllowedError') {
+                // iOS exige un appui direct pour ouvrir le partage : la génération de l'image a pris trop de temps.
+                document.getElementById('share-ready-modal').style.display = 'flex';
+                return;
+            }
+            console.error("Partage impossible, repli sur le mail simple:", err);
+            const ps = pendingShare; pendingShare = null; closeShareReady();
+            if (ps) openMailto(ps.isPharmacie, ps.subject, ps.body);
+        }
+    }
+    function closeShareReady() { document.getElementById('share-ready-modal').style.display = 'none'; }
+    function cancelPendingShare() { pendingShare = null; closeShareReady(); }
+    function onAttachToggleChange() {
+        try { localStorage.setItem('bl_attach_enabled', document.getElementById('attachToggle').checked ? 'true' : 'false'); } catch (e) {}
     }
 
     function onAutoSaveToggleChange() {
