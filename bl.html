@@ -409,6 +409,76 @@
         .btn-pharma { background: linear-gradient(135deg, var(--palette-purple), var(--palette-plum-magenta)); box-shadow: 0 4px 14px rgba(128,44,241,0.25); }
         .btn-pharma-outline { border-color: #d8b4fe; color: var(--palette-purple); }
 
+
+        /* ====== NAVIGATION PAR ONGLETS (étapes du BL) ====== */
+        .app-container { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; animation: tabIn .18s ease-out; }
+        @keyframes tabIn { from { opacity: 0; } to { opacity: 1; } }
+        #tab-bar {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; display: flex; gap: 2px;
+            background: rgba(255,255,255,0.94); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+            border-top: 1px solid #e2e8f0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+        }
+        .tab-btn {
+            flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+            border: none; background: none; padding: 6px 2px 5px; border-radius: 14px; color: #64748b; min-height: 52px; cursor: pointer;
+            font-family: inherit; transition: background .15s, color .15s;
+        }
+        .tab-btn .ti { font-size: 21px; line-height: 1; }
+        .tab-btn .tl { font-size: 10.5px; font-weight: 750; letter-spacing: 0.1px; white-space: nowrap; }
+        .tab-btn.active { color: var(--blue-mp); background: #e8eefc; }
+        .tab-btn:active { transform: scale(0.96); }
+        .tab-btn .tdot { position: absolute; top: 5px; right: calc(50% - 22px); width: 9px; height: 9px; border-radius: 50%; background: #22c55e; border: 2px solid #fff; display: none; }
+        .tab-btn.done .tdot { display: block; }
+        .tab-btn .tcount { position: absolute; top: 3px; right: calc(50% - 26px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--blue-mp); color: #fff; font-size: 11px; line-height: 18px; text-align: center; display: none; }
+        .tab-btn.done .tcount { display: block; }
+        /* barre d'action collée en bas, juste au-dessus des onglets (zone du pouce) */
+        .dock {
+            position: fixed; left: 0; right: 0; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 850;
+            padding: 22px 14px 10px; background: linear-gradient(to top, var(--neutral-bg) 62%, rgba(248,250,252,0));
+            display: flex; gap: 8px; max-width: 100%;
+        }
+        .dock-next { margin: 0; }
+        .dock-btn {
+            flex: 1; border: none; border-radius: 16px; min-height: 54px; color: #fff; font-weight: 800; font-size: 14px; font-family: inherit;
+            display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; box-shadow: 0 6px 16px rgba(4,42,114,0.22);
+        }
+        .dock-btn span { font-size: 18px; }
+        .dock-btn:active { transform: scale(0.97); opacity: .92; }
+        .dock-boitier { background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue)); }
+        .dock-sonde { background: linear-gradient(135deg, var(--palette-royal-blue), #00c8ff); }
+        .dock-manual { background: #fff; color: var(--blue-mp); border: 1.5px solid #c7d4f5; box-shadow: 0 4px 12px rgba(18,24,44,0.08); }
+        .tip-card { font-size: 12px; line-height: 1.45; color: var(--text-muted); padding: 2px 6px 0; }
+        #bl-summary .sum-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid #f1f5f9; }
+        #bl-summary .sum-row:last-child { border-bottom: none; }
+        #bl-summary .sum-ic { width: 22px; text-align: center; flex-shrink: 0; }
+        #bl-summary .sum-ok { color: #15803d; } #bl-summary .sum-warn { color: #b45309; font-weight: 700; }
+        #bl-summary button { margin-left: auto; border: none; background: #eef2f7; border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--blue-mp); }
+        .bl-preview-header { margin-top: 4px; }
+
+        /* ====== FENÊTRES : FEUILLES PLEIN ÉCRAN SUR TÉLÉPHONE ====== */
+        @media (max-width: 700px) {
+            .ios-modal { align-items: stretch; }
+            .ios-modal-content {
+                max-width: 100%; width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; box-shadow: none;
+                display: flex; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch;
+                padding: calc(10px + env(safe-area-inset-top)) 16px calc(12px + env(safe-area-inset-bottom));
+            }
+            .ios-modal-content > h3:first-child {
+                position: sticky; top: calc(-10px - env(safe-area-inset-top)); z-index: 3; background: #fff; text-align: center;
+                margin: calc(-10px - env(safe-area-inset-top)) -16px 14px !important; padding: calc(14px + env(safe-area-inset-top)) 16px 12px !important;
+                border-bottom: 1px solid #e2e8f0 !important; font-size: 16px !important;
+            }
+            .modal-footer {
+                margin-top: auto !important; position: sticky; bottom: calc(-12px - env(safe-area-inset-bottom)); z-index: 3; background: #fff;
+                padding: 12px 0 calc(8px) !important; border-top: 1px solid #e2e8f0; margin-left: 0; margin-right: 0;
+            }
+            #crop-modal .ios-modal-content { padding-left: 14px; padding-right: 14px; }
+            .crop-wrapper { flex: 1 1 auto; max-height: none; min-height: 40vh; }
+            #sig-modal .ios-modal-content { border-radius: 0 !important; }
+        }
+
         #container-preview-zone { display: block; }
 
         .bl-preview-header {
@@ -560,17 +630,9 @@
             <button class="btn-header-icon" onclick="handleLogout()">🔒</button>
         </header>
 
-        <div class="scan-zone" style="margin-top: 15px;">
-            <button class="btn-smart-scan btn-scan-boitier" onclick="triggerSmartAnalysis('BOITIER')">
-                📷 SCANNER UN BOÎTIER
-            </button>
-            <button class="btn-smart-scan btn-scan-sonde" onclick="triggerSmartAnalysis('SONDE')">
-                📷 SCANNER UNE SONDE
-            </button>
-        </div>
-
+        <div class="tab-panel active" id="tab-infos">
         <div class="app-card">
-            <div class="card-title">1️⃣ Logistique & Contextes</div>
+            <div class="card-title">📋 Informations du BL</div>
             <div class="form-group">
                 <label>Établissement</label>
                 <select id="inC" onchange="loadMedecinsDuCentre()"></select>
@@ -602,23 +664,34 @@
             </div>
         </div>
 
+            <div class="tip-card">💡 L'établissement filtre automatiquement les médecins, et l'ingénieur choisit les centres de son secteur.</div>
+            <div class="dock"><button class="btn-primary-ios dock-next" onclick="showTab('materiel')">Suivant : matériel →</button></div>
+        </div>
+
+        <div class="tab-panel" id="tab-materiel">
         <div class="app-card">
             <div class="card-title">
-                2️⃣ Matériels scannés au BL
+                📦 Matériel du BL
                 <span id="badge-total" style="background:var(--blue-mp); color:white; font-size:12px; padding:3px 10px; border-radius:20px; font-weight:bold;">0</span>
             </div>
             
             <div id="detected-items-list">
                 <div id="empty-state-msg" style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px 0; line-height:1.4;">
-                    Aucun matériel détecté.<br>Utilisez les boutons de <b>Scan</b> ou ajoutez manuellement.
+                    Aucun matériel pour l'instant.<br>Scannez un <b>boîtier</b> ou une <b>sonde</b> avec les boutons du bas, ou ajoutez-le à la main.
                 </div>
             </div>
-
-            <button class="btn-action-block" onclick="openManualAddModal()">➕ AJOUT MANUEL OU AJUSTEMENT</button>
         </div>
 
+            <div class="dock dock-scan">
+                <button class="dock-btn dock-boitier" onclick="triggerSmartAnalysis('BOITIER')"><span>📷</span>Boîtier</button>
+                <button class="dock-btn dock-sonde" onclick="triggerSmartAnalysis('SONDE')"><span>📷</span>Sonde</button>
+                <button class="dock-btn dock-manual" onclick="openManualAddModal()"><span>✏️</span>Manuel</button>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="tab-signatures">
         <div class="app-card">
-            <div class="card-title">3️⃣ Signatures & Émargements</div>
+            <div class="card-title">✍️ Signatures & émargements</div>
             <div class="grid-2">
                 <div class="signature-box">
                     <label>Transporteur</label>
@@ -649,35 +722,14 @@
             </div>
         </div>
 
-        <div class="sticky-actions">
-            <div class="act-group">
-                <div class="act-title"><span class="act-num">1</span> Télécharger l'image</div>
-                <div class="act-row">
-                    <button class="btn-secondary-ios btn-compact" id="btn-download-bl" onclick="downloadCurrentBl(false)">📥 BL complet</button>
-                    <button class="btn-secondary-ios btn-compact btn-pharma-outline" id="btn-download-bl-pharma" onclick="downloadCurrentBl(true)">📥 Pharmacie</button>
-                </div>
-            </div>
-            <div class="act-group">
-                <div class="act-title"><span class="act-num">2</span> Envoyer par email</div>
-                <div class="act-row">
-                    <button class="btn-mail-ios btn-compact" id="btn-generate-email" onclick="generateEmail(false)">📤 BL complet</button>
-                    <button class="btn-mail-ios btn-compact btn-pharma" id="btn-generate-email-pharma" onclick="generateEmail(true)">🏥 Pharmacie</button>
-                </div>
-                <div class="act-hint">Dans le mail, joignez l'image téléchargée (depuis Photos).</div>
-            </div>
-            <div class="act-group">
-                <div class="act-title"><span class="act-num">3</span> Terminer</div>
-                <div class="act-row">
-                    <button class="btn-primary-ios btn-compact" id="btn-save-bl" onclick="saveCurrentBlToHistory(false)">💾 Enregistrer</button>
-                    <button class="btn-refresh-ios btn-compact" onclick="startNewBl()">🆕 Nouveau BL</button>
-                </div>
-                <label class="opt-line">
-                    <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()">
-                    Enregistrer auto à chaque envoi
-                </label>
-            </div>
+            <div class="dock"><button class="btn-primary-ios dock-next" onclick="showTab('bl')">Suivant : aperçu et envoi →</button></div>
         </div>
 
+        <div class="tab-panel" id="tab-bl">
+            <div class="app-card" id="bl-summary-card">
+                <div class="card-title">✅ Avant d'envoyer</div>
+                <div id="bl-summary"></div>
+            </div>
         <div id="image-result">
             <p style="font-weight: bold; color: var(--palette-plum-magenta); font-size: 13px; margin:0 0 10px 0;">✅ Image générée. Restez appuyé pour copier.</p>
             <div id="img-container"></div>
@@ -685,7 +737,7 @@
 
         <div id="container-preview-zone">
             <div class="bl-preview-header">
-                <span class="bl-preview-title">📋 Prévisualisation en temps réel (Format A4)</span>
+                <span class="bl-preview-title">📄 Aperçu du BL</span>
                 <div class="zoom-controls-wrapper">
                     <label>🤏 Pincez pour zoomer</label>
                     <span id="zoom-val-badge" class="zoom-badge">100%</span>
@@ -755,7 +807,45 @@
                 </div>
             </div>
         </div>
+
+        <div class="sticky-actions">
+            <div class="act-group">
+                <div class="act-title"><span class="act-num">1</span> Télécharger l'image</div>
+                <div class="act-row">
+                    <button class="btn-secondary-ios btn-compact" id="btn-download-bl" onclick="downloadCurrentBl(false)">📥 BL complet</button>
+                    <button class="btn-secondary-ios btn-compact btn-pharma-outline" id="btn-download-bl-pharma" onclick="downloadCurrentBl(true)">📥 Pharmacie</button>
+                </div>
+            </div>
+            <div class="act-group">
+                <div class="act-title"><span class="act-num">2</span> Envoyer par email</div>
+                <div class="act-row">
+                    <button class="btn-mail-ios btn-compact" id="btn-generate-email" onclick="generateEmail(false)">📤 BL complet</button>
+                    <button class="btn-mail-ios btn-compact btn-pharma" id="btn-generate-email-pharma" onclick="generateEmail(true)">🏥 Pharmacie</button>
+                </div>
+                <div class="act-hint">Dans le mail, joignez l'image téléchargée (depuis Photos).</div>
+            </div>
+            <div class="act-group">
+                <div class="act-title"><span class="act-num">3</span> Terminer</div>
+                <div class="act-row">
+                    <button class="btn-primary-ios btn-compact" id="btn-save-bl" onclick="saveCurrentBlToHistory(false)">💾 Enregistrer</button>
+                    <button class="btn-refresh-ios btn-compact" onclick="startNewBl()">🆕 Nouveau BL</button>
+                </div>
+                <label class="opt-line">
+                    <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()">
+                    Enregistrer auto à chaque envoi
+                </label>
+            </div>
+        </div>
+
+        </div>
     </div>
+
+    <nav id="tab-bar" aria-label="Étapes du BL">
+        <button class="tab-btn active" data-tab="infos" onclick="showTab('infos')"><span class="ti">📋</span><span class="tl">Infos</span><i class="tdot"></i></button>
+        <button class="tab-btn" data-tab="materiel" onclick="showTab('materiel')"><span class="ti">📦</span><span class="tl">Matériel</span><b class="tcount" id="tab-count">0</b></button>
+        <button class="tab-btn" data-tab="signatures" onclick="showTab('signatures')"><span class="ti">✍️</span><span class="tl">Signatures</span><i class="tdot"></i></button>
+        <button class="tab-btn" data-tab="bl" onclick="showTab('bl')"><span class="ti">📄</span><span class="tl">BL &amp; envoi</span></button>
+    </nav>
 </div>
 
 <input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
@@ -774,7 +864,7 @@
             </label>
             <div style="font-size:11px; color:var(--text-muted); margin-top:4px; line-height:1.3;">Décochez pour garder l'image telle quelle (par exemple une image déjà détourée ou un fond coloré).</div>
         </div>
-        <div class="grid-2">
+        <div class="grid-2 modal-footer">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeCropModal()">ANNULER</button>
             <button class="btn-primary-ios" id="btn-validate-crop" style="padding:14px; font-size:14px;" onclick="processCroppedImage()">ANALYSER 🔍</button>
         </div>
@@ -830,7 +920,7 @@
             <button class="btn-action-block" style="margin-top:0;" onclick="triggerModalPhoto()">📷 Prendre / reprendre la photo</button>
         </div>
         <div id="manual-photo-status" style="font-size: 11px; color: var(--text-muted); font-style: italic; margin-bottom: 10px; text-align: center;"></div>
-        <div class="grid-2" style="margin-top:24px;">
+        <div class="grid-2 modal-footer" style="margin-top:24px;">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeManualModal()">FERMER</button>
             <button class="btn-primary-ios" style="padding:14px; font-size:14px;" onclick="saveManualItem()">VALIDER AU BL</button>
         </div>
@@ -838,10 +928,10 @@
 </div>
 
 <div id="sig-modal" class="ios-modal">
-    <div class="ios-modal-content" style="max-width:100%; border-radius:28px 28px 0 0;">
+    <div class="ios-modal-content">
         <h3 id="sig-modal-title" style="margin-top:0; text-align:center; font-size:15px; color:var(--blue-mp); font-weight:bold; text-transform:uppercase;">ÉMARGEMENT ÉCRAN</h3>
         <canvas id="modal-canvas" style="width:100%; height:280px; background:#fafafa; border:2px dashed var(--accent); border-radius:16px; touch-action:none;"></canvas>
-        <div class="grid-2" style="margin-top:20px;">
+        <div class="grid-2 modal-footer" style="margin-top:20px;">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="clearModalPad()">EFFACER</button>
             <button class="btn-primary-ios" style="padding:14px; font-size:14px;" onclick="closeFullscreenSig(true)">VALIDER ✅</button>
         </div>
@@ -899,7 +989,7 @@
         <div class="form-group"><label>Nom de l'établissement</label><input type="text" id="new-c-nom" placeholder="Ex: CH DE ROUBAIX"></div>
         <div class="form-group"><label>Adresse postale complète</label><input type="text" id="new-c-adr" placeholder="Ex: 11 Bd Lacordaire, 59100 Roubaix"></div>
         <div id="new-center-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-vibrant-red); margin-bottom:8px;"></div>
-        <div class="grid-2">
+        <div class="grid-2 modal-footer">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeNewCenterModal()">ANNULER</button>
             <button class="btn-primary-ios" id="btn-create-center" style="padding:14px; font-size:14px;" onclick="submitNouveauCentre()">CRÉER ✅</button>
         </div>
@@ -908,7 +998,7 @@
 </div>
 
 <div id="history-modal" class="ios-modal">
-    <div class="ios-modal-content" style="max-height: 95vh;">
+    <div class="ios-modal-content">
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; text-align:center; margin-bottom:14px;">🕘 Historique des BL</h3>
 
         <div id="history-list-view">
@@ -921,7 +1011,7 @@
 
         <div id="history-detail-view" style="display:none;"></div>
 
-        <div style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:15px;">
+        <div class="modal-footer" style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:15px;">
             <button class="btn-secondary-ios" style="padding:14px;" onclick="closeHistoryModal()">FERMER</button>
         </div>
     </div>
@@ -2728,7 +2818,9 @@ function removeBg(src,sens){
 
     function openFullscreenSig(target) {
         activeFullscreenTarget = target; document.getElementById('sig-modal').style.display = 'flex';
-        mCanvas.width = mCanvas.parentElement.clientWidth; mCanvas.height = 280;
+        const sigH = Math.max(280, Math.round(window.innerHeight * 0.52));
+        mCanvas.style.height = sigH + 'px';
+        mCanvas.width = mCanvas.parentElement.clientWidth - 32; mCanvas.height = sigH; mCanvas.style.width = (mCanvas.parentElement.clientWidth - 32) + 'px';
         mCtx.lineWidth = 3; mCtx.lineCap = 'round'; mCtx.strokeStyle = '#000'; mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
 
         let mDrawing = false;
@@ -2821,7 +2913,57 @@ function removeBg(src,sens){
         sync();
     }
 
+
+    // ====== ONGLETS (étapes du BL) ======
+    let currentTab = 'infos';
+    function showTab(name) {
+        if (!document.getElementById('tab-' + name)) return;
+        currentTab = name;
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        // Les zones mesurées (signatures, aperçu A4) ne peuvent être dimensionnées qu'une fois visibles.
+        if (name === 'signatures') {
+            const pad = document.getElementById('pad-trans');
+            if (pad && pad.width < 50) requestAnimationFrame(() => { initPads(); redrawSignaturePads(); });
+        }
+        if (name === 'bl') {
+            requestAnimationFrame(() => { if (!isUserZooming) initDefaultScale(); sync(); });
+        }
+        updateTabStatus();
+    }
+    function redrawSignaturePads() {
+        ['trans', 'centre'].forEach(t => {
+            const c = document.getElementById('pad-' + t), im = document.getElementById('v-sig-' + t);
+            if (!c || !im || !im.getAttribute('src') || sigSource[t] === 'none') return;
+            const x = c.getContext('2d'), img = new Image();
+            img.onload = () => { x.clearRect(0, 0, c.width, c.height); const k = Math.min(c.width / img.width, c.height / img.height); x.drawImage(img, (c.width - img.width * k) / 2, (c.height - img.height * k) / 2, img.width * k, img.height * k); };
+            img.src = im.src;
+        });
+    }
+    function updateTabStatus() {
+        try {
+            const tabs = document.querySelectorAll('.tab-btn'); if (!tabs.length) return;
+            const centre = document.getElementById('inC').value, medecin = document.getElementById('inD').value;
+            const n = basketItems.length;
+            const sigT = !!document.getElementById('v-sig-trans').getAttribute('src'), sigC = !!document.getElementById('v-sig-centre').getAttribute('src');
+            const done = { infos: !!(centre && medecin), materiel: n > 0, signatures: sigT && sigC, bl: false };
+            tabs.forEach(b => b.classList.toggle('done', !!done[b.dataset.tab]));
+            const cnt = document.getElementById('tab-count'); if (cnt) cnt.innerText = n;
+            const sum = document.getElementById('bl-summary');
+            if (sum && currentTab === 'bl') {
+                const row = (ok, text, tab) => `<div class="sum-row"><span class="sum-ic">${ok ? '✅' : '⚠️'}</span><span class="${ok ? 'sum-ok' : 'sum-warn'}">${text}</span>${ok ? '' : `<button onclick="showTab('${tab}')">Corriger</button>`}</div>`;
+                const noSig = [!sigT && 'transporteur', !sigC && 'centre / tampon'].filter(Boolean).join(' et ');
+                sum.innerHTML =
+                    row(!!centre, centre ? `${centre}${medecin ? ' · ' + medecin : ''}` : 'Établissement non choisi', 'infos') +
+                    row(n > 0, n > 0 ? `${n} matériel${n > 1 ? 's' : ''} au BL` : 'Aucun matériel au BL', 'materiel') +
+                    row(sigT && sigC, (sigT && sigC) ? 'Signatures présentes' : `Signature manquante : ${noSig}`, 'signatures');
+            }
+        } catch (e) { console.error(e); }
+    }
+
     function sync() {
+        updateTabStatus();
         const c = document.getElementById('inC').value; if(!c) return;
         const centreData = dbCloudCentres.find(item => item.nom === c); if(!centreData) return;
         
@@ -2945,6 +3087,8 @@ function removeBg(src,sens){
         const previewZone = document.getElementById('container-preview-zone');
         const scaler = document.getElementById('bl-scaler-container');
         const oldTransform = scaler.style.transform;
+        const blPanel = document.getElementById('tab-bl'); const panelWasHidden = blPanel && getComputedStyle(blPanel).display === 'none';
+        if (panelWasHidden) blPanel.style.display = 'block';
         previewZone.style.display = "block"; scaler.style.transform = "none";
 
         const blCanvasEl = document.getElementById('bl-canvas');
@@ -2966,6 +3110,7 @@ function removeBg(src,sens){
         } finally {
             swaps.forEach(s => { s.imgEl.src = s.originalSrc; URL.revokeObjectURL(s.blobUrl); });
             previewZone.style.display = "none"; scaler.style.transform = oldTransform;
+            if (panelWasHidden) blPanel.style.display = '';
         }
     }
 
@@ -3078,6 +3223,7 @@ function removeBg(src,sens){
         basketItems = [];
         setPharmaMode(false);
         renderBasket();
+        showTab('infos');
         document.getElementById('history-status').innerText = "";
         const saveBtn = document.getElementById('btn-save-bl');
         if (saveBtn) saveBtn.innerText = "💾 ENREGISTRER CE BL";
@@ -3274,7 +3420,7 @@ function removeBg(src,sens){
         if (saveBtn) saveBtn.innerText = "💾 METTRE À JOUR CE BL";
 
         closeHistoryModal();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showTab('infos');
     }
 
     async function deleteBlFromHistory(id) {
@@ -3332,7 +3478,6 @@ function removeBg(src,sens){
         document.getElementById('image-result').style.display = 'none';
         const previewZone = document.getElementById('container-preview-zone'); previewZone.style.display = "block";
         sync(); if (!isUserZooming) initDefaultScale();
-        previewZone.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 </script>
 </body>
