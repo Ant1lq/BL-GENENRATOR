@@ -1132,8 +1132,21 @@
         const ingName = document.getElementById('inIng').value || "";
         const centreOpt = document.getElementById('man-stock-centre');
         const ingOpt = document.getElementById('man-stock-ing');
-        if (centreOpt) { let t = `Stock du ${centreName}`; centreOpt.value = t; centreOpt.innerText = t; }
-        if (ingOpt) { let t = `Stock MICROPORT CF ${ingName.toUpperCase()}`; ingOpt.value = t; ingOpt.innerText = t; }
+        const newCentre = `Stock du ${centreName}`, newIng = `Stock MICROPORT CF ${ingName.toUpperCase()}`;
+        // Le matériel déjà au panier suit le centre / l'ingénieur choisi (le stock « par défaut » n'est jamais figé sur un ancien nom).
+        try {
+            if (typeof basketItems !== 'undefined' && Array.isArray(basketItems)) {
+                let changed = false;
+                basketItems.forEach(it => {
+                    if (typeof it.stock !== 'string') return;
+                    if (it.stock.startsWith('Stock du ') && it.stock !== newCentre) { it.stock = newCentre; changed = true; }
+                    else if (it.stock.startsWith('Stock MICROPORT CF') && it.stock !== newIng) { it.stock = newIng; changed = true; }
+                });
+                if (changed && typeof renderBasket === 'function') renderBasket();
+            }
+        } catch (e) { console.error(e); }
+        if (centreOpt) { centreOpt.value = newCentre; centreOpt.innerText = newCentre; }
+        if (ingOpt) { ingOpt.value = newIng; ingOpt.innerText = newIng; }
     }
 
     async function updateDynamicStocksAndFilter() {
@@ -2363,7 +2376,9 @@ function removeBg(src,sens){
             document.getElementById('man-exp').value = item.exp;
             const stockSel = document.getElementById('man-stock');
             stockSel.value = item.stock;
-            if (stockSel.value !== item.stock) { stockSel.value = '__autre__'; document.getElementById('man-stock-autre').value = item.stock || ''; } // provenance saisie librement
+            if (stockSel.value !== item.stock && /^Stock du /.test(item.stock || '')) stockSel.value = document.getElementById('man-stock-centre').value;
+            if (stockSel.value !== item.stock && /^Stock MICROPORT CF/.test(item.stock || '')) stockSel.value = document.getElementById('man-stock-ing').value;
+            if (stockSel.value !== item.stock && stockSel.value !== document.getElementById('man-stock-centre').value && stockSel.value !== document.getElementById('man-stock-ing').value) { stockSel.value = '__autre__'; document.getElementById('man-stock-autre').value = item.stock || ''; } // provenance saisie librement
             else document.getElementById('man-stock-autre').value = '';
             document.getElementById('man-reno').value = item.reno || "centre";
             document.getElementById('man-reno-autre').value = item.renoTexte || '';
