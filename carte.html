@@ -573,6 +573,28 @@ html,body{height:100%;overscroll-behavior:none}
 .imp-bar div{height:100%;width:0;background:var(--palette-royal-blue);transition:width .2s}
 .leaflet-container{font-family:inherit}
 .imp-row,.imp-opt{text-transform:none;letter-spacing:0;font-weight:inherit}.imp-row .m{text-transform:none}.imp-opt{font-weight:700}
+
+.seg{display:flex;flex:0 0 auto;border:1.5px solid #cbd5e1;border-radius:12px;overflow:hidden;height:40px}
+.seg button{border:0;background:#fff;padding:0 14px;font-size:17px}
+.seg button.on{background:var(--blue-mp)}
+.cm-acts{margin-top:6px}
+.cm-btn2{flex:1;display:inline-flex;align-items:center;justify-content:center;height:34px;border-radius:10px;border:1.5px solid #cbd5e1;background:#fff;color:#042a72;font-weight:800;font-size:12px;cursor:pointer;text-align:center;padding:0 8px}
+.cm-btn2.danger{color:#ff144b;border-color:#fecaca;height:44px}
+#cm-list{flex:1;min-height:0;overflow:auto;padding:10px 12px calc(env(safe-area-inset-bottom) + 60px);-webkit-overflow-scrolling:touch;background:var(--bg-body,#f4f6fb)}
+.li{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--border-color);border-radius:14px;padding:11px 12px;margin-bottom:8px;cursor:pointer}
+.li:active{background:#eef3ff}
+.li .dot{flex:0 0 12px;height:12px;border-radius:50%}
+.li .dot.imp{box-shadow:0 0 0 3px #042a72}
+.li .n{font-weight:800;font-size:13.5px;color:var(--text-main)}
+.li .m{font-size:11.5px;color:var(--text-muted);margin-top:1px}
+.li .chev{margin-left:auto;color:#cbd5e1;font-size:20px}
+.li .tg{display:inline-block;font-size:10px;font-weight:800;border-radius:99px;padding:1px 7px;margin:3px 4px 0 0}
+.tg.imp{background:#eaf0ff;color:#042a72}.tg.apx{background:#fff7ed;color:#c2410c}
+#ed-sugg{top:100%}
+.sugg-box{display:none;position:absolute;left:0;right:0;z-index:50;background:#fff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 8px 24px rgba(4,42,114,.18);max-height:240px;overflow:auto;margin-top:2px}
+.sugg-item{padding:11px 13px;border-bottom:1px solid #eef2f7;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.sugg-item b{font-size:13px;color:#042a72}.sugg-item span{font-size:11.5px;color:#64748b}
+.tg{display:inline-block;font-size:10px;font-weight:800;border-radius:99px;padding:2px 8px;margin:0 4px 0 0}
 </style>
 </head>
 <body>
@@ -605,7 +627,7 @@ html,body{height:100%;overscroll-behavior:none}
   <div class="cm-bar">
     <div class="cm-row">
       <input type="search" id="cm-q" placeholder="🔎 Centre, ville, code…" autocomplete="off">
-      <button class="cm-btn" type="button" id="cm-import-btn" onclick="CM.openImport()">⬇️ Importer</button>
+      <div class="seg" role="tablist"><button type="button" id="v-map" class="on" onclick="CM.setView('map')">🗺️</button><button type="button" id="v-list" onclick="CM.setView('list')">📋</button></div>
     </div>
     <div class="cm-row cm-chips">
       <button class="chip on" data-f="scope" data-v="all">Tous</button>
@@ -616,8 +638,14 @@ html,body{height:100%;overscroll-behavior:none}
       <button class="chip" data-f="st" data-v="done">Fait</button>
       <select id="cm-vendor" aria-label="Vendeur"><option value="">Tous vendeurs</option></select>
     </div>
+  <div class="cm-row cm-acts">
+      <label class="cm-btn2" for="xl-quick">🔄 Mettre à jour (Excel)</label>
+      <input type="file" id="xl-quick" accept=".xlsx,.xlsm" style="display:none">
+      <button class="cm-btn2" type="button" id="cm-import-btn" onclick="CM.openImport()">⬇️ Importer un commercial</button>
+    </div>
   </div>
   <div id="map"></div>
+  <div id="cm-list" style="display:none"></div>
   <div class="cm-count" id="cm-count"></div>
   <button class="cm-loc" type="button" onclick="CM.locate()" aria-label="Ma position">📍</button>
   <div class="cm-legend">
@@ -656,6 +684,24 @@ html,body{height:100%;overscroll-behavior:none}
 <div id="link-sheet" class="sheet" style="display:none">
   <div class="sheet-head"><button class="btn-header-icon" type="button" onclick="CM.closeLink()" aria-label="Fermer">✕</button><h2>Associer à l'inventaire</h2><span style="width:42px"></span></div>
   <div class="sheet-body"><div id="link-for" class="imp-i"></div><input type="search" id="link-q" placeholder="🔎 Filtrer…" style="margin-bottom:10px"><div id="link-list"></div></div>
+</div>
+
+<div id="edit-sheet" class="sheet" style="display:none">
+  <div class="sheet-head"><button class="btn-header-icon" type="button" onclick="CM.closeEdit()" aria-label="Fermer">✕</button><h2 id="ed-title">Centre</h2><span style="width:42px"></span></div>
+  <div class="sheet-body">
+    <div class="imp-card"><span id="ed-badges"></span><div class="imp-i" id="ed-info"></div></div>
+    <div class="form-group"><label>Nom</label><input type="text" id="ed-nom"><div class="imp-i" id="ed-nom-hint" style="display:none">Centre implanteur : pour le renommer, utilisez « Centres &amp; tampons » (le nom relie médecins, secteurs et BL).</div></div>
+    <div class="form-group" style="position:relative"><label>Adresse postale</label><input type="text" id="ed-adr" autocomplete="off"><div class="sugg-box" id="ed-sugg"></div></div>
+    <div class="form-group"><label>Vendeur</label><input type="text" id="ed-vendeur"></div>
+    <div class="form-group"><label>Mail BL</label><input type="text" id="ed-mailbl" inputmode="email" autocapitalize="off"></div>
+    <div class="form-group"><label>Mail pharmacie</label><input type="text" id="ed-mailph" inputmode="email" autocapitalize="off"></div>
+    <label class="imp-opt" style="margin:6px 0 12px"><input type="checkbox" id="ed-imp"> ⭐ Centre implanteur (proposé dans les BL)</label>
+    <div class="imp-i" id="ed-code"></div>
+    <button class="cm-btn2" type="button" style="width:100%;margin-bottom:8px" id="ed-showmap">🗺️ Voir sur la carte</button>
+    <button class="cm-btn2 danger" type="button" style="width:100%" id="ed-del">🗑️ Supprimer ce centre</button>
+    <div id="ed-status" class="imp-st" style="margin-top:10px"></div>
+  </div>
+  <div class="sheet-foot"><button class="btn-primary-ios" id="ed-save" style="padding:14px" onclick="CM.saveEdit()">ENREGISTRER ✅</button></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -725,7 +771,7 @@ function similarity(a,b){
 function bestMatch(a, pool){ let best=null,bs=0; for(const b of pool){ const s=similarity(a,b); if(s>bs){ bs=s; best=b; } } return bs>=4?{item:best,score:bs}:null; }
 
 /* ================= État ================= */
-const CM={ map:null, layer:null, centres:[], xl:{data:null,centres:new Map(),list:[]}, f:{scope:"all",st:"all",vendor:"",q:""}, markers:new Map(), geocoding:false };
+const CM={ map:null, layer:null, centres:[], xl:{data:null,centres:new Map(),list:[]}, f:{scope:"all",st:"all",vendor:"",q:""}, markers:new Map(), geocoding:false, view:'map' };
 const STC={fait:"#16a34a",todo:"#f59e0b",unk:"#94a3b8"};
 
 function initMap(){
@@ -752,7 +798,7 @@ async function loadXl(){
   CM.xl.list=[...CM.xl.centres.values()];
 }
 async function loadCentres(){
-  const { data, error } = await _supabase.from('centres').select('id, nom, adresse, implanteur, lat, lng, geo_src, code_client, vendeur').order('nom',{ascending:true});
+  const { data, error } = await _supabase.from('centres').select('id, nom, adresse, implanteur, lat, lng, geo_src, code_client, vendeur, mail_bl, mail_pharmacie').order('nom',{ascending:true});
   if(error) throw error;
   CM.centres=(data||[]).map(c=>({...c, dp:deptOfAddress(c.adresse), commune:communeOfAddress(c.adresse)}));
   // rapprochement avec l'inventaire
@@ -814,7 +860,8 @@ function render(fit){
   });
   const pend=CM.centres.filter(c=>visible(c)&&c.lat==null).length;
   $('cm-count').textContent=n+" centre"+(n>1?"s":"")+(pend?` · ${pend} à localiser…`:"");
-  if(fit && pts.length) CM.map.fitBounds(pts,{padding:[40,40],maxZoom:12});
+  if(fit && pts.length && CM.view!=='list') CM.map.fitBounds(pts,{padding:[40,40],maxZoom:12});
+  if(CM.view==='list') renderList();
 }
 function fillVendors(){
   const sel=$('cm-vendor'), cur=CM.f.vendor; const cnt=new Map();
@@ -954,17 +1001,30 @@ function drawXlInfo(){
   $('imp-vendor').innerHTML='<option value="">Choisir un commercial…</option>'+[...vs.entries()].sort((a,b)=>a[0].localeCompare(b[0],'fr')).map(([v,n])=>`<option value="${esc(v)}">${esc(v)} — ${n} centre${n>1?'s':''}</option>`).join('');
   $('imp-sum').textContent='';
 }
+async function loadExcelFile(f){
+  if(!window.XLSX) throw new Error("lecteur Excel indisponible (réseau)");
+  const wb=XLSX.read(await f.arrayBuffer(),{type:"array"}); const sheet=wb.SheetNames[0];
+  const items=parseAoa(XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,raw:true,defval:""}));
+  if(!items.length) throw new Error("aucune ligne exploitable");
+  const count=()=>{ const o={fait:0,todo:0,unk:0}; CM.centres.forEach(c=>o[statusOf(c)]++); return o; };
+  const before=count();
+  await kvSet("prog",{sheet,fileName:f.name,importedAt:new Date().toISOString(),items});
+  await loadXl(); await loadCentres(); fillVendors(); render(false);
+  return {sheet,before,after:count(),nXl:CM.xl.list.length,nLines:items.length};
+}
 $('imp-file').addEventListener('change',async e=>{
   const f=e.target.files[0]; e.target.value=""; if(!f) return;
   $('imp-xl-info').textContent="Lecture du fichier…";
+  try{ await loadExcelFile(f); drawXlInfo(); }
+  catch(err){ $('imp-xl-info').textContent="Lecture impossible : "+(err.message||err); }
+});
+$('xl-quick').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  $('cm-count').textContent="Lecture de l'Excel…";
   try{
-    if(!window.XLSX) throw new Error("lecteur Excel indisponible (réseau)");
-    const wb=XLSX.read(await f.arrayBuffer(),{type:"array"}); const sheet=wb.SheetNames[0];
-    const items=parseAoa(XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,raw:true,defval:""}));
-    if(!items.length) throw new Error("aucune ligne exploitable");
-    await kvSet("prog",{sheet,fileName:f.name,importedAt:new Date().toISOString(),items});
-    await loadXl(); await loadCentres(); fillVendors(); render(false); drawXlInfo();
-  }catch(err){ $('imp-xl-info').textContent="Lecture impossible : "+(err.message||err); }
+    const r=await loadExcelFile(f);
+    alert(`Inventaire mis à jour : « ${r.sheet} »\n${r.nXl} centres, ${r.nLines.toLocaleString('fr-FR')} lignes.\nSur vos centres de la carte : ${r.after.fait} fait (${r.after.fait-r.before.fait>=0?'+':''}${r.after.fait-r.before.fait}), ${r.after.todo} à faire, ${r.after.unk} sans correspondance.`);
+  }catch(err){ render(false); alert("Lecture impossible : "+(err.message||err)); }
 });
 $('imp-vendor').addEventListener('change',analyse);
 $('imp-cab').addEventListener('change',analyse);
@@ -1044,6 +1104,74 @@ CM.runImport=async function(){
     console.error(e); CM.importing=false; $('imp-go').disabled=false; st.style.color='#ff144b'; st.textContent="❌ Import interrompu : "+(e.message||e);
   }
 };
+
+/* ================= Vue liste + édition ================= */
+CM.setView=function(v){
+  CM.view=v; $('v-map').classList.toggle('on',v==='map'); $('v-list').classList.toggle('on',v==='list');
+  $('map').style.display=v==='map'?'block':'none'; $('cm-list').style.display=v==='list'?'block':'none';
+  document.querySelector('.cm-legend').style.display=v==='map'?'flex':'none'; document.querySelector('.cm-loc').style.display=v==='map'?'block':'none';
+  if(v==='map'){ setTimeout(()=>{ CM.map.invalidateSize(); },50); }
+  render(v==='map');
+};
+function renderList(){
+  const l=CM.centres.filter(visible).sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+  const box=$('cm-list');
+  if(!l.length){ box.innerHTML='<div class="imp-i" style="text-align:center;margin-top:30px">Aucun centre ne correspond aux filtres.</div>'; return; }
+  const lab={fait:'Fait',todo:'À faire',unk:'Inconnu'};
+  box.innerHTML=l.slice(0,300).map(c=>{ const s=statusOf(c), v=c.vendeur||(c.xl&&c.xl.ve)||'';
+    return `<div class="li" onclick="CM.openEdit(${c.id})"><span class="dot ${c.implanteur?'imp':''}" style="background:${STC[s]}"></span><div style="min-width:0"><div class="n">${esc(c.nom)}</div><div class="m">${esc(c.adresse)}</div><div><span class="tg" style="background:${STC[s]}22;color:${STC[s]}">${lab[s]}</span>${c.implanteur?'<span class="tg imp">⭐ Implanteur</span>':''}${c.geo_src==='commune'||c.lat==null?'<span class="tg apx">📍 position approx.</span>':''}${v?`<span class="m">${esc(v)}</span>`:''}</div></div><span class="chev">›</span></div>`; }).join('')+(l.length>300?`<div class="imp-i" style="text-align:center">${l.length-300} autres : affinez la recherche.</div>`:'');
+}
+CM.openEdit=function(id){
+  const c=CM.centres.find(x=>x.id===id); if(!c) return; CM.editing=c; CM.map&&CM.map.closePopup();
+  const s=statusOf(c);
+  $('ed-title').textContent=c.nom;
+  $('ed-badges').innerHTML=`<span class="tg" style="background:${STC[s]}22;color:${STC[s]}">${{fait:'Inventaire fait',todo:'Inventaire à faire',unk:'Inventaire inconnu'}[s]}</span>`+(c.implanteur?'<span class="tg imp">⭐ Implanteur</span>':'');
+  $('ed-info').textContent=c.xl?`Inventaire : ${c.xl.nom} (${c.xl.lo}) — ${c.xl.n} ligne${c.xl.n>1?'s':''}`:'Pas de correspondance dans le fichier Excel.';
+  $('ed-nom').value=c.nom; $('ed-nom').readOnly=!!c.implanteur; $('ed-nom-hint').style.display=c.implanteur?'block':'none';
+  $('ed-adr').value=c.adresse||''; $('ed-vendeur').value=c.vendeur||(c.xl&&c.xl.ve)||''; $('ed-mailbl').value=c.mail_bl||''; $('ed-mailph').value=c.mail_pharmacie||'';
+  $('ed-imp').checked=!!c.implanteur; $('ed-code').textContent=c.code_client?('Code client : '+c.code_client):'';
+  $('ed-del').style.display=c.implanteur?'none':'block'; $('ed-showmap').style.display=c.lat!=null?'block':'none';
+  $('ed-status').textContent=''; $('ed-sugg').style.display='none'; $('edit-sheet').style.display='flex';
+};
+CM.closeEdit=()=>{ $('edit-sheet').style.display='none'; };
+$('ed-showmap').addEventListener('click',()=>{ const c=CM.editing; CM.closeEdit(); CM.setView('map'); CM.map.setView([c.lat,c.lng],15); const m=CM.markers.get(c.id); if(m) m.openPopup(); });
+let adT; $('ed-adr').addEventListener('input',()=>{
+  clearTimeout(adT); const q=$('ed-adr').value.trim(), box=$('ed-sugg'); if(q.length<4){ box.style.display='none'; return; }
+  adT=setTimeout(async()=>{ try{
+    const j=await jget('https://api-adresse.data.gouv.fr/search/?limit=5&q='+encodeURIComponent(q));
+    box.innerHTML=''; (j.features||[]).forEach(f=>{ const d=document.createElement('div'); d.className='sugg-item'; d.innerHTML='<b></b><span></span>'; d.firstChild.textContent=f.properties.name; d.lastChild.textContent=f.properties.postcode+' '+f.properties.city;
+      d.addEventListener('mousedown',e=>e.preventDefault()); d.addEventListener('click',()=>{ $('ed-adr').value=f.properties.label; box.style.display='none'; }); box.appendChild(d); });
+    box.style.display=box.children.length?'block':'none'; }catch(e){ box.style.display='none'; } },300);
+});
+$('ed-adr').addEventListener('blur',()=>setTimeout(()=>{ $('ed-sugg').style.display='none'; },150));
+CM.saveEdit=async function(){
+  const c=CM.editing; if(!c) return; const st=$('ed-status'), btn=$('ed-save');
+  const nom=$('ed-nom').value.trim().toUpperCase(), adr=$('ed-adr').value.trim();
+  if(!nom||!adr){ st.style.color='#ff144b'; st.textContent='Nom et adresse obligatoires.'; return; }
+  if(!c.implanteur && CM.centres.some(x=>x.id!==c.id&&nName(x.nom)===nName(nom))){ st.style.color='#ff144b'; st.textContent='Un autre centre porte déjà ce nom.'; return; }
+  const upd={adresse:adr,vendeur:$('ed-vendeur').value.trim()||null,mail_bl:$('ed-mailbl').value.trim()||null,mail_pharmacie:$('ed-mailph').value.trim()||null,implanteur:$('ed-imp').checked};
+  if(!c.implanteur) upd.nom=nom;
+  btn.disabled=true; st.style.color='var(--palette-royal-blue)'; st.textContent='Enregistrement… ⏳';
+  try{
+    if(adr!==c.adresse){
+      upd.lat=null; upd.lng=null; upd.geo_src=null;
+      try{ const g=await banAddress(adr); if(g){ upd.lat=g.lat; upd.lng=g.lng; upd.geo_src='adresse'; } }catch(e){}
+    }
+    const { error } = await _supabase.from('centres').update(upd).eq('id',c.id);
+    if(error) throw error;
+    Object.assign(c,upd,{dp:deptOfAddress(upd.adresse),commune:communeOfAddress(upd.adresse)});
+    fillVendors(); render(false); CM.closeEdit();
+    if(c.lat==null) geocodeMissing();
+  }catch(e){ console.error(e); st.style.color='#ff144b'; st.textContent='❌ Enregistrement impossible.'; }
+  finally{ btn.disabled=false; }
+};
+$('ed-del').addEventListener('click',async()=>{
+  const c=CM.editing; if(!c||c.implanteur) return;
+  if(!confirm(`Supprimer « ${c.nom} » ?\nCette action est définitive.`)) return;
+  const { error } = await _supabase.from('centres').delete().eq('id',c.id);
+  if(error){ alert('Suppression impossible.'); return; }
+  CM.centres=CM.centres.filter(x=>x.id!==c.id); CM.closeEdit(); fillVendors(); render(false);
+});
 
 /* ================= Filtres & démarrage ================= */
 document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
