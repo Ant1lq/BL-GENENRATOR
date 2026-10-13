@@ -568,6 +568,7 @@
         <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px 4px" onclick="openBase('n')">📚 Base</button>
       </div>
       <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:10px"><input type="checkbox" id="n-rmbg" checked style="width:20px;height:20px"> Retirer le fond blanc d'une image importée</label>
+      <label style="display:flex;align-items:flex-start;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:12px;line-height:1.3"><input type="checkbox" id="n-shownom" style="width:20px;height:20px;flex-shrink:0;margin-top:1px"> Afficher le nom, le prénom et la fonction au-dessus de la signature sur le BL</label>
     </div>
     <button class="btn-primary-ios" id="btn-create" onclick="createAccount()">CRÉER LE COMPTE</button>
   </div>
@@ -592,6 +593,7 @@
       </div>
     <button type="button" class="btn-mini delete" style="width:100%;justify-content:center;margin-top:8px" onclick="clearSig('e')">🗑️ Retirer la signature</button>
     <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:10px"><input type="checkbox" id="e-rmbg" checked style="width:20px;height:20px"> Retirer le fond blanc d'une image importée</label>
+    <label style="display:flex;align-items:flex-start;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:12px;line-height:1.3"><input type="checkbox" id="e-shownom" style="width:20px;height:20px;flex-shrink:0;margin-top:1px"> Afficher le nom, le prénom et la fonction au-dessus de la signature sur le BL</label>
   </div>
   <div class="msg" id="e-msg"></div>
   <div class="grid-2" style="margin-top:12px"><button class="btn-mini edit" style="padding:14px;justify-content:center" onclick="closeEdit()">ANNULER</button><button class="btn-primary-ios" id="e-save" style="padding:14px;font-size:14px" onclick="saveEdit()">ENREGISTRER</button></div>
@@ -837,10 +839,10 @@ async function createAccount(){
   let path=null;
   try{
     if(SIG.n.blob) path=await uploadSig(email,SIG.n.blob);
-    try{ await api({action:'create',email,password,nom,role,signature_path:path}); }
+    try{ await api({action:'create',email,password,nom,role,signature_path:path,afficher_nom:$('n-shownom').checked}); }
     catch(e){ if(path) await _supabase.storage.from('signatures').remove([path]); throw e; }
     say(msg,'✅ Compte créé. Communiquez-lui son e-mail et son mot de passe.','ok');
-    ['n-email','n-pass','n-nom'].forEach(i=>$(i).value=''); clearSig('n'); SIG.n.removed=false;
+    ['n-email','n-pass','n-nom'].forEach(i=>$(i).value=''); $('n-shownom').checked=false; clearSig('n'); SIG.n.removed=false;
     await loadList();
   }catch(e){ say(msg,'❌ '+e.message,'bad'); }
   btn.disabled=false;
@@ -849,14 +851,14 @@ async function createAccount(){
 /* ---- modification ---- */
 let editing=null;
 async function openEdit(u){
-  editing=u; $('e-title').textContent=u.email; $('e-nom').value=u.nom||''; $('e-role').value=u.role||'ingenieur'; $('e-pass').value=''; say($('e-msg'),'');
+  editing=u; $('e-title').textContent=u.email; $('e-nom').value=u.nom||''; $('e-role').value=u.role||'ingenieur'; $('e-pass').value=''; $('e-shownom').checked=!!u.afficher_nom; say($('e-msg'),'');
   const s=SIG.e; if(s.url) URL.revokeObjectURL(s.url); s.blob=null; s.url=null; s.removed=false; s.current=await thumb(u.signature_path); paintSig('e');
   $('edit-modal').style.display='flex';
 }
 function closeEdit(){ $('edit-modal').style.display='none'; editing=null; }
 async function saveEdit(){
   if(!editing) return; const m=$('e-msg'), btn=$('e-save'); btn.disabled=true; say(m,'Enregistrement…');
-  const body={action:'update',email:editing.email,nom:$('e-nom').value.trim(),role:$('e-role').value};
+  const body={action:'update',email:editing.email,nom:$('e-nom').value.trim(),role:$('e-role').value,afficher_nom:$('e-shownom').checked};
   const pw=$('e-pass').value; if(pw) body.password=pw;
   let newPath=null;
   try{

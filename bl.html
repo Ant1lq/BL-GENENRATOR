@@ -1030,10 +1030,15 @@
     const profilSigCache = {};
     async function loadProfils() {
         try {
-            const { data, error } = await _supabase.from('profils').select('email, nom, role, signature_path');
+            const { data, error } = await _supabase.from('profils').select('email, nom, role, signature_path, afficher_nom');
             if (error) throw error;
             profilsByNom = {}; profilsByEmail = {};
-            (data || []).forEach(p => { profilsByNom[p.nom] = p; profilsByEmail[(p.email || '').toLowerCase()] = p; });
+            (data || []).forEach(p => {
+                // même orthographe que la liste historique (ex. « Johann Morin » → « Johann MORIN »), pour rester compatible avec les secteurs et signatures déjà enregistrés
+                const canon = listIngs.find(i => i.toLowerCase() === (p.nom || '').toLowerCase()) || p.nom;
+                p.nom = canon;
+                profilsByNom[canon] = p; profilsByEmail[(p.email || '').toLowerCase()] = p;
+            });
         } catch (e) { console.error("Profils indisponibles (on continue avec la liste par défaut):", e); }
     }
     async function getProfilSignatureUrl(path) {
@@ -1056,11 +1061,11 @@
 
             const iSel = document.getElementById('inIng'); 
             iSel.innerHTML = "";
-            listIngs.forEach(i => iSel.add(new Option(i, i)));
-
             // Profils (comptes créés depuis la page admin) : nom affiché + signature associée
             await loadProfils();
-            Object.keys(profilsByNom).forEach(n => { if (![...iSel.options].some(o => o.value === n)) iSel.add(new Option(n, n)); });
+            const nomsComptes = Object.keys(profilsByNom).sort((a, b) => a.localeCompare(b));
+            // Sélection limitée aux comptes inscrits ; ancienne liste uniquement si les comptes sont illisibles
+            (nomsComptes.length ? nomsComptes : listIngs).forEach(i => iSel.add(new Option(i, i)));
 
             const { data: { session } } = await _supabase.auth.getSession();
             if (session && session.user && session.user.email) {
@@ -2416,9 +2421,9 @@ function removeBg(src,sens){
         document.getElementById('v-ing').innerText = ing;
         document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
         
-        document.getElementById('lbl-sig-ing').innerText = (sigSource['trans'] !== 'none') ? `${ing}\nIngénieur CRM` : "";
+        // Nom + fonction au-dessus de la signature : uniquement si le compte l'a choisi (page admin, « Comptes »)
         const sigRoleLabel = ({ transporteur: 'Transporteur', commercial: 'Commercial' })[(profilsByNom[ing] || {}).role] || 'Ingénieur CRM';
-        if (sigSource['trans'] === 'none') document.getElementById('lbl-sig-ing').innerText = ing ? `${ing}\n${sigRoleLabel}` : "";
+        document.getElementById('lbl-sig-ing').innerText = (ing && profilsByNom[ing] && profilsByNom[ing].afficher_nom) ? `${ing}\n${sigRoleLabel}` : "";
         document.getElementById('lbl-sig-doc').innerText = (sigSource['centre'] !== 'none') ? `${doc.toUpperCase()}\nService Cardiologie\n${c}` : "";
 
         if (sigSource['trans'] === 'none') {
