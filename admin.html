@@ -509,10 +509,14 @@
 .acct .sigthumb span{font-size:10px;color:#94a3b8;text-align:center}
 .acct .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .pill{display:inline-block;font-size:10px;font-weight:800;border-radius:99px;padding:2px 9px;margin-left:6px;vertical-align:middle}
-.pill.ing{background:#eaf0ff;color:var(--accent)} .pill.tra{background:#f5f3ff;color:var(--palette-purple)} .pill.adm{background:#fff1f2;color:var(--palette-vibrant-red)}
+.pill.ing{background:#eaf0ff;color:var(--accent)} .pill.tra{background:#f5f3ff;color:var(--palette-purple)} .pill.com{background:#ecfdf5;color:#15803d} .pill.adm{background:#fff1f2;color:var(--palette-vibrant-red)}
 .sigbox{border:2px dashed #cbd5e1;border-radius:16px;min-height:90px;display:flex;align-items:center;justify-content:center;background-color:#fff;background-image:conic-gradient(#eef1f5 25%,#fff 0 50%,#eef1f5 0 75%,#fff 0);background-size:16px 16px;margin:8px 0}
 .sigbox img{max-width:100%;max-height:140px}
 .sigbox span{font-size:12px;color:#94a3b8;background:#fff;padding:2px 8px;border-radius:8px}
+.sect-t{font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin:12px 2px 6px}
+.baseitem{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1.5px solid var(--border-color);border-radius:14px;padding:8px 10px;margin-bottom:8px;cursor:pointer}
+.baseitem .bl{font-weight:750;font-size:13px;color:var(--text-main)}
+.baseitem:active{transform:scale(.98)}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .pwrow{display:flex;gap:8px}.pwrow input{flex:1}.pwrow button{flex:0 0 auto;width:50px;height:50px;border-radius:14px;border:1.5px solid #cbd5e1;background:#fff;font-size:18px;cursor:pointer}
 .msg{font-size:13px;font-weight:750;text-align:center;margin:10px 0;min-height:1.2em}
@@ -555,12 +559,13 @@
     <div class="form-group"><label>Mot de passe (8 caractères minimum)</label>
       <div class="pwrow"><input type="text" id="n-pass" autocomplete="new-password" autocapitalize="off" spellcheck="false"><button type="button" onclick="document.getElementById('n-pass').value=genPass()" title="Générer">🎲</button></div></div>
     <div class="form-group"><label>Nom affiché (ingénieur / transporteur)</label><input type="text" id="n-nom" autocomplete="off" placeholder="Ex : Valentin GARTENLAUB"></div>
-    <div class="form-group"><label>Rôle</label><select id="n-role"><option value="ingenieur">Ingénieur</option><option value="transporteur">Transporteur</option></select></div>
+    <div class="form-group"><label>Rôle</label><select id="n-role"><option value="ingenieur">Ingénieur</option><option value="transporteur">Transporteur</option><option value="commercial">Commercial</option></select></div>
     <div class="form-group"><label>Signature associée</label>
       <div class="sigbox" id="n-sigbox"><span>Aucune signature</span></div>
-      <div class="grid-2">
-        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px" onclick="openPad('n')">✍️ Dessiner</button>
-        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px" onclick="pickSig('n')">🖼️ Importer</button>
+<div class="row3">
+        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px 4px" onclick="openPad('n')">✍️ Dessiner</button>
+        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px 4px" onclick="pickSig('n')">🖼️ Importer</button>
+        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px 4px" onclick="openBase('n')">📚 Base</button>
       </div>
       <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:10px"><input type="checkbox" id="n-rmbg" checked style="width:20px;height:20px"> Retirer le fond blanc d'une image importée</label>
     </div>
@@ -575,15 +580,16 @@
 <div id="edit-modal" class="ios-modal"><div class="ios-modal-content">
   <h3 style="margin-top:0;color:var(--blue-mp);font-size:16px;text-align:center;font-weight:bold" id="e-title">Modifier</h3>
   <div class="form-group"><label>Nom affiché</label><input type="text" id="e-nom"></div>
-  <div class="form-group"><label>Rôle</label><select id="e-role"><option value="ingenieur">Ingénieur</option><option value="transporteur">Transporteur</option></select></div>
+  <div class="form-group"><label>Rôle</label><select id="e-role"><option value="ingenieur">Ingénieur</option><option value="transporteur">Transporteur</option><option value="commercial">Commercial</option></select></div>
   <div class="form-group"><label>Nouveau mot de passe (laisser vide pour ne pas changer)</label>
     <div class="pwrow"><input type="text" id="e-pass" autocomplete="new-password" autocapitalize="off" spellcheck="false"><button type="button" onclick="document.getElementById('e-pass').value=genPass()">🎲</button></div></div>
   <div class="form-group"><label>Signature associée</label>
     <div class="sigbox" id="e-sigbox"><span>Aucune signature</span></div>
-    <div class="grid-2">
-      <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px" onclick="openPad('e')">✍️ Dessiner</button>
-      <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px" onclick="pickSig('e')">🖼️ Importer</button>
-    </div>
+<div class="row3">
+        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px 4px" onclick="openPad('e')">✍️ Dessiner</button>
+        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px 4px" onclick="pickSig('e')">🖼️ Importer</button>
+        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px 4px" onclick="openBase('e')">📚 Base</button>
+      </div>
     <button type="button" class="btn-mini delete" style="width:100%;justify-content:center;margin-top:8px" onclick="clearSig('e')">🗑️ Retirer la signature</button>
     <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:10px"><input type="checkbox" id="e-rmbg" checked style="width:20px;height:20px"> Retirer le fond blanc d'une image importée</label>
   </div>
@@ -596,6 +602,14 @@
   <canvas id="padcv"></canvas>
   <div class="grid-2" style="margin-top:14px"><button class="btn-mini edit" style="padding:14px;justify-content:center" onclick="padClear()">EFFACER</button><button class="btn-mini edit" style="padding:14px;justify-content:center" onclick="closePad()">ANNULER</button></div>
   <button class="btn-primary-ios" style="margin-top:12px;padding:14px" onclick="padOk()">VALIDER</button>
+</div></div>
+
+<div id="base-modal" class="ios-modal"><div class="ios-modal-content" style="max-height:88vh;display:flex;flex-direction:column">
+  <h3 style="margin-top:0;color:var(--blue-mp);font-size:15px;text-align:center;font-weight:bold">📚 Signature ou tampon déjà enregistré</h3>
+  <div class="form-group" style="margin-bottom:10px"><input type="text" id="base-search" placeholder="🔎 Rechercher…" oninput="renderBase()"></div>
+  <div id="base-list" style="overflow-y:auto;flex:1;min-height:120px"></div>
+  <div class="msg" id="base-msg"></div>
+  <button class="btn-secondary-ios" style="padding:14px;margin-top:8px" onclick="closeBase()">FERMER</button>
 </div></div>
 
 <input type="file" id="file-sig" accept="image/*" style="display:none">
@@ -700,6 +714,68 @@ function paintSig(k){
 }
 function setSigBlob(k,blob){ const s=SIG[k]; if(s.url) URL.revokeObjectURL(s.url); s.blob=blob; s.url=URL.createObjectURL(blob); s.removed=false; paintSig(k); }
 function clearSig(k){ const s=SIG[k]; if(s.url) URL.revokeObjectURL(s.url); s.blob=null; s.url=null; s.removed=true; paintSig(k); }
+/* Image → signature : transparente gardée telle quelle ; sinon fond blanc retiré si la case est cochée */
+async function imgToSigBlob(img,k){
+  const kk=Math.min(1,1200/Math.max(img.width,img.height));
+  const c=document.createElement('canvas'); c.width=Math.round(img.width*kk); c.height=Math.round(img.height*kk);
+  const x=c.getContext('2d'); x.drawImage(img,0,0,c.width,c.height);
+  const d=x.getImageData(0,0,c.width,c.height).data; let alpha=false; for(let i=3;i<d.length;i+=16){ if(d[i]<250){alpha=true;break;} }
+  let out;
+  if(alpha) out=trimCanvas(c);
+  else if($(k+'-rmbg').checked){ const flat=document.createElement('canvas'); flat.width=c.width; flat.height=c.height; const fx=flat.getContext('2d'); fx.fillStyle='#fff'; fx.fillRect(0,0,flat.width,flat.height); fx.drawImage(c,0,0); out=trimCanvas(removeBg(flat,50)); }
+  else out=c;
+  return toBlob(out);
+}
+
+/* ---- choisir une signature / un tampon déjà en base ---- */
+function pathOf(u,bucket){ const m=new RegExp('/storage/v1/object/(?:sign|public|authenticated)/'+bucket+'/([^?]+)').exec(String(u||'')); return m?decodeURIComponent(m[1]):(/^https?:/.test(String(u||''))?'':String(u||'')); }
+let BASE=null, baseTarget='n';
+async function loadBase(){
+  const items=[];
+  const add=(grp,label,bucket,path,url)=>{ if(path||url) items.push({grp,label,bucket,path,url}); };
+  const [pr,ce,me]=await Promise.all([
+    _supabase.from('profils').select('nom, role, signature_path'),
+    _supabase.from('centres').select('nom, tampon_url'),
+    _supabase.from('medecins').select('nom, centre_nom, tampon_url')
+  ]);
+  (pr.data||[]).forEach(p=>{ if(p.signature_path) add('Signatures de comptes','Signature · '+p.nom,'signatures',p.signature_path); });
+  (ce.data||[]).forEach(c=>{ if(c.tampon_url) add('Tampons des centres','Tampon · '+c.nom,'tampons',pathOf(c.tampon_url,'tampons'),/^https?:/.test(c.tampon_url)&&!pathOf(c.tampon_url,'tampons')?c.tampon_url:null); });
+  (me.data||[]).forEach(m=>{ if(m.tampon_url) add('Tampons des médecins','Dr '+m.nom+' · '+m.centre_nom,'tampons',pathOf(m.tampon_url,'tampons')); });
+  [['Antoine','signature-antoine.png'],['Johann','signature-johann.png']].forEach(([n,f])=>add('Fichiers du site','Signature · '+n,null,null,'assets/'+f));
+  await Promise.all(items.map(async it=>{
+    if(it.url){ it.thumb=it.url; return; }
+    const {data}=await _supabase.storage.from(it.bucket).createSignedUrl(it.path,3600); it.thumb=data?data.signedUrl:null;
+  }));
+  return items;
+}
+async function openBase(k){
+  baseTarget=k; $('base-search').value=''; say($('base-msg'),''); $('base-modal').style.display='flex';
+  const box=$('base-list');
+  if(!BASE){ box.innerHTML='<div style="color:var(--text-muted);font-size:13px;padding:8px">Chargement…</div>'; try{ BASE=await loadBase(); }catch(e){ box.innerHTML=''; say($('base-msg'),'Lecture impossible : '+e.message,'bad'); return; } }
+  renderBase();
+}
+function closeBase(){ $('base-modal').style.display='none'; }
+function renderBase(){
+  const q=($('base-search').value||'').toLowerCase(), box=$('base-list'); box.replaceChildren(); let grp='';
+  (BASE||[]).filter(it=>it.label.toLowerCase().includes(q)).forEach(it=>{
+    if(it.grp!==grp){ grp=it.grp; const h=document.createElement('div'); h.className='sect-t'; h.textContent=grp; box.append(h); }
+    const b=document.createElement('button'); b.type='button'; b.className='baseitem';
+    b.innerHTML=`<div class="sigthumb" style="margin:0">${it.thumb?`<img src="${it.thumb}">`:'<span>?</span>'}</div><div class="bl">${esc(it.label)}</div>`;
+    b.addEventListener('click',()=>useBase(it)); box.append(b);
+  });
+  if(!box.children.length) box.innerHTML='<div style="color:var(--text-muted);font-size:13px;padding:8px">Aucun résultat.</div>';
+}
+async function useBase(it){
+  const k=baseTarget; say($('base-msg'),'Chargement…');
+  try{
+    let blob;
+    if(it.bucket){ const {data,error}=await _supabase.storage.from(it.bucket).download(it.path); if(error||!data) throw new Error('fichier inaccessible'); blob=data; }
+    else { const r=await fetch(it.url); if(!r.ok) throw new Error('fichier inaccessible'); blob=await r.blob(); }
+    const img=await loadImg(await readFile(blob));
+    setSigBlob(k,await imgToSigBlob(img,k)); closeBase();
+  }catch(e){ say($('base-msg'),'❌ '+e.message,'bad'); }
+}
+
 let sigTarget='n';
 function pickSig(k){ sigTarget=k; $('file-sig').value=''; $('file-sig').click(); }
 $('file-sig').addEventListener('change',async e=>{
@@ -707,16 +783,7 @@ $('file-sig').addEventListener('change',async e=>{
   const k=sigTarget, msg=$(k==='n'?'msg':'e-msg');
   try{
     const img=await loadImg(await readFile(f));
-    const kk=Math.min(1,1200/Math.max(img.width,img.height));
-    const c=document.createElement('canvas'); c.width=Math.round(img.width*kk); c.height=Math.round(img.height*kk);
-    const x=c.getContext('2d'); x.drawImage(img,0,0,c.width,c.height);
-    // image déjà transparente : gardée telle quelle ; sinon fond blanc retiré si la case est cochée
-    const d=x.getImageData(0,0,c.width,c.height).data; let alpha=false; for(let i=3;i<d.length;i+=16){ if(d[i]<250){alpha=true;break;} }
-    let out;
-    if(alpha) out=trimCanvas(c);
-    else if($(k+'-rmbg').checked){ const flat=document.createElement('canvas'); flat.width=c.width; flat.height=c.height; const fx=flat.getContext('2d'); fx.fillStyle='#fff'; fx.fillRect(0,0,flat.width,flat.height); fx.drawImage(c,0,0); out=trimCanvas(removeBg(flat,50)); }
-    else out=c;
-    setSigBlob(k,await toBlob(out));
+    setSigBlob(k,await imgToSigBlob(img,k));
   }catch(err){ say(msg,'Image impossible à lire : '+err.message,'bad'); }
 });
 
@@ -733,6 +800,7 @@ pad.addEventListener('pointerdown',pdown); pad.addEventListener('pointermove',pm
 async function padOk(){ if(!inked){ closePad(); return; } setSigBlob(sigTarget,await toBlob(trimCanvas(pad))); closePad(); }
 
 /* ---- liste ---- */
+const ROLE_LBL={ingenieur:'Ingénieur',transporteur:'Transporteur',commercial:'Commercial'}, ROLE_CLS={ingenieur:'ing',transporteur:'tra',commercial:'com'};
 let USERS=[]; const thumbCache={};
 async function thumb(path){ if(!path) return null; if(thumbCache[path]) return thumbCache[path]; const {data}=await _supabase.storage.from('signatures').createSignedUrl(path,3600); if(data) thumbCache[path]=data.signedUrl; return data?data.signedUrl:null; }
 function fmtDate(s){ if(!s) return 'jamais'; const d=new Date(s); return d.toLocaleDateString('fr-FR')+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
@@ -744,7 +812,7 @@ async function loadList(){
     box.replaceChildren();
     USERS.forEach((u,i)=>{
       const d=document.createElement('div'); d.className='acct';
-      d.innerHTML=`<div class="top"><div><div class="nm">${esc(u.nom||'(sans nom)')}<span class="pill ${u.role==='transporteur'?'tra':'ing'}">${u.role==='transporteur'?'Transporteur':'Ingénieur'}</span>${u.is_admin?'<span class="pill adm">Admin</span>':''}</div><div class="em">${esc(u.email)}</div><div class="meta">Dernière connexion : ${fmtDate(u.last_sign_in_at)}</div></div><div class="sigthumb">${urls[i]?`<img src="${urls[i]}">`:'<span>Pas de signature</span>'}</div></div>
+      d.innerHTML=`<div class="top"><div><div class="nm">${esc(u.nom||'(sans nom)')}<span class="pill ${ROLE_CLS[u.role]||'ing'}">${ROLE_LBL[u.role]||'Ingénieur'}</span>${u.is_admin?'<span class="pill adm">Admin</span>':''}</div><div class="em">${esc(u.email)}</div><div class="meta">Dernière connexion : ${fmtDate(u.last_sign_in_at)}</div></div><div class="sigthumb">${urls[i]?`<img src="${urls[i]}">`:'<span>Pas de signature</span>'}</div></div>
         <div class="acts"><button class="btn-mini edit" data-act="edit" data-i="${i}">✏️ Modifier / mot de passe</button>${u.is_admin?'':`<button class="btn-mini delete" data-act="del" data-i="${i}">🗑️ Supprimer</button>`}</div>`;
       box.append(d);
     });

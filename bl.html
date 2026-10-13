@@ -2417,7 +2417,7 @@ function removeBg(src,sens){
         document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
         
         document.getElementById('lbl-sig-ing').innerText = (sigSource['trans'] !== 'none') ? `${ing}\nIngénieur CRM` : "";
-        const sigRoleLabel = (profilsByNom[ing] && profilsByNom[ing].role === 'transporteur') ? 'Transporteur' : 'Ingénieur CRM';
+        const sigRoleLabel = ({ transporteur: 'Transporteur', commercial: 'Commercial' })[(profilsByNom[ing] || {}).role] || 'Ingénieur CRM';
         if (sigSource['trans'] === 'none') document.getElementById('lbl-sig-ing').innerText = ing ? `${ing}\n${sigRoleLabel}` : "";
         document.getElementById('lbl-sig-doc').innerText = (sigSource['centre'] !== 'none') ? `${doc.toUpperCase()}\nService Cardiologie\n${c}` : "";
 
