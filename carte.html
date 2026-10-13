@@ -691,7 +691,7 @@ html,body{height:100%;overscroll-behavior:none}
   <div class="sheet-body">
     <div class="imp-card"><span id="ed-badges"></span><div class="imp-i" id="ed-info"></div></div>
     <div class="form-group"><label>Nom</label><input type="text" id="ed-nom"><div class="imp-i" id="ed-nom-hint" style="display:none">Centre implanteur : pour le renommer, utilisez « Centres &amp; tampons » (le nom relie médecins, secteurs et BL).</div></div>
-    <div class="form-group" style="position:relative"><label>Adresse postale</label><input type="text" id="ed-adr" autocomplete="off"><div class="sugg-box" id="ed-sugg"></div></div>
+    <div class="form-group" style="position:relative"><label>Adresse postale</label><input type="text" id="ed-adr" autocomplete="off"><div class="sugg-box" id="ed-sugg"></div><button type="button" class="cm-btn2" id="ed-find" style="width:100%;margin-top:6px">🔎 Chercher l'adresse de cet établissement</button></div>
     <div class="form-group"><label>Vendeur</label><input type="text" id="ed-vendeur"></div>
     <div class="form-group"><label>Mail BL</label><input type="text" id="ed-mailbl" inputmode="email" autocapitalize="off"></div>
     <div class="form-group"><label>Mail pharmacie</label><input type="text" id="ed-mailph" inputmode="email" autocapitalize="off"></div>
@@ -1135,13 +1135,38 @@ CM.openEdit=function(id){
 };
 CM.closeEdit=()=>{ $('edit-sheet').style.display='none'; };
 $('ed-showmap').addEventListener('click',()=>{ const c=CM.editing; CM.closeEdit(); CM.setView('map'); CM.map.setView([c.lat,c.lng],15); const m=CM.markers.get(c.id); if(m) m.openPopup(); });
+function suggNote(txt){ const box=$('ed-sugg'); box.innerHTML=''; const n=document.createElement('div'); n.className='sugg-note'; n.textContent=txt; box.appendChild(n); box.style.display='block'; }
+function suggFill(list){
+  const box=$('ed-sugg'); box.innerHTML='';
+  list.forEach(it=>{ const d=document.createElement('div'); d.className='sugg-item'; d.innerHTML='<b></b><span></span>'; d.firstChild.textContent=it.title; d.lastChild.textContent=it.sub||'';
+    d.addEventListener('mousedown',e=>e.preventDefault()); d.addEventListener('click',()=>{ $('ed-adr').value=it.full; box.style.display='none'; }); box.appendChild(d); });
+  box.style.display=box.children.length?'block':'none';
+}
 let adT; $('ed-adr').addEventListener('input',()=>{
-  clearTimeout(adT); const q=$('ed-adr').value.trim(), box=$('ed-sugg'); if(q.length<4){ box.style.display='none'; return; }
-  adT=setTimeout(async()=>{ try{
+  clearTimeout(adT); const q=$('ed-adr').value.trim(); if(q.length<3){ $('ed-sugg').style.display='none'; return; }
+  adT=setTimeout(async()=>{ suggNote('🔎 Recherche en cours…'); try{
     const j=await jget('https://api-adresse.data.gouv.fr/search/?limit=5&q='+encodeURIComponent(q));
-    box.innerHTML=''; (j.features||[]).forEach(f=>{ const d=document.createElement('div'); d.className='sugg-item'; d.innerHTML='<b></b><span></span>'; d.firstChild.textContent=f.properties.name; d.lastChild.textContent=f.properties.postcode+' '+f.properties.city;
-      d.addEventListener('mousedown',e=>e.preventDefault()); d.addEventListener('click',()=>{ $('ed-adr').value=f.properties.label; box.style.display='none'; }); box.appendChild(d); });
-    box.style.display=box.children.length?'block':'none'; }catch(e){ box.style.display='none'; } },300);
+    const l=(j.features||[]).map(f=>({title:f.properties.name,sub:f.properties.postcode+' '+f.properties.city,full:f.properties.label}));
+    if(l.length) suggFill(l); else suggNote("Aucune suggestion — saisie libre possible.");
+  }catch(e){ suggNote('⚠️ Suggestions indisponibles (réseau) — saisie libre possible.'); } },250);
+});
+// Propose des adresses à partir du NOM de l'établissement (utile pour les centres importés « à compléter »)
+$('ed-find').addEventListener('click',async()=>{
+  const c=CM.editing; if(!c) return; const nom=$('ed-nom').value.trim(); const lo=(c.xl&&c.xl.lo)||c.commune||''; const dp=c.dp||(c.xl&&c.xl.dp)||'';
+  $('ed-adr').focus(); suggNote('🔎 Recherche de « '+nom+' »…');
+  try{
+    const {qs,k}=photonQueries(nom,lo); const out=[], seen=new Set();
+    for(const q of [...qs, nom]){
+      const tag=(k==="H")?'&osm_tag=amenity:hospital':(k==="C")?'&osm_tag=amenity:clinic':'';
+      let j; try{ j=await jget('https://photon.komoot.io/api/?limit=8&lang=fr&bbox=-5.5,41.2,9.8,51.2&q='+encodeURIComponent(q)+tag,8000); }catch(e){ continue; }
+      for(const f of (j.features||[])){ const p=f.properties||{}; const pc=String(p.postcode||"");
+        if(/^\d\d$/.test(dp) && pc && !pc.startsWith(dp)) continue;
+        const street=[p.housenumber,p.street].filter(Boolean).join(' '); const adr=[street,[p.postcode,p.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+        if(!adr||seen.has(adr)) continue; seen.add(adr); out.push({title:p.name||street||p.city,sub:adr,full:adr}); }
+      if(out.length>=6) break;
+    }
+    if(out.length) suggFill(out.slice(0,6)); else suggNote("Aucun établissement trouvé — tapez le début de l'adresse (n° et rue).");
+  }catch(e){ suggNote('⚠️ Recherche indisponible (réseau).'); }
 });
 $('ed-adr').addEventListener('blur',()=>setTimeout(()=>{ $('ed-sugg').style.display='none'; },150));
 CM.saveEdit=async function(){

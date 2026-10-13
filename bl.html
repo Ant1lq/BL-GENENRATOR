@@ -1517,6 +1517,10 @@
             }
             return b;
         }
+        function note(input, txt) {
+            const b = box(input); b.innerHTML = '';
+            const n = document.createElement('div'); n.className = 'sugg-note'; n.textContent = txt; b.appendChild(n); b.style.display = 'block';
+        }
         function hide(input) { const b = input.parentElement.querySelector('.sugg-box'); if (b) { b.style.display = 'none'; b.innerHTML = ''; } }
         function show(input, items, onPick, note) {
             const b = box(input);
@@ -1568,19 +1572,21 @@
                 if (q.length < (minLen || 3)) { hide(input); return; }
                 timers[id] = setTimeout(async () => {
                     const n = (seq[id] = (seq[id] || 0) + 1);
+                    note(input, '🔎 Recherche en cours…');
                     try {
                         const items = await search(q);
                         if (n !== seq[id] || document.activeElement !== input) return;
-                        show(input, items, onPick);
-                    } catch (e) { hide(input); }
-                }, 300);
+                        if (items.length) show(input, items, onPick);
+                        else note(input, 'Aucune suggestion — vous pouvez saisir l\'adresse librement.');
+                    } catch (e) { if (n === seq[id]) note(input, '⚠️ Suggestions indisponibles (réseau) — saisie libre possible.'); }
+                }, 250);
             });
             input.addEventListener('blur', () => setTimeout(() => hide(input), 150));
         }
         // nomId/adrId : champs à relier. Le nom propose des établissements (remplit aussi l'adresse), l'adresse propose la BAN.
         function bind(nomId, adrId) {
             const nom = document.getElementById(nomId), adr = document.getElementById(adrId);
-            attach(adr, searchAddress, it => { adr.value = it.full; }, 4);
+            attach(adr, searchAddress, it => { adr.value = it.full; }, 3);
             attach(nom, searchEtab, it => {
                 nom.value = it.nom.toUpperCase();
                 if (it.adr) adr.value = it.adr;
