@@ -479,6 +479,28 @@
             #sig-modal .ios-modal-content { border-radius: 0 !important; }
         }
 
+
+        /* ====== ONGLET SIGNATURES : cases pleine largeur avec aperçu ====== */
+        #tab-signatures .signature-box { margin-bottom: 14px; padding: 14px; text-align: left; }
+        #tab-signatures .signature-box:last-child { margin-bottom: 0; }
+        .sig-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+        .sig-head label { margin: 0; }
+        .sig-src { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 10px; background: #eef2f7; color: #475569; white-space: nowrap; }
+        .sig-src.base { background: #dcfce7; color: #166534; }
+        .sig-src.manuel { background: #e0e7ff; color: #3730a3; }
+        .sig-src.vide { background: #fef3c7; color: #92400e; }
+        .sig-frame {
+            position: relative; width: 100%; aspect-ratio: 5 / 2; min-height: 120px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .sig-frame img { max-width: 94%; max-height: 90%; object-fit: contain; display: none; }
+        .sig-frame.has-img img { display: block; }
+        .sig-empty { font-size: 12px; color: var(--text-muted); text-align: center; padding: 0 18px; line-height: 1.4; }
+        .sig-frame.has-img .sig-empty { display: none; }
+        .sig-actions { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .sig-actions .btn-mini { justify-content: center; flex-direction: row; gap: 5px; white-space: nowrap; font-size: 13px; padding: 12px 4px; min-height: 46px; }
+        .sig-reset { margin-top: 8px; width: 100%; border: none; background: none; color: var(--blue-mp); font-size: 12.5px; font-weight: 700; padding: 8px; font-family: inherit; }
+
         #container-preview-zone { display: block; }
 
         .bl-preview-header {
@@ -692,33 +714,37 @@
         <div class="tab-panel" id="tab-signatures">
         <div class="app-card">
             <div class="card-title">✍️ Signatures & émargements</div>
-            <div class="grid-2">
-                <div class="signature-box">
-                    <label>Transporteur</label>
-                    <canvas id="pad-trans" class="sig-canvas"></canvas>
-                    <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
-                        <button class="btn-mini sign" style="justify-content:center;" onclick="openFullscreenSig('trans')">✍️ Signer</button>
-                        <div class="grid-2" style="gap:6px;">
-                            <button class="btn-mini edit" style="justify-content:center; flex-direction:row; gap:3px; white-space:nowrap; font-size:12px; padding:9px 2px;" onclick="document.getElementById('photo-sig-trans').click()">📷 Photo</button>
-                            <button class="btn-mini edit" style="justify-content:center; flex-direction:row; gap:3px; white-space:nowrap; font-size:12px; padding:9px 2px;" onclick="document.getElementById('import-sig-trans').click()">🖼️ Image</button>
-                        </div>
-                    </div>
-                    <input type="file" id="photo-sig-trans" accept="image/*" capture="environment" style="display:none;" onchange="handleSignatureImport(this, 'trans')">
-                    <input type="file" id="import-sig-trans" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'trans')">
+            <div class="signature-box">
+                <div class="sig-head"><label>Transporteur</label><span class="sig-src" id="sig-src-trans"></span></div>
+                <div class="sig-frame" id="sig-frame-trans">
+                    <img id="sig-prev-trans" alt="">
+                    <div class="sig-empty" id="sig-empty-trans">Aucune signature en base : signez ou ajoutez une image</div>
+                    <canvas id="pad-trans" style="display:none;"></canvas>
                 </div>
-                <div class="signature-box">
-                    <label>Centre / Tampon</label>
-                    <canvas id="pad-centre" class="sig-canvas"></canvas>
-                    <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
-                        <button class="btn-mini sign" style="justify-content:center;" onclick="openFullscreenSig('centre')">✍️ Signer</button>
-                        <div class="grid-2" style="gap:6px;">
-                            <button class="btn-mini edit" style="justify-content:center; flex-direction:row; gap:3px; white-space:nowrap; font-size:12px; padding:9px 2px;" onclick="document.getElementById('photo-sig-centre').click()">📷 Photo</button>
-                            <button class="btn-mini edit" style="justify-content:center; flex-direction:row; gap:3px; white-space:nowrap; font-size:12px; padding:9px 2px;" onclick="document.getElementById('import-sig-centre').click()">🖼️ Image</button>
-                        </div>
-                    </div>
-                    <input type="file" id="photo-sig-centre" accept="image/*" capture="environment" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
-                    <input type="file" id="import-sig-centre" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
+                <div class="sig-actions">
+                    <button class="btn-mini sign" onclick="openFullscreenSig('trans')">✍️ Signer</button>
+                    <button class="btn-mini edit" onclick="document.getElementById('photo-sig-trans').click()">📷 Photo</button>
+                    <button class="btn-mini edit" onclick="document.getElementById('import-sig-trans').click()">🖼️ Image</button>
                 </div>
+                <button class="sig-reset" id="sig-reset-trans" onclick="resetSignature('trans')" style="display:none;">↩️ Revenir à l'image de la base</button>
+                <input type="file" id="photo-sig-trans" accept="image/*" capture="environment" style="display:none;" onchange="handleSignatureImport(this, 'trans')">
+                <input type="file" id="import-sig-trans" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'trans')">
+            </div>
+            <div class="signature-box">
+                <div class="sig-head"><label>Centre / Tampon</label><span class="sig-src" id="sig-src-centre"></span></div>
+                <div class="sig-frame" id="sig-frame-centre">
+                    <img id="sig-prev-centre" alt="">
+                    <div class="sig-empty" id="sig-empty-centre">Aucun tampon en base : signez ou ajoutez une image</div>
+                    <canvas id="pad-centre" style="display:none;"></canvas>
+                </div>
+                <div class="sig-actions">
+                    <button class="btn-mini sign" onclick="openFullscreenSig('centre')">✍️ Signer</button>
+                    <button class="btn-mini edit" onclick="document.getElementById('photo-sig-centre').click()">📷 Photo</button>
+                    <button class="btn-mini edit" onclick="document.getElementById('import-sig-centre').click()">🖼️ Image</button>
+                </div>
+                <button class="sig-reset" id="sig-reset-centre" onclick="resetSignature('centre')" style="display:none;">↩️ Revenir à l'image de la base</button>
+                <input type="file" id="photo-sig-centre" accept="image/*" capture="environment" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
+                <input type="file" id="import-sig-centre" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
             </div>
         </div>
 
@@ -2914,6 +2940,43 @@ function removeBg(src,sens){
     }
 
 
+
+    // ====== APERÇU DES SIGNATURES / TAMPONS (onglet Signatures) ======
+    function refreshSigPreviews() {
+        try {
+            const doc = document.getElementById('inD').value || '';
+            ['trans', 'centre'].forEach(t => {
+                const src = document.getElementById('v-sig-' + t).getAttribute('src');
+                const frame = document.getElementById('sig-frame-' + t), prev = document.getElementById('sig-prev-' + t);
+                const badge = document.getElementById('sig-src-' + t), reset = document.getElementById('sig-reset-' + t);
+                if (!frame) return;
+                if (src && prev.getAttribute('src') !== src) prev.setAttribute('src', src);
+                if (!src) prev.removeAttribute('src');
+                frame.classList.toggle('has-img', !!src);
+                const manual = sigSource[t] !== 'none';
+                let label, cls;
+                if (manual) { label = 'Ajoutée à la main'; cls = 'manuel'; }
+                else if (!src) { label = 'Aucune'; cls = 'vide'; }
+                else if (t === 'centre') { label = (doc && doctorStampMap[doc]) ? 'Tampon du médecin' : 'Tampon du centre'; cls = 'base'; }
+                else { const ing = document.getElementById('inIng').value || ''; label = (profilsByNom[ing] && profilsByNom[ing].signature_path) ? 'Signature du compte' : 'Signature par défaut'; cls = 'base'; }
+                badge.innerText = label; badge.className = 'sig-src ' + cls;
+                if (reset) reset.style.display = manual ? 'block' : 'none';
+            });
+        } catch (e) { console.error(e); }
+    }
+    function resetSignature(t) {
+        sigSource[t] = 'none';
+        const c = document.getElementById('pad-' + t); if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
+        const im = document.getElementById('v-sig-' + t); im.removeAttribute('src'); delete im.dataset.profSig; delete im.dataset.rawTamponUrl;
+        sync();
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        ['trans', 'centre'].forEach(t => {
+            const im = document.getElementById('v-sig-' + t);
+            if (im && window.MutationObserver) new MutationObserver(refreshSigPreviews).observe(im, { attributes: true, attributeFilter: ['src'] });
+        });
+    });
+
     // ====== ONGLETS (étapes du BL) ======
     let currentTab = 'infos';
     function showTab(name) {
@@ -2923,10 +2986,7 @@ function removeBg(src,sens){
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
         window.scrollTo({ top: 0, behavior: 'auto' });
         // Les zones mesurées (signatures, aperçu A4) ne peuvent être dimensionnées qu'une fois visibles.
-        if (name === 'signatures') {
-            const pad = document.getElementById('pad-trans');
-            if (pad && pad.width < 50) requestAnimationFrame(() => { initPads(); redrawSignaturePads(); });
-        }
+        if (name === 'signatures') refreshSigPreviews();
         if (name === 'bl') {
             requestAnimationFrame(() => { if (!isUserZooming) initDefaultScale(); sync(); });
         }
@@ -2963,7 +3023,7 @@ function removeBg(src,sens){
     }
 
     function sync() {
-        updateTabStatus();
+        updateTabStatus(); refreshSigPreviews();
         const c = document.getElementById('inC').value; if(!c) return;
         const centreData = dbCloudCentres.find(item => item.nom === c); if(!centreData) return;
         
