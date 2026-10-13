@@ -615,7 +615,15 @@
             .bl-scaler { transform: none !important; width: 210mm !important; height: 297mm !important; }
             #bl-canvas { box-shadow: none !important; padding: 0; }
         }
-    </style>
+    
+    .sugg-box{display:none;position:absolute;left:0;right:0;top:100%;z-index:50;background:#fff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 8px 24px rgba(4,42,114,.18);max-height:240px;overflow:auto;margin-top:2px}
+    .sugg-item{padding:11px 13px;border-bottom:1px solid #eef2f7;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+    .sugg-item:last-child{border-bottom:0}
+    .sugg-item:active{background:#eef3ff}
+    .sugg-item b{font-size:13px;color:#042a72}
+    .sugg-item span{font-size:11.5px;color:#64748b}
+    .sugg-note{padding:6px 12px;font-size:10px;color:#94a3b8}
+</style>
 </head>
 <body>
 
@@ -1489,7 +1497,98 @@
     }
 
     // ====== CRÉATION RAPIDE D'UN CENTRE ======
+
+    // ====== AIDE À LA SAISIE (adresse + établissement) ======
+    // Adresses : Base Adresse Nationale (api-adresse.data.gouv.fr) — Établissements : Photon / OpenStreetMap.
+    // Tout est facultatif : en cas d'échec réseau, la saisie libre continue de fonctionner.
+    const AddrAssist = (() => {
+        const timers = {}, seq = {};
+        function box(input) {
+            let b = input.parentElement.querySelector('.sugg-box');
+            if (!b) {
+                input.parentElement.style.position = 'relative';
+                b = document.createElement('div');
+                b.className = 'sugg-box';
+                input.parentElement.appendChild(b);
+            }
+            return b;
+        }
+        function hide(input) { const b = input.parentElement.querySelector('.sugg-box'); if (b) { b.style.display = 'none'; b.innerHTML = ''; } }
+        function show(input, items, onPick, note) {
+            const b = box(input);
+            b.innerHTML = '';
+            if (!items.length) { b.style.display = 'none'; return; }
+            items.forEach(it => {
+                const d = document.createElement('div');
+                d.className = 'sugg-item';
+                d.innerHTML = '<b></b><span></span>';
+                d.firstChild.textContent = it.title;
+                d.lastChild.textContent = it.sub || '';
+                d.addEventListener('mousedown', e => e.preventDefault());
+                d.addEventListener('click', () => { onPick(it); hide(input); });
+                b.appendChild(d);
+            });
+            if (note) { const n = document.createElement('div'); n.className = 'sugg-note'; n.textContent = note; b.appendChild(n); }
+            b.style.display = 'block';
+        }
+        async function jget(url) {
+            const c = new AbortController(); const t = setTimeout(() => c.abort(), 6000);
+            try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); }
+            finally { clearTimeout(t); }
+        }
+        async function searchAddress(q) {
+            const j = await jget('https://api-adresse.data.gouv.fr/search/?limit=5&q=' + encodeURIComponent(q));
+            return (j.features || []).map(f => ({ title: f.properties.name, sub: f.properties.postcode + ' ' + f.properties.city, full: f.properties.label }));
+        }
+        async function searchEtab(q) {
+            const base = 'https://photon.komoot.io/api/?limit=6&lang=fr&bbox=-5.5,41.2,9.8,51.2&q=' + encodeURIComponent(q);
+            const [h, c] = await Promise.all(['amenity:hospital', 'amenity:clinic'].map(t => jget(base + '&osm_tag=' + t).catch(() => ({ features: [] }))));
+            const seen = new Set(), out = [];
+            [...(h.features || []), ...(c.features || [])].forEach(f => {
+                const p = f.properties || {}; if (!p.name) return;
+                const street = [p.housenumber, p.street].filter(Boolean).join(' ');
+                const city = [p.postcode, p.city].filter(Boolean).join(' ');
+                const adr = [street, city].filter(Boolean).join(', ');
+                const key = p.name + '|' + city; if (seen.has(key)) return; seen.add(key);
+                out.push({ title: p.name, sub: adr || p.city || '', nom: p.name, adr, street });
+            });
+            return out.slice(0, 6);
+        }
+        function attach(input, search, onPick, minLen) {
+            if (!input || input.dataset.assist) return;
+            input.dataset.assist = '1';
+            input.setAttribute('autocomplete', 'off');
+            input.addEventListener('input', () => {
+                const id = input.id, q = input.value.trim();
+                clearTimeout(timers[id]);
+                if (q.length < (minLen || 3)) { hide(input); return; }
+                timers[id] = setTimeout(async () => {
+                    const n = (seq[id] = (seq[id] || 0) + 1);
+                    try {
+                        const items = await search(q);
+                        if (n !== seq[id] || document.activeElement !== input) return;
+                        show(input, items, onPick);
+                    } catch (e) { hide(input); }
+                }, 300);
+            });
+            input.addEventListener('blur', () => setTimeout(() => hide(input), 150));
+        }
+        // nomId/adrId : champs à relier. Le nom propose des établissements (remplit aussi l'adresse), l'adresse propose la BAN.
+        function bind(nomId, adrId) {
+            const nom = document.getElementById(nomId), adr = document.getElementById(adrId);
+            attach(adr, searchAddress, it => { adr.value = it.full; }, 4);
+            attach(nom, searchEtab, it => {
+                nom.value = it.nom.toUpperCase();
+                if (it.adr) adr.value = it.adr;
+                // affine l'adresse via la BAN pour obtenir un format normalisé
+                if (it.adr) searchAddress(it.adr).then(r => { if (r[0] && r[0].full) adr.value = r[0].full; }).catch(() => {});
+            }, 3);
+        }
+        return { bind };
+    })();
+
     function openNewCenterModal() {
+        AddrAssist.bind('new-c-nom','new-c-adr');
         document.getElementById('new-c-nom').value = "";
         document.getElementById('new-c-adr').value = "";
         document.getElementById('new-center-status').innerText = "";
@@ -1617,6 +1716,7 @@
             <div style="border-top:1px dashed #fecaca; padding-top:14px;">
                 <button class="btn-mini delete" style="width:100%; justify-content:center; padding:12px;" onclick="deleteCenterEntirely()">🗑️ Supprimer définitivement ce centre</button>
             </div>`;
+        AddrAssist.bind('cd-nom','cd-adr');
     }
 
     async function saveCenterDetailInfo() {
