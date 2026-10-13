@@ -595,6 +595,8 @@ html,body{height:100%;overscroll-behavior:none}
 .sugg-item{padding:11px 13px;border-bottom:1px solid #eef2f7;cursor:pointer;display:flex;flex-direction:column;gap:2px}
 .sugg-item b{font-size:13px;color:#042a72}.sugg-item span{font-size:11.5px;color:#64748b}
 .tg{display:inline-block;font-size:10px;font-weight:800;border-radius:99px;padding:2px 8px;margin:0 4px 0 0}
+.tg.ok{background:#ecfdf5;color:#15803d}
+.pop .acts a[href^='depot']{display:inline-block}
 </style>
 </head>
 <body>
@@ -636,6 +638,7 @@ html,body{height:100%;overscroll-behavior:none}
       <button class="chip on" data-f="st" data-v="all">Tout</button>
       <button class="chip" data-f="st" data-v="todo">À faire</button>
       <button class="chip" data-f="st" data-v="done">Fait</button>
+      <button class="chip" data-f="st" data-v="maj">⚠️ Prog. à MAJ</button>
       <select id="cm-vendor" aria-label="Vendeur"><option value="">Tous vendeurs</option></select>
     </div>
   <div class="cm-row cm-acts">
@@ -695,8 +698,14 @@ html,body{height:100%;overscroll-behavior:none}
     <div class="form-group"><label>Vendeur</label><input type="text" id="ed-vendeur"></div>
     <div class="form-group"><label>Mail BL</label><input type="text" id="ed-mailbl" inputmode="email" autocapitalize="off"></div>
     <div class="form-group"><label>Mail pharmacie</label><input type="text" id="ed-mailph" inputmode="email" autocapitalize="off"></div>
+    <div class="form-group"><label>Tampon du centre</label>
+      <div class="sigbox" id="ed-stamp"><span>Aucun tampon</span></div>
+      <label class="imp-opt" style="margin:8px 0"><input type="checkbox" id="ed-stamp-bg" checked> Retirer le fond blanc et recadrer</label>
+      <div style="display:flex;gap:8px"><label class="cm-btn2" for="ed-stamp-file" style="height:40px">🖋️ Ajouter / remplacer</label><button type="button" class="cm-btn2 danger" id="ed-stamp-rm" style="height:40px;display:none">Retirer</button></div>
+      <input type="file" id="ed-stamp-file" accept="image/*" style="display:none"></div>
     <label class="imp-opt" style="margin:6px 0 12px"><input type="checkbox" id="ed-imp"> ⭐ Centre implanteur (proposé dans les BL)</label>
     <div class="imp-i" id="ed-code"></div>
+    <a class="cm-btn2" id="ed-inv" href="#" style="width:100%;margin-bottom:8px;height:44px;background:linear-gradient(135deg,#042a72,#4870ff);color:#fff;border:0;text-decoration:none">📋 Faire l'inventaire de ce centre</a>
     <button class="cm-btn2" type="button" style="width:100%;margin-bottom:8px" id="ed-showmap">🗺️ Voir sur la carte</button>
     <button class="cm-btn2 danger" type="button" style="width:100%" id="ed-del">🗑️ Supprimer ce centre</button>
     <div id="ed-status" class="imp-st" style="margin-top:10px"></div>
@@ -792,13 +801,18 @@ async function loadXl(){
     let c=CM.xl.centres.get(a[1]);
     if(!c){ c={cc:a[1],nom:a[2],dp:a[3],lo:a[4],ve:a[5],commune:communeOf(a[4]),st:"",n:0}; CM.xl.centres.set(a[1],c); }
     c.n++;
+    const ver=String(a[10]||"").trim(); if(ver){ c.vers=c.vers||new Map(); c.vers.set(ver,(c.vers.get(ver)||0)+(a[13]||1)); }
     const s=String(a[0]||"").trim().toUpperCase();
     if(s==="A FAIRE") c.st="A FAIRE"; else if(s==="FAIT" && c.st!=="A FAIRE") c.st="FAIT";
   });
   CM.xl.list=[...CM.xl.centres.values()];
+  // version la plus récente présente dans le fichier = référence
+  let best=null; CM.xl.list.forEach(c=>{ if(c.vers) c.vers.forEach((n,v)=>{ if(!best||verCmp(v,best)>0) best=v; }); });
+  CM.xl.maxVer=best;
+  CM.xl.list.forEach(c=>{ c.old=0; if(c.vers&&best) c.vers.forEach((n,v)=>{ if(verCmp(v,best)<0) c.old+=n; }); });
 }
 async function loadCentres(){
-  const { data, error } = await _supabase.from('centres').select('id, nom, adresse, implanteur, lat, lng, geo_src, code_client, vendeur, mail_bl, mail_pharmacie').order('nom',{ascending:true});
+  const { data, error } = await _supabase.from('centres').select('id, nom, adresse, implanteur, lat, lng, geo_src, code_client, vendeur, mail_bl, mail_pharmacie, tampon_url').order('nom',{ascending:true});
   if(error) throw error;
   CM.centres=(data||[]).map(c=>({...c, dp:deptOfAddress(c.adresse), commune:communeOfAddress(c.adresse)}));
   // rapprochement avec l'inventaire
@@ -810,6 +824,8 @@ async function loadCentres(){
     if(x && !c.vendeur) c.vendeurXl=x.ve;
   });
 }
+function verCmp(a,b){ const x=String(a).split(/[.\-]/).map(n=>parseInt(n,10)||0), y=String(b).split(/[.\-]/).map(n=>parseInt(n,10)||0); for(let i=0;i<Math.max(x.length,y.length);i++){ const d=(x[i]||0)-(y[i]||0); if(d) return d; } return 0; }
+function versTxt(x){ if(!x||!x.vers||!x.vers.size) return ''; return [...x.vers.entries()].sort((a,b)=>verCmp(b[0],a[0])).map(([v,n])=>`v${v}${n>1?' ×'+n:''}`).join(' · '); }
 function statusOf(c){
   if(!c.xl) return "unk";
   const done=lsGet("done:"+(CM.xl.data&&CM.xl.data.sheet)+":"+c.xl.cc);
@@ -825,6 +841,7 @@ function visible(c){
   const s=statusOf(c);
   if(f.st==="todo" && s!=="todo") return false;
   if(f.st==="done" && s!=="fait") return false;
+  if(f.st==="maj" && !(c.xl&&c.xl.old>0)) return false;
   if(f.vendor && (c.vendeur||(c.xl&&c.xl.ve))!==f.vendor) return false;
   if(f.q){ const t=normText(c.nom+" "+c.adresse+" "+(c.code_client||"")+" "+(c.vendeur||"")); if(!t.includes(normText(f.q))) return false; }
   return true;
@@ -839,10 +856,13 @@ function popupHtml(c){
     <div class="a">${esc(c.adresse)}</div>
     <span class="bd" style="background:${STC[s]}">${lab}</span>
     ${c.xl?`<div class="t">${c.xl.n} ligne${c.xl.n>1?'s':''} dans l'Excel${CM.xl.data?' · '+esc(CM.xl.data.sheet):''}</div>`:'<div class="t">Pas de correspondance dans le fichier Excel.</div>'}
+    ${c.xl&&versTxt(c.xl)?`<div class="t">Programmateurs : ${esc(versTxt(c.xl))}${c.xl.old>0?` <b style="color:#c2410c">· ${c.xl.old} à mettre à jour</b>`:' ✓'}</div>`:''}
     ${done?`<div class="t">PDF généré le ${esc(done)}</div>`:''}
     ${v?`<div class="t">Vendeur : ${esc(v)}</div>`:''}${approx}
     <div class="acts">
       <a href="https://maps.apple.com/?daddr=${c.lat},${c.lng}&dirflg=d" target="_blank" rel="noopener">🧭 Itinéraire</a>
+      ${c.xl?`<a href="depot.html?m=prog&cc=${encodeURIComponent(c.xl.cc)}" style="background:#042a72;color:#fff;border-color:#042a72">📋 Faire l'inventaire</a>`:''}
+      <button onclick="CM.openEdit(${c.id})">✏️ Fiche</button>
       <button onclick="CM.toggleImp(${c.id})">${c.implanteur?'Retirer des implanteurs':'⭐ Passer implanteur'}</button>
       <button onclick="CM.openLink(${c.id})">🔗 ${c.xl?'Changer':'Associer'} l'inventaire</button>
     </div></div>`;
@@ -1023,7 +1043,7 @@ $('xl-quick').addEventListener('change',async e=>{
   $('cm-count').textContent="Lecture de l'Excel…";
   try{
     const r=await loadExcelFile(f);
-    alert(`Inventaire mis à jour : « ${r.sheet} »\n${r.nXl} centres, ${r.nLines.toLocaleString('fr-FR')} lignes.\nSur vos centres de la carte : ${r.after.fait} fait (${r.after.fait-r.before.fait>=0?'+':''}${r.after.fait-r.before.fait}), ${r.after.todo} à faire, ${r.after.unk} sans correspondance.`);
+    alert(`Inventaire mis à jour : « ${r.sheet} »\nStatuts d'inventaire et versions des programmateurs rafraîchis — adresses, tampons et réglages des centres inchangés.\n${r.nXl} centres, ${r.nLines.toLocaleString('fr-FR')} lignes.\nSur vos centres de la carte : ${r.after.fait} fait (${r.after.fait-r.before.fait>=0?'+':''}${r.after.fait-r.before.fait}), ${r.after.todo} à faire, ${r.after.unk} sans correspondance.`);
   }catch(err){ render(false); alert("Lecture impossible : "+(err.message||err)); }
 });
 $('imp-vendor').addEventListener('change',analyse);
@@ -1105,6 +1125,115 @@ CM.runImport=async function(){
   }
 };
 
+/* ================= Tampon du centre ================= */
+    function tamponToCanvasMax(src, max) {
+        const k = Math.min(1, max / Math.max(src.width, src.height));
+        const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(src.width * k)); c.height = Math.max(1, Math.round(src.height * k));
+        c.getContext('2d').drawImage(src, 0, 0, c.width, c.height); return c;
+    }
+/* Recadre sur le contenu (ignore le transparent, le blanc et les petites poussières) */
+function trimCanvas(c){
+  const w=c.width,h=c.height; const d=c.getContext("2d").getImageData(0,0,w,h).data;
+  const cols=new Uint32Array(w), rows=new Uint32Array(h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=(y*w+x)*4;
+    if(d[i+3]>24 && (d[i]<235||d[i+1]<235||d[i+2]<235)){ cols[x]++; rows[y]++; }
+  }
+  const tc=Math.max(2,Math.round(h*0.004)), tr=Math.max(2,Math.round(w*0.004));
+  let x0=0; while(x0<w && cols[x0]<tc) x0++;
+  let x1=w-1; while(x1>x0 && cols[x1]<tc) x1--;
+  let y0=0; while(y0<h && rows[y0]<tr) y0++;
+  let y1=h-1; while(y1>y0 && rows[y1]<tr) y1--;
+  if(x1<=x0 || y1<=y0) return c;
+  const pd=6; x0=Math.max(0,x0-pd); y0=Math.max(0,y0-pd); x1=Math.min(w-1,x1+pd); y1=Math.min(h-1,y1+pd);
+  const o=document.createElement("canvas"); o.width=x1-x0+1; o.height=y1-y0+1;
+  o.getContext("2d").drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height); return o;
+}
+/* Retire le fond blanc d'une photo : corrige les ombres (estimation du papier par zones),
+   puis transforme l'encre en transparence ("couleur vers alpha"). sens : 0..100 */
+function removeBg(src,sens){
+  const w=src.width,h=src.height;
+  const img=src.getContext("2d").getImageData(0,0,w,h), d=img.data;
+  // Pixels transparents = papier blanc (sinon leurs valeurs 0,0,0 sont lues comme de l'encre noire)
+  for(let i=0;i<d.length;i+=4){ const al=d[i+3]; if(al<255){ const k=al/255; d[i]=d[i]*k+255*(1-k); d[i+1]=d[i+1]*k+255*(1-k); d[i+2]=d[i+2]*k+255*(1-k); d[i+3]=255; } }
+  const cell=Math.max(16,Math.round(Math.max(w,h)/18));
+  const gx=Math.ceil(w/cell), gy=Math.ceil(h/cell);
+  const grid=[new Float32Array(gx*gy),new Float32Array(gx*gy),new Float32Array(gx*gy)];
+  const buf=new Uint8Array(cell*cell);
+  for(let ch=0;ch<3;ch++){
+    for(let cy=0;cy<gy;cy++) for(let cx=0;cx<gx;cx++){
+      let n=0; const x1=Math.min(w,(cx+1)*cell), y1=Math.min(h,(cy+1)*cell);
+      for(let y=cy*cell;y<y1;y++){ let i=(y*w+cx*cell)*4+ch; for(let x=cx*cell;x<x1;x++,i+=4) buf[n++]=d[i]; }
+      const sub=buf.subarray(0,n).slice().sort();
+      grid[ch][cy*gx+cx]=Math.max(60, sub[Math.min(n-1,Math.floor(n*0.85))]);
+    }
+  }
+  const t0=0.04+0.30*(sens/100), t1=Math.min(0.98,t0+0.30);
+  const fx=new Float32Array(w), x0i=new Int32Array(w), x1i=new Int32Array(w);
+  for(let x=0;x<w;x++){ const g=Math.min(gx-1,Math.max(0,(x+0.5)/cell-0.5)); x0i[x]=Math.floor(g); x1i[x]=Math.min(gx-1,x0i[x]+1); fx[x]=g-x0i[x]; }
+  for(let y=0;y<h;y++){
+    const gyf=Math.min(gy-1,Math.max(0,(y+0.5)/cell-0.5)); const ya=Math.floor(gyf), yb=Math.min(gy-1,ya+1), fy=gyf-ya;
+    for(let x=0;x<w;x++){
+      const i=(y*w+x)*4; const a=x0i[x], b=x1i[x], f=fx[x]; const c=[0,0,0];
+      for(let ch=0;ch<3;ch++){
+        const g=grid[ch];
+        const top=g[ya*gx+a]*(1-f)+g[ya*gx+b]*f, bot=g[yb*gx+a]*(1-f)+g[yb*gx+b]*f;
+        c[ch]=Math.min(1,d[i+ch]/(top*(1-fy)+bot*fy));
+      }
+      const mn=Math.min(c[0],c[1],c[2]); const araw=1-mn;
+      let alpha=0;
+      if(araw>t0) alpha=Math.min(1,(araw-t0)/(t1-t0));
+      if(alpha>0 && araw>0.001){
+        d[i]=Math.round(Math.max(0,Math.min(1,(c[0]-mn)/araw))*255);
+        d[i+1]=Math.round(Math.max(0,Math.min(1,(c[1]-mn)/araw))*255);
+        d[i+2]=Math.round(Math.max(0,Math.min(1,(c[2]-mn)/araw))*255);
+      }
+      d[i+3]=Math.round(alpha*255);
+    }
+  }
+  const o=document.createElement("canvas"); o.width=w; o.height=h;
+  o.getContext("2d").putImageData(img,0,0); return o;
+}
+
+
+
+function extractTamponPath(u){ if(!u) return null; const i=u.indexOf('/tampons/'); return i<0?null:decodeURIComponent(u.substring(i+9).split('?')[0]); }
+async function paintStamp(c){
+  const box=$('ed-stamp'), rm=$('ed-stamp-rm'); box.innerHTML='<span>Aucun tampon</span>'; rm.style.display=c.tampon_url?'block':'none';
+  if(!c.tampon_url) return;
+  let url=c.tampon_url; const path=extractTamponPath(url);
+  if(path){ try{ const {data,error}=await _supabase.storage.from('tampons').createSignedUrl(path,3600); if(!error&&data) url=data.signedUrl; }catch(e){} }
+  if(CM.editing!==c) return;
+  const im=new Image(); im.onload=()=>{ box.innerHTML=''; box.appendChild(im); }; im.src=url;
+}
+function fileToCanvas(file){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(file); const im=new Image(); im.onload=()=>{ const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight; c.getContext('2d').drawImage(im,0,0); URL.revokeObjectURL(u); res(c); }; im.onerror=()=>{ URL.revokeObjectURL(u); rej(new Error('image illisible')); }; im.src=u; }); }
+$('ed-stamp-file').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; const c=CM.editing; if(!f||!c) return; const st=$('ed-status');
+  st.style.color='var(--palette-royal-blue)'; st.textContent='Traitement du tampon… ⏳';
+  try{
+    const base=tamponToCanvasMax(await fileToCanvas(f),1000);
+    const bd=base.getContext('2d').getImageData(0,0,base.width,base.height).data; let hasAlpha=false; for(let i=3;i<bd.length;i+=16){ if(bd[i]<250){ hasAlpha=true; break; } }
+    let out,type,ext;
+    if(hasAlpha){ out=trimCanvas(base); type='image/png'; ext='png'; }
+    else if($('ed-stamp-bg').checked){ const flat=document.createElement('canvas'); flat.width=base.width; flat.height=base.height; const x=flat.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,flat.width,flat.height); x.drawImage(base,0,0); out=trimCanvas(removeBg(flat,50)); type='image/png'; ext='png'; }
+    else{ const flat=document.createElement('canvas'); flat.width=base.width; flat.height=base.height; const x=flat.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,flat.width,flat.height); x.drawImage(base,0,0); out=flat; type='image/jpeg'; ext='jpg'; }
+    const blob=await new Promise(r=>out.toBlob(r,type,0.9));
+    st.textContent='Envoi du tampon… 📤';
+    const name=`tampon_${c.nom.toLowerCase().replace(/[^a-z0-9]/g,'_')}_${Date.now()}.${ext}`;
+    const {error:ue}=await _supabase.storage.from('tampons').upload(name,blob,{contentType:type}); if(ue) throw new Error(ue.message||'stockage');
+    const {data:pu}=_supabase.storage.from('tampons').getPublicUrl(name);
+    const {error:de}=await _supabase.from('centres').update({tampon_url:pu.publicUrl}).eq('id',c.id); if(de) throw new Error(de.message||'base');
+    const old=extractTamponPath(c.tampon_url); if(old){ try{ await _supabase.storage.from('tampons').remove([old]); }catch(_){} }
+    c.tampon_url=pu.publicUrl; st.style.color='#15803d'; st.textContent='✅ Tampon enregistré.'; paintStamp(c); render(false);
+  }catch(err){ console.error(err); st.style.color='#ff144b'; st.textContent='❌ Échec du tampon : '+(err.message||err); }
+});
+$('ed-stamp-rm').addEventListener('click',async()=>{
+  const c=CM.editing; if(!c||!c.tampon_url||!confirm('Retirer le tampon de ce centre ?')) return;
+  const {error}=await _supabase.from('centres').update({tampon_url:null}).eq('id',c.id); if(error){ alert('Impossible.'); return; }
+  const old=extractTamponPath(c.tampon_url); if(old){ try{ await _supabase.storage.from('tampons').remove([old]); }catch(_){} }
+  c.tampon_url=null; paintStamp(c); render(false);
+});
+
 /* ================= Vue liste + édition ================= */
 CM.setView=function(v){
   CM.view=v; $('v-map').classList.toggle('on',v==='map'); $('v-list').classList.toggle('on',v==='list');
@@ -1119,14 +1248,16 @@ function renderList(){
   if(!l.length){ box.innerHTML='<div class="imp-i" style="text-align:center;margin-top:30px">Aucun centre ne correspond aux filtres.</div>'; return; }
   const lab={fait:'Fait',todo:'À faire',unk:'Inconnu'};
   box.innerHTML=l.slice(0,300).map(c=>{ const s=statusOf(c), v=c.vendeur||(c.xl&&c.xl.ve)||'';
-    return `<div class="li" onclick="CM.openEdit(${c.id})"><span class="dot ${c.implanteur?'imp':''}" style="background:${STC[s]}"></span><div style="min-width:0"><div class="n">${esc(c.nom)}</div><div class="m">${esc(c.adresse)}</div><div><span class="tg" style="background:${STC[s]}22;color:${STC[s]}">${lab[s]}</span>${c.implanteur?'<span class="tg imp">⭐ Implanteur</span>':''}${c.geo_src==='commune'||c.lat==null?'<span class="tg apx">📍 position approx.</span>':''}${v?`<span class="m">${esc(v)}</span>`:''}</div></div><span class="chev">›</span></div>`; }).join('')+(l.length>300?`<div class="imp-i" style="text-align:center">${l.length-300} autres : affinez la recherche.</div>`:'');
+    return `<div class="li" onclick="CM.openEdit(${c.id})"><span class="dot ${c.implanteur?'imp':''}" style="background:${STC[s]}"></span><div style="min-width:0"><div class="n">${esc(c.nom)}</div><div class="m">${esc(c.adresse)}</div><div><span class="tg" style="background:${STC[s]}22;color:${STC[s]}">${lab[s]}</span>${c.implanteur?'<span class="tg imp">⭐ Implanteur</span>':''}${c.xl&&c.xl.vers?(c.xl.old>0?`<span class="tg apx">⚠️ ${c.xl.old} prog. à MAJ</span>`:`<span class="tg ok">✓ v${esc(CM.xl.maxVer)}</span>`):''}${c.tampon_url?'<span class="tg ok">🖋️ tampon</span>':''}${c.geo_src==='commune'||c.lat==null?'<span class="tg apx">📍 position approx.</span>':''}${v?`<span class="m">${esc(v)}</span>`:''}</div></div><span class="chev">›</span></div>`; }).join('')+(l.length>300?`<div class="imp-i" style="text-align:center">${l.length-300} autres : affinez la recherche.</div>`:'');
 }
 CM.openEdit=function(id){
   const c=CM.centres.find(x=>x.id===id); if(!c) return; CM.editing=c; CM.map&&CM.map.closePopup();
   const s=statusOf(c);
   $('ed-title').textContent=c.nom;
   $('ed-badges').innerHTML=`<span class="tg" style="background:${STC[s]}22;color:${STC[s]}">${{fait:'Inventaire fait',todo:'Inventaire à faire',unk:'Inventaire inconnu'}[s]}</span>`+(c.implanteur?'<span class="tg imp">⭐ Implanteur</span>':'');
-  $('ed-info').textContent=c.xl?`Inventaire : ${c.xl.nom} (${c.xl.lo}) — ${c.xl.n} ligne${c.xl.n>1?'s':''}`:'Pas de correspondance dans le fichier Excel.';
+  $('ed-info').textContent=c.xl?`Inventaire : ${c.xl.nom} (${c.xl.lo}) — ${c.xl.n} ligne${c.xl.n>1?'s':''}${versTxt(c.xl)?' · Programmateurs : '+versTxt(c.xl)+(c.xl.old>0?' ('+c.xl.old+' à mettre à jour)':' ✓'):''}`:'Pas de correspondance dans le fichier Excel.';
+  $('ed-inv').style.display=c.xl?'flex':'none'; if(c.xl) $('ed-inv').href='depot.html?m=prog&cc='+encodeURIComponent(c.xl.cc);
+  paintStamp(c);
   $('ed-nom').value=c.nom; $('ed-nom').readOnly=!!c.implanteur; $('ed-nom-hint').style.display=c.implanteur?'block':'none';
   $('ed-adr').value=c.adresse||''; $('ed-vendeur').value=c.vendeur||(c.xl&&c.xl.ve)||''; $('ed-mailbl').value=c.mail_bl||''; $('ed-mailph').value=c.mail_pharmacie||'';
   $('ed-imp').checked=!!c.implanteur; $('ed-code').textContent=c.code_client?('Code client : '+c.code_client):'';

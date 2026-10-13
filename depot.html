@@ -1731,6 +1731,13 @@ paintData();
 kvGet("prog").then(d=>{
   if(d && Array.isArray(d.items) && d.items.length){ try{ setProgData(d); }catch(e){ console.error(e); } }
 });
+// Ouverture directe de la fiche d'inventaire d'un centre (depuis la carte) : depot.html?m=prog&cc=CODE
+window.__depotOpenCc=async function(cc){
+  try{
+    if(!P.data){ const d=await kvGet("prog"); if(d && Array.isArray(d.items) && d.items.length) setProgData(d); }
+    const c=P.centres.get(cc); if(c) startProg(c);
+  }catch(e){ console.error(e); }
+};
 
 })();
 
@@ -1740,7 +1747,7 @@ kvGet("prog").then(d=>{
   const m=(new URLSearchParams(location.search).get('m')==='prog')?'prog':'crm';
   const L=document.getElementById('login-screen'), A=document.getElementById('app-content');
   let started=false;
-  function enter(){ L.style.display='none'; A.style.display='block'; if(!started){ started=true; window.__depotMode(m); window.__depotStart(); } }
+  function enter(){ L.style.display='none'; A.style.display='block'; if(!started){ started=true; window.__depotMode(m); window.__depotStart(); const cc=new URLSearchParams(location.search).get('cc'); if(cc && m==='prog') window.__depotOpenCc(cc); } }
   window.handleLogin=async function(){
     const email=document.getElementById('login-email').value.trim(), pass=document.getElementById('login-pass').value;
     const err=document.getElementById('login-error'), btn=document.getElementById('btn-login-submit');
