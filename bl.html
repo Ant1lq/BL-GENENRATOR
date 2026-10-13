@@ -1223,9 +1223,13 @@
 
     async function synchroniserDonneesDepuisCloud() {
         try {
-            let { data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url, mail_bl, mail_pharmacie').order('nom', { ascending: true });
+            let { data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url, mail_bl, mail_pharmacie, implanteur').order('nom', { ascending: true });
+            if (errC) { // colonne « implanteur » absente : ancienne structure
+                ({ data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url, mail_bl, mail_pharmacie').order('nom', { ascending: true }));
+            }
             if (errC) throw errC;
-            dbCloudCentres = centres || [];
+            // Seuls les centres implanteurs servent aux BL (les centres importés depuis l'inventaire restent sur la carte)
+            dbCloudCentres = (centres || []).filter(c => c.implanteur !== false);
 
             const iSel = document.getElementById('inIng'); 
             iSel.innerHTML = "";
@@ -1732,7 +1736,9 @@
         if (btn) btn.disabled = true;
 
         try {
-            const { error } = await _supabase.from('centres').update({ nom: newNom, adresse: newAdr, mail_bl: (document.getElementById('cd-mail-bl').value.trim() || null), mail_pharmacie: (document.getElementById('cd-mail-pharma').value.trim() || null) }).eq('nom', originalName);
+            const prevC = dbCloudCentres.find(c => c.nom === originalName);
+            const geoReset = (prevC && prevC.adresse !== newAdr) ? { lat: null, lng: null, geo_src: null } : {}; // l'adresse a changé : la carte relocalisera le centre
+            const { error } = await _supabase.from('centres').update({ ...geoReset, nom: newNom, adresse: newAdr, mail_bl: (document.getElementById('cd-mail-bl').value.trim() || null), mail_pharmacie: (document.getElementById('cd-mail-pharma').value.trim() || null) }).eq('nom', originalName);
             if (error) throw error;
 
             // Le nom du centre sert de clé "texte" dans plusieurs tables (médecins, secteurs).

@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#042a72">
+<meta name="format-detection" content="telephone=no">
+<title>MicroPort Cardioflow · Carte</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+        :root { 
+            --palette-dark-navy: #12182c;       
+            --palette-white: #ffffff;           
+            --palette-muted-gray: #909191;      
+            --palette-light-gray: #e0e0e0;      
+            --palette-vibrant-red: #ff144b;     
+            --palette-plum-magenta: #c72676;    
+            --palette-purple: #802cf1;          
+            --palette-cyan: #00dbff;            
+            --palette-royal-blue: #4870ff;      
+            --palette-deep-blue: #042a72;       
+
+            --blue-mp: var(--palette-deep-blue);
+            --accent: var(--palette-royal-blue);
+            --neutral-bg: #f8fafc;
+            --card-bg: var(--palette-white);
+            --text-main: var(--palette-dark-navy);
+            --text-muted: #6b7280;
+            --border-color: #e2e8f0;
+
+            --dai-color: var(--palette-plum-magenta);
+            --dai-light: #fdf2f8;
+            --pm-color: var(--palette-purple);
+            --pm-light: #f5f3ff;
+            --sonde-color: var(--palette-cyan);
+            --sonde-light: #ecfeff;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--neutral-bg); 
+            margin: 0; 
+            padding: 0; 
+            color: var(--text-main);
+            padding-bottom: calc(60px + env(safe-area-inset-bottom));
+            overscroll-behavior-y: contain;
+        }
+
+        /* BANNIÈRE D'ÉTAT / ERREUR RÉSEAU */
+        #sync-banner {
+            display: none;
+            position: sticky;
+            top: 0;
+            z-index: 500;
+            background: #fef2f2;
+            color: var(--palette-vibrant-red);
+            border-bottom: 1px solid #fecaca;
+            padding: 10px 16px;
+            font-size: 12.5px;
+            font-weight: 700;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        #sync-banner button {
+            background: var(--palette-vibrant-red);
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 10px;
+            font-size: 11.5px;
+            font-weight: 800;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* ÉCRAN DE VERROUILLAGE SÉCURISÉ (LOCKSCREEN) */
+        #login-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--palette-dark-navy), var(--palette-deep-blue));
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)) 24px;
+        }
+        .login-card {
+            background: white;
+            width: 100%;
+            max-width: 360px;
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .login-card h2 {
+            font-size: 18px;
+            color: var(--blue-mp);
+            margin: 0 0 6px 0;
+            font-weight: 850;
+        }
+        .login-card p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 0 0 20px 0;
+        }
+
+        #app-content { display: none; }
+
+        .app-container { max-width: 100%; margin: 0 auto; padding: 16px; }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: calc(15px + env(safe-area-inset-top)) 4px 10px 4px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        }
+        header h1 {
+            font-size: 16.5px;
+            color: var(--blue-mp);
+            margin: 0;
+            font-weight: 850;
+            letter-spacing: -0.4px;
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        header > div { flex-shrink: 0; }
+        
+        .btn-header-icon {
+            background: #f1f5f9;
+            border: none;
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            font-size: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .btn-header-icon:active { background: #e2e8f0; }
+
+        .scan-zone {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn-smart-scan {
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 18px;
+            font-weight: 750;
+            font-size: 14px;
+            width: 100%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.3px;
+            min-height: 58px;
+        }
+        .btn-scan-boitier {
+            background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue));
+            box-shadow: 0 4px 14px rgba(4, 42, 114, 0.25);
+        }
+        .btn-scan-sonde {
+            background: linear-gradient(135deg, var(--palette-royal-blue), var(--palette-cyan));
+            box-shadow: 0 4px 14px rgba(72, 112, 255, 0.25);
+        }
+        .btn-smart-scan:active { transform: scale(0.97); opacity: 0.92; }
+
+        .app-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 20px rgba(18, 24, 44, 0.03);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .card-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--blue-mp);
+            text-transform: uppercase;
+            margin-top: 0;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            letter-spacing: 0.7px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+        label { 
+            display: block; 
+            font-size: 11px; 
+            font-weight: 700; 
+            margin-bottom: 6px; 
+            color: var(--text-muted); 
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        input, select, textarea { 
+            width: 100%; 
+            height: 50px; 
+            padding: 0 16px; 
+            border: 1.5px solid #e2e8f0; 
+            border-radius: 14px; 
+            font-size: 15px; 
+            background: #fff; 
+            color: var(--text-main);
+            transition: all 0.2s ease;
+            -webkit-appearance: none; 
+        }
+        select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 15px;
+            padding-right: 44px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(72, 112, 255, 0.12);
+            background: #fff;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px; }
+
+        .btn-action-block {
+            background: #f0f7ff;
+            border: 1.5px solid var(--palette-royal-blue);
+            color: var(--palette-royal-blue);
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 13.5px;
+            font-weight: 750;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.2s ease;
+            min-height: 50px;
+        }
+        .btn-action-block:active { background: #e0f0ff; transform: scale(0.98); }
+
+        .detected-item-card {
+            background: #fdfdfd;
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 12px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .detected-item-card.DAI { background: var(--dai-light); border-left: 5px solid var(--dai-color); border-color: rgba(199,38,118,0.15); }
+        .detected-item-card.PM { background: var(--pm-light); border-left: 5px solid var(--pm-color); border-color: rgba(128,44,241,0.15); }
+        .detected-item-card.SONDE { background: var(--sonde-light); border-left: 5px solid var(--sonde-color); border-color: rgba(0,219,255,0.15); }
+
+        .detected-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 800;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .detected-item-card.DAI .detected-header { color: var(--dai-color); }
+        .detected-item-card.PM .detected-header { color: var(--pm-color); }
+        .detected-item-card.SONDE .detected-header { color: var(--sonde-color); }
+
+        .detected-details { font-size: 12.5px; color: #334155; line-height: 1.6; }
+        .detected-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+        
+        .btn-mini {
+            padding: 11px 16px;
+            font-size: 12.5px;
+            border-radius: 12px;
+            border: 1.5px solid transparent;
+            cursor: pointer;
+            font-weight: 750;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 42px;
+            transition: opacity 0.2s, transform 0.15s ease;
+        }
+        .btn-mini.edit { background: #eef2f7; color: var(--text-main); border-color: #dbe3ec; }
+        .btn-mini.delete { background: #ffe4e6; color: var(--palette-vibrant-red); border-color: #ffcdd3; }
+        .btn-mini.sign { background: #eaf0ff; color: var(--palette-royal-blue); border-color: #cddcff; }
+        .btn-mini:active { opacity: 0.85; transform: scale(0.97); }
+
+        .signature-box {
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 18px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .sig-canvas {
+            width: 100%;
+            height: 90px;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            touch-action: none;
+        }
+
+        .ios-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(18, 24, 44, 0.65);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: flex-end; 
+        }
+        .ios-modal-content {
+            background: white;
+            width: 100%;
+            max-width: 440px;
+            border-top-left-radius: 28px;
+            border-top-right-radius: 28px;
+            padding: 24px;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 -10px 25px rgba(0,0,0,0.1);
+        }
+
+        /* Écran de gestion des centres/secteur : plein écran plutôt que feuille limitée, pour donner
+           toute la place disponible à la liste (plus de petite boîte de défilement perdue au milieu
+           d'un grand espace vide). */
+        #admin-modal { align-items: stretch; }
+        #admin-modal-content {
+            max-width: 100%;
+            width: 100%;
+            height: 100dvh;
+            max-height: 100dvh;
+            border-radius: 0;
+            padding: calc(20px + env(safe-area-inset-top)) 20px calc(16px + env(safe-area-inset-bottom)) 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .crop-wrapper { width: 100%; max-height: 58vh; overflow: hidden; background: #000; border-radius: 16px; margin-bottom: 16px; }
+        #crop-preview { max-width: 100%; display: block; }
+        #crop-modal .ios-modal-content { max-width: 100%; padding: 18px; }
+
+        .sticky-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+        
+        .btn-primary-ios, .btn-secondary-ios, .btn-mail-ios, .btn-refresh-ios {
+            border: none; padding: 16px; border-radius: 16px; font-weight: 750; font-size: 15px; cursor: pointer; text-align: center; width: 100%;
+            transition: transform 0.15s ease, opacity 0.15s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
+            min-height: 54px;
+        }
+        .btn-primary-ios { background: var(--blue-mp); color: white; box-shadow: 0 4px 14px rgba(4,42,114,0.22); }
+        .btn-secondary-ios { background: #ffffff; color: var(--text-main); border: 1.5px solid #cbd5e1; box-shadow: 0 2px 8px rgba(18,24,44,0.04); }
+        .btn-refresh-ios { background: #eef2f7; color: var(--text-main); border: 1.5px solid #dbe3ec; }
+        .btn-mail-ios { background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue)); color: white; box-shadow: 0 4px 14px rgba(4,42,114,0.22); }
+        .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active, .btn-refresh-ios:active { transform: scale(0.97); opacity: 0.92; }
+
+        #container-preview-zone { display: block; }
+
+        .bl-preview-header {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 30px;
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+        .bl-preview-title { font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .zoom-controls-wrapper { display: flex; align-items: center; gap: 12px; background: #e2e8f0; padding: 8px 14px; border-radius: 12px; }
+        .zoom-controls-wrapper label { margin: 0; font-size: 11px; color: #334155; white-space: nowrap; }
+        .zoom-slider { flex: 1; height: 24px; -webkit-appearance: none; background: transparent; }
+        .zoom-slider::-webkit-slider-runnable-track { width: 100%; height: 6px; background: #cbd5e1; border-radius: 3px; }
+        .zoom-slider::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: var(--blue-mp); margin-top: -6px; cursor: pointer; }
+        .zoom-badge { font-size: 12px; font-weight: bold; color: var(--blue-mp); min-width: 35px; text-align: right; }
+
+        #bl-wrapper { 
+            background: #475569; padding: 12px; border-radius: 20px; width: 100%; overflow-x: auto; overflow-y: hidden; display: block; box-sizing: border-box; -webkit-overflow-scrolling: touch;
+        }
+        
+        .bl-scaler { width: 794px; height: 1123px; transform-origin: top left; transition: transform 0.1s ease-out; }
+        #bl-canvas { width: 100%; height: 100%; background: white; padding: 40px 35px; box-sizing: border-box; color: black; font-family: Arial, sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        
+        .bl-title-block { font-size: 13px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 5px; letter-spacing: 0.5px; }
+        
+        .bl-header-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+        .bl-header-table td { border: 1px solid #000; padding: 7px 10px; font-size: 11px; font-family: Arial, sans-serif; }
+        .bl-header-table .bg-light { background-color: #e6e6e6; font-weight: bold; width: 28%; }
+        
+        .objet-container { margin: 15px 0; padding: 10px; background: #f2f2f2; font-size: 12px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; font-family: Arial, sans-serif; }
+        
+        table.main-bl-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table.main-bl-table th { border: 1px solid #000; padding: 10px; font-size: 11px; background-color: #e6e6e6; text-transform: uppercase; text-align: center; font-family: Arial, sans-serif; }
+        table.main-bl-table td { border: 1px solid #000; padding: 8px; font-size: 11px; vertical-align: middle; font-family: Arial, sans-serif; }
+        
+        .row-photo-flat { padding: 6px !important; text-align: center; background: #ffffff; }
+        .row-photo-flat img { max-width: 100%; height: auto; max-height: 110px; display: block; margin: 0 auto; filter: grayscale(1) contrast(1.7) brightness(0.95); }
+        
+        .bl-sig-img { max-height: 65px; max-width: 100%; display: block; margin: 5px auto; object-fit: contain; }
+        .legal-text { font-size: 9.5px; line-height: 1.4; color: #000; margin-top: 5px; font-family: Arial, sans-serif; }
+
+        #image-result { background: #f0fdf4; padding: 14px; border-radius: 20px; margin-top: 20px; text-align: center; display: none; border: 2px dashed #bbf7d0; width: 100%; }
+        #img-container { width: 100%; overflow: hidden; display: flex; justify-content: center; }
+        #img-container img { display: block; width: 100%; height: auto; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+
+        .ocr-inline-loading { display: none; background: #eff6ff; color: var(--palette-royal-blue); padding: 10px; border-radius: 10px; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 10px; border: 1px dashed var(--palette-royal-blue); }
+        .admin-section-title { background: #e2e8f0; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-top: 15px; margin-bottom: 10px; color: #334155; }
+
+        .admin-tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        .admin-tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: none; font-size: 12px; font-weight: bold; background: #f1f5f9; color: #64748b; cursor: pointer; }
+        .admin-tab-btn.active { background: var(--blue-mp); color: white; }
+        
+        .center-card-info { background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 16px; margin-top: 12px; }
+        .info-row { font-size: 13px; margin-bottom: 8px; color: #334155; line-height: 1.4; }
+        .info-row b { color: var(--blue-mp); font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+        
+        .doc-tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; margin: 4px 4px 0 0; }
+        .tampon-preview-box { background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; text-align: center; margin-top: 10px; }
+        .tampon-preview-box img { max-height: 100px; max-width: 100%; object-fit: contain; display: block; margin: 0 auto; }
+
+        .center-list-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px;
+            padding: 13px 14px; margin-bottom: 10px; cursor: pointer; transition: background 0.15s ease;
+        }
+        .center-list-item:active { background: #eef2f7; }
+        .center-list-item-info { flex: 1; min-width: 0; }
+        .center-list-item-name { font-weight: 800; font-size: 13.5px; color: var(--blue-mp); }
+        .center-list-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .center-list-item-chevron { color: #94a3b8; font-size: 15px; margin-left: 10px; white-space: nowrap; }
+
+        .cd-doctor-row {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+            padding: 9px 10px; margin-bottom: 6px; font-size: 13px;
+        }
+        .btn-mini:disabled { opacity: 0.35; cursor: not-allowed; }
+        
+        .checkbox-container-list {
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px;
+            background: #f8fafc;
+            margin-bottom: 16px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 4px;
+            font-size: 13px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+        }
+        .checkbox-item:last-child { border-bottom: none; }
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--blue-mp);
+            cursor: pointer;
+            -webkit-appearance: checkbox;
+            appearance: checkbox;
+        }
+
+        @media print {
+            body { background: white; color: black; padding-bottom: 0; }
+            #login-screen, .app-container, .sticky-actions, #image-result, .ios-modal, .bl-preview-header, #container-preview-zone { display: none !important; }
+            #bl-wrapper { background: transparent; padding: 0; margin: 0; display: block !important; height: auto !important; overflow: visible !important; }
+            .bl-scaler { transform: none !important; width: 210mm !important; height: 297mm !important; }
+            #bl-canvas { box-shadow: none !important; padding: 0; }
+        }
+
+
+.acct{background:#fff;border:1px solid var(--border-color);border-left:5px solid var(--accent);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px rgba(18,24,44,.04)}
+.acct .top{display:flex;gap:12px;align-items:center}
+.acct .nm{font-weight:850;color:var(--blue-mp)}
+.acct .em{font-size:12px;color:var(--text-muted);overflow-wrap:anywhere}
+.acct .meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.acct .sigthumb{margin-left:auto;width:84px;height:46px;border:1px solid var(--border-color);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;flex-shrink:0}
+.acct .sigthumb img{max-width:100%;max-height:100%;object-fit:contain}
+.acct .sigthumb span{font-size:10px;color:#94a3b8;text-align:center}
+.acct .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pill{display:inline-block;font-size:10px;font-weight:800;border-radius:99px;padding:2px 9px;margin-left:6px;vertical-align:middle}
+.pill.ing{background:#eaf0ff;color:var(--accent)} .pill.tra{background:#f5f3ff;color:var(--palette-purple)} .pill.com{background:#ecfdf5;color:#15803d} .pill.adm{background:#fff1f2;color:var(--palette-vibrant-red)}
+.sigbox{border:2px dashed #cbd5e1;border-radius:16px;min-height:90px;display:flex;align-items:center;justify-content:center;background-color:#fff;background-image:conic-gradient(#eef1f5 25%,#fff 0 50%,#eef1f5 0 75%,#fff 0);background-size:16px 16px;margin:8px 0}
+.sigbox img{max-width:100%;max-height:140px}
+.sigbox span{font-size:12px;color:#94a3b8;background:#fff;padding:2px 8px;border-radius:8px}
+.sect-t{font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin:12px 2px 6px}
+.baseitem{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1.5px solid var(--border-color);border-radius:14px;padding:8px 10px;margin-bottom:8px;cursor:pointer}
+.baseitem .bl{font-weight:750;font-size:13px;color:var(--text-main)}
+.baseitem:active{transform:scale(.98)}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.pwrow{display:flex;gap:8px}.pwrow input{flex:1}.pwrow button{flex:0 0 auto;width:50px;height:50px;border-radius:14px;border:1.5px solid #cbd5e1;background:#fff;font-size:18px;cursor:pointer}
+.msg{font-size:13px;font-weight:750;text-align:center;margin:10px 0;min-height:1.2em}
+.msg.ok{color:#15803d}.msg.bad{color:var(--palette-vibrant-red)}
+#padcv{width:100%;height:220px;background:#fff;border:2px dashed var(--accent);border-radius:16px;touch-action:none}
+
+html,body{height:100%;overscroll-behavior:none}
+.cm-wrap{display:flex;flex-direction:column;height:100dvh;position:relative}
+.cm-head{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top) + 8px) 12px 6px;gap:8px;background:#fff}
+.cm-head h1{font-size:16px;margin:0;color:var(--blue-mp);font-weight:850}
+.cm-bar{background:#fff;padding:0 12px 8px;border-bottom:1px solid var(--border-color);z-index:5}
+.cm-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.cm-row input[type=search]{flex:1;height:40px;border-radius:12px;font-size:14px;padding:0 12px;min-width:0}
+.cm-btn{background:linear-gradient(135deg,var(--palette-deep-blue,#042a72),var(--palette-royal-blue));color:#fff;border:0;border-radius:12px;padding:0 14px;height:40px;font-weight:800;font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.cm-btn.wide{width:100%}
+.cm-chips{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.cm-chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1.5px solid #cbd5e1;background:#fff;color:#334155;border-radius:99px;padding:6px 11px;font-size:12px;font-weight:750}
+.chip.on{background:var(--blue-mp);border-color:var(--blue-mp);color:#fff}
+.sep{flex:0 0 1px;height:20px;background:#cbd5e1}
+#cm-vendor{flex:0 0 auto;height:32px;font-size:12px;border-radius:99px;padding:0 8px;max-width:150px}
+#map{flex:1;min-height:0;z-index:1}
+.cm-count{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:500;background:rgba(255,255,255,.95);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:800;color:var(--blue-mp);box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.cm-loc{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:500;width:46px;height:46px;border-radius:50%;border:0;background:#fff;font-size:20px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.cm-legend{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom) + 52px);z-index:500;background:rgba(255,255,255,.95);border-radius:12px;padding:6px 9px;font-size:11px;font-weight:700;display:flex;flex-direction:column;gap:3px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.cm-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.cm-legend i.ring{background:#fff;border:3px solid #042a72;width:6px;height:6px}
+.pop{min-width:200px;font-family:inherit}
+.pop b{color:#042a72;font-size:14px}
+.pop .a{font-size:12px;color:#475569;margin:3px 0}
+.pop .t{font-size:11.5px;margin:2px 0}
+.pop .bd{display:inline-block;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:800;color:#fff;margin:3px 4px 3px 0}
+.pop .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pop .acts button,.pop .acts a{border:1.5px solid #cbd5e1;background:#fff;border-radius:10px;padding:7px 10px;font-size:12px;font-weight:750;color:#042a72;text-decoration:none}
+.sheet{position:fixed;inset:0;z-index:2000;background:var(--bg-body,#f4f6fb);display:flex;flex-direction:column}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;background:#fff;border-bottom:1px solid var(--border-color)}
+.sheet-head h2{margin:0;font-size:16px;color:var(--blue-mp)}
+.sheet-body{flex:1;overflow:auto;padding:12px;-webkit-overflow-scrolling:touch}
+.sheet-foot{padding:10px 12px calc(env(safe-area-inset-bottom) + 10px);background:#fff;border-top:1px solid var(--border-color)}
+.imp-card{background:#fff;border:1px solid var(--border-color);border-radius:16px;padding:12px;margin-bottom:10px}
+.imp-t{font-weight:850;color:var(--blue-mp);margin-bottom:6px;font-size:14px}
+.imp-i{font-size:12px;color:var(--text-muted);margin:4px 0 8px}
+.imp-opt{display:flex;gap:8px;align-items:center;font-size:13px;margin-top:8px}
+.imp-opt input{width:20px;height:20px}
+.imp-row{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--border-color);border-radius:12px;padding:10px;margin-bottom:6px}
+.imp-row input{width:22px;height:22px;flex:0 0 22px;margin-top:2px}
+.imp-row .n{font-weight:800;font-size:13px;color:var(--text-main)}
+.imp-row .m{font-size:11.5px;color:var(--text-muted)}
+.imp-row .b{display:inline-block;font-size:10.5px;font-weight:800;border-radius:99px;padding:1px 8px;margin-top:3px}
+.b.new{background:#ecfdf5;color:#15803d}.b.dup{background:#fff7ed;color:#c2410c}.b.has{background:#eef2f7;color:#64748b}
+.imp-st{font-size:12px;font-weight:750;text-align:center;min-height:16px;color:var(--palette-royal-blue)}
+.imp-bar{height:5px;background:#e2e8f0;border-radius:9px;margin:6px 0 10px;overflow:hidden;display:none}
+.imp-bar div{height:100%;width:0;background:var(--palette-royal-blue);transition:width .2s}
+.leaflet-container{font-family:inherit}
+.imp-row,.imp-opt{text-transform:none;letter-spacing:0;font-weight:inherit}.imp-row .m{text-transform:none}.imp-opt{font-weight:700}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+    <div class="login-card">
+        <h2>🔒 Accès Restreint</h2>
+        <p>Même compte que le générateur de BL.</p>
+        <div class="form-group" style="text-align: left;">
+            <label>Email Professionnel</label>
+            <input type="email" id="login-email" placeholder="nom@microport.com" style="height: 45px;">
+        </div>
+        <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+            <label>Mot de passe</label>
+            <input type="password" id="login-pass" placeholder="••••••••" style="height: 45px;" onkeydown="if(event.key==='Enter') handleLogin();">
+        </div>
+        <button class="btn-primary-ios" id="btn-login-submit" style="padding: 14px;" onclick="handleLogin()">SE CONNECTER</button>
+        <div id="login-error" style="color: var(--palette-vibrant-red); font-size: 12px; margin-top: 12px; font-weight: bold;"></div>
+    </div>
+</div>
+
+
+<div id="app-content" style="display:none">
+ <div class="cm-wrap">
+  <header class="cm-head">
+    <button class="btn-header-icon" type="button" onclick="location.href='index.html'" aria-label="Accueil">🏠</button>
+    <h1>🗺️ Carte des centres</h1>
+    <button class="btn-header-icon" type="button" id="logout" aria-label="Se déconnecter">🔒</button>
+  </header>
+  <div class="cm-bar">
+    <div class="cm-row">
+      <input type="search" id="cm-q" placeholder="🔎 Centre, ville, code…" autocomplete="off">
+      <button class="cm-btn" type="button" id="cm-import-btn" onclick="CM.openImport()">⬇️ Importer</button>
+    </div>
+    <div class="cm-row cm-chips">
+      <button class="chip on" data-f="scope" data-v="all">Tous</button>
+      <button class="chip" data-f="scope" data-v="imp">⭐ Implanteurs</button>
+      <span class="sep"></span>
+      <button class="chip on" data-f="st" data-v="all">Tout</button>
+      <button class="chip" data-f="st" data-v="todo">À faire</button>
+      <button class="chip" data-f="st" data-v="done">Fait</button>
+      <select id="cm-vendor" aria-label="Vendeur"><option value="">Tous vendeurs</option></select>
+    </div>
+  </div>
+  <div id="map"></div>
+  <div class="cm-count" id="cm-count"></div>
+  <button class="cm-loc" type="button" onclick="CM.locate()" aria-label="Ma position">📍</button>
+  <div class="cm-legend">
+    <span><i style="background:#16a34a"></i>Fait</span>
+    <span><i style="background:#f59e0b"></i>À faire</span>
+    <span><i style="background:#94a3b8"></i>Inconnu</span>
+    <span><i class="ring"></i>⭐ Implanteur</span>
+  </div>
+ </div>
+</div>
+
+<div id="imp-sheet" class="sheet" style="display:none">
+  <div class="sheet-head"><button class="btn-header-icon" type="button" onclick="CM.closeImport()" aria-label="Fermer">✕</button><h2>Importer des centres</h2><span style="width:42px"></span></div>
+  <div class="sheet-body">
+    <div class="imp-card" id="imp-xl">
+      <div class="imp-t">1️⃣ Fichier d'inventaire</div>
+      <div id="imp-xl-info" class="imp-i"></div>
+      <label class="cm-btn wide" for="imp-file">📂 Choisir / mettre à jour le fichier Excel</label>
+      <input type="file" id="imp-file" accept=".xlsx,.xlsm" style="display:none">
+    </div>
+    <div class="imp-card" id="imp-pick" style="display:none">
+      <div class="imp-t">2️⃣ Commercial</div>
+      <select id="imp-vendor"></select>
+      <div id="imp-sum" class="imp-i"></div>
+      <label class="imp-opt"><input type="checkbox" id="imp-cab" checked> Inclure les cabinets de médecins</label>
+    </div>
+    <div id="imp-list"></div>
+  </div>
+  <div class="sheet-foot">
+    <div id="imp-status" class="imp-st"></div>
+    <div class="imp-bar"><div id="imp-bar-in"></div></div>
+    <button class="btn-primary-ios" id="imp-go" style="padding:14px" disabled onclick="CM.runImport()">Importer</button>
+  </div>
+</div>
+
+<div id="link-sheet" class="sheet" style="display:none">
+  <div class="sheet-head"><button class="btn-header-icon" type="button" onclick="CM.closeLink()" aria-label="Fermer">✕</button><h2>Associer à l'inventaire</h2><span style="width:42px"></span></div>
+  <div class="sheet-body"><div id="link-for" class="imp-i"></div><input type="search" id="link-q" placeholder="🔎 Filtrer…" style="margin-bottom:10px"><div id="link-list"></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const _supabase = supabase.createClient("https://qwdwgrmhobkrstrnbcao.supabase.co","sb_publishable_fVGjFgTs7hsG_RIYljFSKQ_-ljz2sJ4",{auth:{persistSession:true,storageKey:'mp-cardioflow-session',storage:window.localStorage,autoRefreshToken:true}});
+const LOGIN=document.getElementById('login-screen'), A=document.getElementById('app-content');
+const $=id=>document.getElementById(id);
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function normText(s){ return String(s==null?"":s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(); }
+function normKey(s){ return normText(s).replace(/[^a-z0-9]/g,""); }
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+
+/* IndexedDB partagée avec la page Dépôts */
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open("inventaire",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function kvGet(k){ try{ const db=await idb(); return await new Promise((res,rej)=>{ const q=db.transaction("kv").objectStore("kv").get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }catch(e){ return undefined; } }
+async function kvSet(k,v){ try{ const db=await idb(); return await new Promise((res,rej)=>{ const tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(v,k); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); }); }catch(e){ return false; } }
+
+/* ================= Lecture du fichier Excel (même format que la page Dépôts) ================= */
+const HEAD = {st:"etatdesinventaires",cc:"codeclients",et:"etablissement",dp:"dept",lo:"localite",ve:"vendeur",zo:"zone",ca:"codearticle",de:"designation",lot:"ndelot",vs:"versionsmartview",k1:"ncpr4kit",k2:"nsmartecgkit",q:"quantitetheorique"};
+const ORDER=["st","cc","et","dp","lo","ve","zo","ca","de","lot","vs","k1","k2","q"];
+function cell(v,blankZero){ if(v==null) return ""; if(typeof v==="number"){ if(blankZero&&v===0) return ""; return String(v); } const s=String(v).trim(); if(blankZero&&s==="0") return ""; return s; }
+function parseAoa(aoa){
+  let hr=-1, idx={};
+  for(let i=0;i<Math.min(aoa.length,15);i++){ const keys=(aoa[i]||[]).map(normKey); if(keys.includes(HEAD.cc)){ hr=i; ORDER.forEach(k=>{ idx[k]=keys.indexOf(HEAD[k]); }); break; } }
+  if(hr<0) throw new Error("ligne d'en-têtes introuvable (colonne « Code Clients »)");
+  const need=["cc","et","de","lot"].filter(k=>idx[k]<0);
+  if(need.length) throw new Error("colonnes manquantes : "+need.map(k=>HEAD[k]).join(", "));
+  const items=[];
+  for(let i=hr+1;i<aoa.length;i++){
+    const r=aoa[i]; if(!r) continue;
+    const g=k=>idx[k]>=0 ? r[idx[k]] : "";
+    const cc=cell(g("cc")), lot=cell(g("lot")), de=cell(g("de"));
+    if(!cc || (!lot && !de)) continue;
+    const q=parseInt(cell(g("q")),10);
+    items.push([cell(g("st")),cc,cell(g("et")),cell(g("dp")),cell(g("lo")),cell(g("ve")),cell(g("zo")),cell(g("ca")),de,lot,cell(g("vs"),true),cell(g("k1"),true),cell(g("k2"),true),(q>0?q:1)]);
+  }
+  return items;
+}
+
+/* ================= Noms : normalisation et rapprochement ================= */
+const GENERIC=new Set("CH CHU CHR CHRU CHI CHIC CHG CHS CENTRE HOSPITALIER HOSPITALIERS REGIONAL UNIVERSITAIRE HOPITAL HOPITAUX GCS GHT CLINIQUE POLYCLINIQUE DE DU DES LA LE LES ET D L SAS SA SARL SELARL SCM SELAS MR MME MRS LES DR DRS DOCTEUR SANTE POLE GROUPE HOSPITALISATION PRIVE PRIVEE AU EN SUR SOUS ST SAINT SAINTE STE".split(" "));
+function nName(s){ return normText(s).toUpperCase().replace(/[^A-Z0-9 ]+/g," ").replace(/\s+/g," ").trim(); }
+function kindOf(name){
+  const n=nName(name);
+  if(/^(MR|MME|MRS|MLLE|DR|DRS|SELARL|SCM|SELAS|CABINET)\b|\bLE DR\b|\bLES DRS?\b/.test(n)) return "D";
+  if(/\b(POLYCLINIQUE|CLINIQUE|HOPITAL PRIVE|CLIN)\b/.test(n)) return "C";
+  if(/^(CH|CHU|CHR|CHRU|CHI|CHIC|CHG|CHS|GH|GHT|HIA|HOPITAL|HOPITAUX|CENTRE HOSPITALIER|CHRU)\b|CENTRE HOSPITALIER/.test(n)) return "H";
+  return "O";
+}
+function tokensOf(s){ return nName(s).split(" ").filter(t=>t.length>2&&!GENERIC.has(t)); }
+function communeOf(s){ return nName(String(s||"").replace(/\bCEDEX\b.*$/i,"").replace(/\(.*?\)/g,"")).replace(/\b(SAINT|STE?)\b/g,"ST").replace(/\s+/g," ").trim(); }
+function deptOfAddress(adr){ const m=String(adr||"").match(/\b(\d{5})\s+[^,\d]+$/)||String(adr||"").match(/\b(\d{5})\b/); if(!m) return ""; const p=m[1]; return p.startsWith("20")?"20":(p.startsWith("97")?p.slice(0,3):p.slice(0,2)); }
+function communeOfAddress(adr){ const m=String(adr||"").match(/\b\d{5}\s+([^,]+)$/); return m?communeOf(m[1]):""; }
+// Score de ressemblance entre deux centres {nom,dp,commune}; ≥4 = même établissement probable
+function similarity(a,b){
+  if(a.dp && b.dp && a.dp!==b.dp) return 0;
+  if(nName(a.nom)===nName(b.nom)) return 9;
+  const ka=kindOf(a.nom), kb=kindOf(b.nom);
+  const com = a.commune && b.commune && (a.commune===b.commune || a.commune.includes(b.commune) || b.commune.includes(a.commune));
+  const ta=new Set(tokensOf(a.nom)); const tok=tokensOf(b.nom).some(t=>ta.has(t));
+  const kind = ka===kb && ka!=="O";
+  if(ka!==kb && ka!=="O" && kb!=="O") return 0;
+  return (com?2:0)+(tok?2:0)+(kind?2:0);
+}
+function bestMatch(a, pool){ let best=null,bs=0; for(const b of pool){ const s=similarity(a,b); if(s>bs){ bs=s; best=b; } } return bs>=4?{item:best,score:bs}:null; }
+
+/* ================= État ================= */
+const CM={ map:null, layer:null, centres:[], xl:{data:null,centres:new Map(),list:[]}, f:{scope:"all",st:"all",vendor:"",q:""}, markers:new Map(), geocoding:false };
+const STC={fait:"#16a34a",todo:"#f59e0b",unk:"#94a3b8"};
+
+function initMap(){
+  if(CM.map) return;
+  CM.map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([46.6,2.5],6);
+  L.control.zoom({position:'topleft'}).addTo(CM.map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(CM.map);
+  CM.layer=L.layerGroup().addTo(CM.map);
+  setTimeout(()=>CM.map.invalidateSize(),200);
+}
+
+/* ---------- Données ---------- */
+async function loadXl(){
+  const d=await kvGet("prog"); CM.xl={data:null,centres:new Map(),list:[]};
+  if(!d||!d.items) return;
+  CM.xl.data=d;
+  d.items.forEach(a=>{
+    let c=CM.xl.centres.get(a[1]);
+    if(!c){ c={cc:a[1],nom:a[2],dp:a[3],lo:a[4],ve:a[5],commune:communeOf(a[4]),st:"",n:0}; CM.xl.centres.set(a[1],c); }
+    c.n++;
+    const s=String(a[0]||"").trim().toUpperCase();
+    if(s==="A FAIRE") c.st="A FAIRE"; else if(s==="FAIT" && c.st!=="A FAIRE") c.st="FAIT";
+  });
+  CM.xl.list=[...CM.xl.centres.values()];
+}
+async function loadCentres(){
+  const { data, error } = await _supabase.from('centres').select('id, nom, adresse, implanteur, lat, lng, geo_src, code_client, vendeur').order('nom',{ascending:true});
+  if(error) throw error;
+  CM.centres=(data||[]).map(c=>({...c, dp:deptOfAddress(c.adresse), commune:communeOfAddress(c.adresse)}));
+  // rapprochement avec l'inventaire
+  CM.centres.forEach(c=>{
+    let x=null;
+    if(c.code_client) x=CM.xl.centres.get(c.code_client)||null;
+    if(!x && CM.xl.list.length){ const m=bestMatch(c,CM.xl.list); if(m) x=m.item; }
+    c.xl=x;
+    if(x && !c.vendeur) c.vendeurXl=x.ve;
+  });
+}
+function statusOf(c){
+  if(!c.xl) return "unk";
+  const done=lsGet("done:"+(CM.xl.data&&CM.xl.data.sheet)+":"+c.xl.cc);
+  if(c.xl.st==="FAIT"||done) return "fait";
+  if(c.xl.st==="A FAIRE") return "todo";
+  return "unk";
+}
+
+/* ---------- Affichage ---------- */
+function visible(c){
+  const f=CM.f;
+  if(f.scope==="imp" && !c.implanteur) return false;
+  const s=statusOf(c);
+  if(f.st==="todo" && s!=="todo") return false;
+  if(f.st==="done" && s!=="fait") return false;
+  if(f.vendor && (c.vendeur||(c.xl&&c.xl.ve))!==f.vendor) return false;
+  if(f.q){ const t=normText(c.nom+" "+c.adresse+" "+(c.code_client||"")+" "+(c.vendeur||"")); if(!t.includes(normText(f.q))) return false; }
+  return true;
+}
+function popupHtml(c){
+  const s=statusOf(c);
+  const lab={fait:"Inventaire fait",todo:"Inventaire à faire",unk:"Inventaire inconnu"}[s];
+  const done=c.xl?lsGet("done:"+(CM.xl.data&&CM.xl.data.sheet)+":"+c.xl.cc):null;
+  const v=c.vendeur||(c.xl&&c.xl.ve)||"";
+  const approx=c.geo_src==="commune"?'<div class="t" style="color:#c2410c">📍 Position approximative (centre de la commune)</div>':'';
+  return `<div class="pop"><b>${esc(c.nom)}</b>${c.implanteur?' ⭐':''}
+    <div class="a">${esc(c.adresse)}</div>
+    <span class="bd" style="background:${STC[s]}">${lab}</span>
+    ${c.xl?`<div class="t">${c.xl.n} ligne${c.xl.n>1?'s':''} dans l'Excel${CM.xl.data?' · '+esc(CM.xl.data.sheet):''}</div>`:'<div class="t">Pas de correspondance dans le fichier Excel.</div>'}
+    ${done?`<div class="t">PDF généré le ${esc(done)}</div>`:''}
+    ${v?`<div class="t">Vendeur : ${esc(v)}</div>`:''}${approx}
+    <div class="acts">
+      <a href="https://maps.apple.com/?daddr=${c.lat},${c.lng}&dirflg=d" target="_blank" rel="noopener">🧭 Itinéraire</a>
+      <button onclick="CM.toggleImp(${c.id})">${c.implanteur?'Retirer des implanteurs':'⭐ Passer implanteur'}</button>
+      <button onclick="CM.openLink(${c.id})">🔗 ${c.xl?'Changer':'Associer'} l'inventaire</button>
+    </div></div>`;
+}
+function render(fit){
+  CM.layer.clearLayers(); CM.markers.clear();
+  const pts=[]; let n=0, nGeo=0;
+  CM.centres.forEach(c=>{
+    if(!visible(c)) return; n++;
+    if(c.lat==null||c.lng==null) return; nGeo++;
+    const s=statusOf(c);
+    const m=L.circleMarker([c.lat,c.lng],{radius:c.implanteur?11:7,color:c.implanteur?"#042a72":"#fff",weight:c.implanteur?3.5:1.5,fillColor:STC[s],fillOpacity:.95});
+    m.bindPopup(()=>popupHtml(c),{maxWidth:280});
+    m.addTo(CM.layer); CM.markers.set(c.id,m); pts.push([c.lat,c.lng]);
+  });
+  const pend=CM.centres.filter(c=>visible(c)&&c.lat==null).length;
+  $('cm-count').textContent=n+" centre"+(n>1?"s":"")+(pend?` · ${pend} à localiser…`:"");
+  if(fit && pts.length) CM.map.fitBounds(pts,{padding:[40,40],maxZoom:12});
+}
+function fillVendors(){
+  const sel=$('cm-vendor'), cur=CM.f.vendor; const cnt=new Map();
+  CM.centres.forEach(c=>{ const v=c.vendeur||(c.xl&&c.xl.ve); if(v&&v!=="-") cnt.set(v,(cnt.get(v)||0)+1); });
+  sel.innerHTML='<option value="">Tous vendeurs</option>'+[...cnt.entries()].sort((a,b)=>a[0].localeCompare(b[0],'fr')).map(([v,n])=>`<option value="${esc(v)}">${esc(v)} (${n})</option>`).join('');
+  sel.value=cnt.has(cur)?cur:""; CM.f.vendor=sel.value;
+}
+
+/* ---------- Géocodage (navigateur → API publiques ; échec silencieux) ---------- */
+async function jget(url,ms){ const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms||7000); try{ const r=await fetch(url,{signal:c.signal}); if(!r.ok) throw new Error(r.status); return await r.json(); } finally{ clearTimeout(t); } }
+async function banAddress(adr){
+  const j=await jget('https://api-adresse.data.gouv.fr/search/?limit=1&q='+encodeURIComponent(adr));
+  const f=(j.features||[])[0]; if(!f||(f.properties.score!=null&&f.properties.score<.4)) return null;
+  return {lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0],label:f.properties.label};
+}
+async function banCommune(lo,dp){
+  const q=String(lo||"").replace(/\bCEDEX\b.*$/i,"").trim(); if(!q) return null;
+  const j=await jget('https://api-adresse.data.gouv.fr/search/?limit=8&type=municipality&q='+encodeURIComponent(q));
+  const fs=j.features||[]; const f=fs.find(x=>!dp||String(x.properties.context||"").split(",")[0].trim()===dp)||(dp?null:fs[0]);
+  if(!f) return null; return {lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0],label:f.properties.postcode+" "+f.properties.city};
+}
+function photonQueries(nom,lo){
+  const commune=String(lo||"").replace(/\bCEDEX\b.*$/i,"").trim();
+  let n=String(nom||"").replace(/\//g," ").replace(/\bCHRU\b/i,"CHRU").replace(/^CH\b/i,"Centre Hospitalier").replace(/\s+/g," ").trim();
+  const k=kindOf(nom), qs=[n+" "+commune];
+  if(k==="H") qs.push("Centre hospitalier "+commune);
+  if(k==="C") qs.push("Clinique "+commune);
+  return {qs,k,commune};
+}
+async function photonEtab(nom,lo,dp){
+  const {qs,k,commune}=photonQueries(nom,lo); if(k==="D") return null;
+  const want=new Set([...tokensOf(nom),...tokensOf(commune)]);
+  for(const q of qs){
+    try{
+      const tag=(k==="H")?'&osm_tag=amenity:hospital':(k==="C")?'&osm_tag=amenity:clinic':'';
+      const j=await jget('https://photon.komoot.io/api/?limit=8&lang=fr&bbox=-5.5,41.2,9.8,51.2&q='+encodeURIComponent(q)+tag,8000);
+      for(const f of (j.features||[])){
+        const p=f.properties||{}; const pc=String(p.postcode||"");
+        if(/^\d\d$/.test(dp) && pc && !pc.startsWith(dp)) continue;
+        if(!pc && /^\d\d$/.test(dp)) continue;
+        const ok=tokensOf((p.name||"")+" "+(p.city||"")).some(t=>want.has(t));
+        if(!ok) continue;
+        const street=[p.housenumber,p.street].filter(Boolean).join(' ');
+        const adr=[street,[p.postcode,p.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+        return {lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0],label:adr,exact:!!street};
+      }
+    }catch(e){}
+  }
+  return null;
+}
+// Pour un centre importé : établissement (Photon) → sinon centre de la commune (BAN)
+async function geocodeImport(nom,lo,dp){
+  const e=await photonEtab(nom,lo,dp);
+  if(e){
+    if(e.exact){ try{ const b=await banAddress(e.label); if(b) return {lat:b.lat,lng:b.lng,adresse:b.label,src:"etab"}; }catch(_){} }
+    return {lat:e.lat,lng:e.lng,adresse:e.label||String(lo)+" ("+dp+")",src:"etab"};
+  }
+  try{ const c=await banCommune(lo,dp); if(c) return {lat:c.lat,lng:c.lng,adresse:c.label+" (adresse à compléter)",src:"commune"}; }catch(_){}
+  return {lat:null,lng:null,adresse:String(lo||"").replace(/\bCEDEX\b.*$/i,"").trim()+" ("+dp+")",src:null};
+}
+// Centres déjà en base sans coordonnées : localisation automatique puis enregistrement
+async function geocodeMissing(){
+  if(CM.geocoding) return; CM.geocoding=true;
+  try{
+    const todo=CM.centres.filter(c=>c.lat==null);
+    let i=0;
+    async function worker(){
+      while(i<todo.length){
+        const c=todo[i++];
+        try{
+          let r=await banAddress(c.adresse);
+          if(!r && c.dp){ const cm=await banCommune(c.communeOf||c.commune,c.dp); if(cm) r={...cm,approx:true}; }
+          if(r){
+            c.lat=r.lat; c.lng=r.lng; c.geo_src=r.approx?"commune":"adresse";
+            await _supabase.from('centres').update({lat:c.lat,lng:c.lng,geo_src:c.geo_src}).eq('id',c.id);
+          }
+        }catch(e){ console.warn("géocodage",c.nom,e); }
+        render(false);
+      }
+    }
+    await Promise.all([worker(),worker()]);
+  } finally { CM.geocoding=false; render(false); }
+}
+
+/* ---------- Actions sur un centre ---------- */
+CM.toggleImp=async function(id){
+  const c=CM.centres.find(x=>x.id===id); if(!c) return;
+  const v=!c.implanteur;
+  if(!confirm(v?`Ajouter « ${c.nom} » aux centres implanteurs ?\nIl apparaîtra dans la liste des centres des bons de livraison.`:`Retirer « ${c.nom} » des centres implanteurs ?\nIl n'apparaîtra plus dans les bons de livraison (il reste sur la carte).`)) return;
+  const { error } = await _supabase.from('centres').update({implanteur:v}).eq('id',id);
+  if(error){ alert("Modification impossible."); return; }
+  c.implanteur=v; CM.map.closePopup(); render(false);
+};
+CM.openLink=function(id){
+  const c=CM.centres.find(x=>x.id===id); if(!c) return;
+  if(!CM.xl.list.length){ alert("Importez d'abord le fichier Excel d'inventaire (bouton « Importer »)."); return; }
+  CM.map.closePopup(); CM.linkFor=c;
+  $('link-for').textContent="Centre : "+c.nom+" — choisissez la ligne correspondante dans l'inventaire.";
+  $('link-q').value=""; drawLink(); $('link-sheet').style.display='flex';
+};
+CM.closeLink=()=>{ $('link-sheet').style.display='none'; };
+function drawLink(){
+  const c=CM.linkFor, q=normText($('link-q').value);
+  let l=CM.xl.list.filter(x=>(!c.dp||x.dp===c.dp));
+  if(q) l=CM.xl.list.filter(x=>normText(x.nom+" "+x.lo+" "+x.cc).includes(q));
+  l=l.slice(0,60);
+  $('link-list').innerHTML=l.map(x=>`<div class="imp-row" style="cursor:pointer" onclick="CM.doLink('${esc(x.cc)}')"><div><div class="n">${esc(x.nom)}</div><div class="m">${esc(x.lo)} (${esc(x.dp)}) · ${esc(x.ve)} · ${x.st||'?'}</div></div></div>`).join('')||'<div class="imp-i">Aucun résultat.</div>';
+}
+$('link-q').addEventListener('input',drawLink);
+CM.doLink=async function(cc){
+  const c=CM.linkFor, x=CM.xl.centres.get(cc); if(!c||!x) return;
+  const { error } = await _supabase.from('centres').update({code_client:cc,vendeur:c.vendeur||x.ve}).eq('id',c.id);
+  if(error){ alert("Association impossible."); return; }
+  c.code_client=cc; c.xl=x; CM.closeLink(); fillVendors(); render(false);
+};
+CM.locate=function(){
+  if(!navigator.geolocation){ alert("Géolocalisation indisponible."); return; }
+  navigator.geolocation.getCurrentPosition(p=>{
+    const ll=[p.coords.latitude,p.coords.longitude];
+    if(CM.me) CM.me.remove(); CM.me=L.circleMarker(ll,{radius:8,color:"#fff",weight:3,fillColor:"#2563eb",fillOpacity:1}).addTo(CM.map);
+    CM.map.setView(ll,11);
+  },()=>alert("Position introuvable (autorisez la localisation)."),{timeout:8000});
+};
+
+/* ================= IMPORT d'un commercial ================= */
+CM.imp={rows:[]};
+CM.openImport=async function(){
+  $('imp-sheet').style.display='flex'; $('imp-status').textContent=''; $('imp-list').innerHTML=''; $('imp-go').disabled=true;
+  drawXlInfo();
+};
+CM.closeImport=()=>{ if(CM.importing) return; $('imp-sheet').style.display='none'; };
+function drawXlInfo(){
+  const d=CM.xl.data;
+  $('imp-xl-info').textContent=d?`Fichier chargé : « ${d.sheet} » — ${CM.xl.list.length} centres, ${d.items.length.toLocaleString('fr-FR')} lignes. Rechargez-le pour mettre à jour les statuts « Fait / À faire ».`:"Aucun fichier Excel sur cet appareil. Choisissez le fichier d'inventaire des programmateurs.";
+  const vs=new Map(); CM.xl.list.forEach(c=>{ if(c.ve&&c.ve!=="-") vs.set(c.ve,(vs.get(c.ve)||0)+1); });
+  $('imp-pick').style.display=vs.size?'block':'none';
+  $('imp-vendor').innerHTML='<option value="">Choisir un commercial…</option>'+[...vs.entries()].sort((a,b)=>a[0].localeCompare(b[0],'fr')).map(([v,n])=>`<option value="${esc(v)}">${esc(v)} — ${n} centre${n>1?'s':''}</option>`).join('');
+  $('imp-sum').textContent='';
+}
+$('imp-file').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  $('imp-xl-info').textContent="Lecture du fichier…";
+  try{
+    if(!window.XLSX) throw new Error("lecteur Excel indisponible (réseau)");
+    const wb=XLSX.read(await f.arrayBuffer(),{type:"array"}); const sheet=wb.SheetNames[0];
+    const items=parseAoa(XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,raw:true,defval:""}));
+    if(!items.length) throw new Error("aucune ligne exploitable");
+    await kvSet("prog",{sheet,fileName:f.name,importedAt:new Date().toISOString(),items});
+    await loadXl(); await loadCentres(); fillVendors(); render(false); drawXlInfo();
+  }catch(err){ $('imp-xl-info').textContent="Lecture impossible : "+(err.message||err); }
+});
+$('imp-vendor').addEventListener('change',analyse);
+$('imp-cab').addEventListener('change',analyse);
+function analyse(){
+  const v=$('imp-vendor').value, list=$('imp-list'); CM.imp.rows=[]; list.innerHTML=''; $('imp-go').disabled=true;
+  if(!v){ $('imp-sum').textContent=''; return; }
+  const incl=$('imp-cab').checked;
+  const src=CM.xl.list.filter(c=>c.ve===v&&(incl||kindOf(c.nom)!=="D")).sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+  const byCode=new Map(CM.centres.filter(c=>c.code_client).map(c=>[c.code_client,c]));
+  const seen=new Set();
+  src.forEach(x=>{
+    const cand={nom:x.nom,dp:x.dp,commune:x.commune};
+    let st="new", match=null;
+    if(byCode.has(x.cc)){ st="has"; match=byCode.get(x.cc); }
+    else{
+      const m=bestMatch(cand,CM.centres.map(c=>({...c,nom:c.nom,dp:c.dp,commune:c.commune})));
+      if(m){ st="dup"; match=m.item; }
+    }
+    CM.imp.rows.push({x,st,match,checked:st!=="has"});
+  });
+  const nNew=CM.imp.rows.filter(r=>r.st==="new").length, nDup=CM.imp.rows.filter(r=>r.st==="dup").length, nHas=CM.imp.rows.filter(r=>r.st==="has").length;
+  $('imp-sum').textContent=`${src.length} centres : ${nNew} nouveau${nNew>1?'x':''}, ${nDup} déjà présent${nDup>1?'s':''} sous un autre nom, ${nHas} déjà importé${nHas>1?'s':''}.`;
+  drawRows();
+}
+function drawRows(){
+  const html=CM.imp.rows.map((r,i)=>{
+    const b=r.st==="new"?'<span class="b new">Nouveau</span>':r.st==="has"?`<span class="b has">Déjà importé</span>`:`<span class="b dup">≈ ${esc(r.match.nom)} (doublon probable — sera associé)</span>`;
+    const dis=r.st==="has"?'disabled':'';
+    return `<label class="imp-row"><input type="checkbox" data-i="${i}" ${r.checked?'checked':''} ${dis}><div><div class="n">${esc(r.x.nom)}</div><div class="m">${esc(r.x.lo)} (${esc(r.x.dp)}) · ${r.x.n} ligne${r.x.n>1?'s':''} · ${r.x.st||'?'}</div>${b}</div></label>`;
+  }).join('');
+  $('imp-list').innerHTML=html;
+  $('imp-list').querySelectorAll('input').forEach(i=>i.addEventListener('change',e=>{ CM.imp.rows[+e.target.dataset.i].checked=e.target.checked; updGo(); }));
+  updGo();
+}
+function updGo(){
+  const nNew=CM.imp.rows.filter(r=>r.checked&&r.st==="new").length, nLink=CM.imp.rows.filter(r=>r.checked&&r.st==="dup").length;
+  $('imp-go').disabled=!(nNew+nLink);
+  $('imp-go').textContent=nNew+nLink?`Importer ${nNew} centre${nNew>1?'s':''}`+(nLink?` · associer ${nLink}`:''):'Rien à importer';
+}
+CM.runImport=async function(){
+  const rows=CM.imp.rows.filter(r=>r.checked&&(r.st==="new"||r.st==="dup")); if(!rows.length) return;
+  CM.importing=true; $('imp-go').disabled=true; $('imp-bar-in').parentElement.style.display='block';
+  const st=$('imp-status'), bar=$('imp-bar-in');
+  const toInsert=rows.filter(r=>r.st==="new"), toLink=rows.filter(r=>r.st==="dup");
+  const names=new Set(CM.centres.map(c=>nName(c.nom)));
+  const out=[]; let done=0, i=0;
+  async function worker(){
+    while(i<toInsert.length){
+      const r=toInsert[i++]; const x=r.x;
+      const g=await geocodeImport(x.nom,x.lo,x.dp);
+      let nom=String(x.nom).trim().toUpperCase();
+      out.push({r,g,nom});
+      done++; st.textContent=`Recherche des adresses… ${done}/${toInsert.length}`; bar.style.width=Math.round(done/Math.max(1,toInsert.length)*80)+'%';
+    }
+  }
+  try{
+    await Promise.all([worker(),worker(),worker()]);
+    // noms uniques (le nom sert de clé dans le reste de l'application)
+    const payload=out.map(({r,g,nom})=>{
+      if(names.has(nName(nom))) nom=nom+" – "+String(r.x.lo).replace(/\bCEDEX\b.*$/i,"").trim().toUpperCase();
+      let k=2, base=nom; while(names.has(nName(nom))) nom=base+" "+(k++);
+      names.add(nName(nom));
+      return {nom,adresse:g.adresse,implanteur:false,lat:g.lat,lng:g.lng,geo_src:g.src,code_client:r.x.cc,vendeur:r.x.ve};
+    });
+    st.textContent="Enregistrement…"; bar.style.width='90%';
+    if(payload.length){ const { error } = await _supabase.from('centres').insert(payload); if(error) throw error; }
+    for(const r of toLink){
+      const m=r.match; const upd={}; if(!m.code_client) upd.code_client=r.x.cc; if(!m.vendeur) upd.vendeur=r.x.ve;
+      if(Object.keys(upd).length) await _supabase.from('centres').update(upd).eq('id',m.id);
+    }
+    bar.style.width='100%';
+    const approx=payload.filter(p=>p.geo_src==="commune"||!p.geo_src).length;
+    await loadCentres(); fillVendors(); CM.f.vendor=rows[0].x.ve; $('cm-vendor').value=CM.f.vendor; render(true);
+    CM.importing=false; $('imp-sheet').style.display='none'; $('imp-bar-in').parentElement.style.display='none'; bar.style.width='0';
+    alert(`${payload.length} centre${payload.length>1?'s':''} importé${payload.length>1?'s':''}`+(toLink.length?`, ${toLink.length} associé${toLink.length>1?'s':''} à un centre existant`:'')+(approx?`.\n${approx} placé${approx>1?'s':''} approximativement au centre de la commune : complétez l'adresse depuis « Centres & tampons » (ou ⭐ Passer implanteur puis modifier la fiche).`:'.')+`\nIls n'apparaissent pas dans les BL tant que vous ne les passez pas « implanteur ».`);
+  }catch(e){
+    console.error(e); CM.importing=false; $('imp-go').disabled=false; st.style.color='#ff144b'; st.textContent="❌ Import interrompu : "+(e.message||e);
+  }
+};
+
+/* ================= Filtres & démarrage ================= */
+document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll(`.chip[data-f="${b.dataset.f}"]`).forEach(x=>x.classList.toggle('on',x===b));
+  CM.f[b.dataset.f]=b.dataset.v; render(true);
+}));
+$('cm-vendor').addEventListener('change',e=>{ CM.f.vendor=e.target.value; render(true); });
+let qt; $('cm-q').addEventListener('input',e=>{ clearTimeout(qt); qt=setTimeout(()=>{ CM.f.q=e.target.value.trim(); render(true); },250); });
+
+async function start(){
+  initMap();
+  try{ await loadXl(); await loadCentres(); }
+  catch(e){ console.error(e); $('cm-count').textContent="⚠️ Chargement impossible"; return; }
+  fillVendors(); render(true); geocodeMissing();
+  if(!CM.xl.list.length) $('cm-count').textContent+=" · pas d'Excel : statuts inconnus";
+}
+function enter(){ LOGIN.style.display='none'; A.style.display='block'; start(); }
+let busy=false;
+async function handleLogin(){
+  if(busy) return; const email=$('login-email').value.trim(), pass=$('login-pass').value, err=$('login-error'), btn=$('btn-login-submit');
+  err.innerText=''; if(!email||!pass){ err.innerText='Veuillez remplir tous les champs.'; return; }
+  busy=true; btn.disabled=true; btn.innerText='Connexion...';
+  try{ const {data,error}=await _supabase.auth.signInWithPassword({email,password:pass});
+    if(error) err.innerText='Identifiants incorrects ou compte inexistant.'; else if(data&&data.user){ enter(); busy=false; btn.disabled=false; btn.innerText='SE CONNECTER'; return; }
+  }catch(e){ err.innerText='Connexion impossible. Vérifiez votre réseau.'; }
+  busy=false; btn.disabled=false; btn.innerText='SE CONNECTER';
+}
+$('logout').addEventListener('click',async()=>{ try{await _supabase.auth.signOut();}catch(e){} location.href='index.html'; });
+(async()=>{
+  try{ const {data:{session}}=await _supabase.auth.getSession(); if(session&&session.user){ enter(); return; } }catch(e){ console.error(e); }
+  LOGIN.style.display='flex';
+})();
+
+</script>
+</body>
+</html>
