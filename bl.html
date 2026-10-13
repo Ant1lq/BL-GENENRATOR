@@ -764,7 +764,9 @@
             <select id="man-stock" onchange="onStockChange()">
                 <option value="Stock du centre" id="man-stock-centre" data-kind="centre">Stock du centre</option>
                 <option value="Stock MICROPORT CF" id="man-stock-ing" data-kind="ing">Stock MICROPORT CF</option>
+                <option value="__autre__" id="man-stock-autre-opt" data-kind="autre">Autre (saisie libre)…</option>
             </select>
+            <input type="text" id="man-stock-autre" placeholder="Saisissez la provenance" style="display:none; margin-top:8px;" oninput="onStockTextInput()">
         </div>
         <div class="form-group" id="man-reno-group">
             <label>Suivi / Renouvellement</label>
@@ -772,7 +774,9 @@
                 <option value="centre">Renouvellement pour le Stock du centre</option>
                 <option value="ing">Renouvellement pour le Stock de l'ingénieur</option>
                 <option value="aucun">Aucun renouvellement</option>
+                <option value="autre">Autre (saisie libre)…</option>
             </select>
+            <input type="text" id="man-reno-autre" placeholder="Saisissez le suivi / renouvellement" style="display:none; margin-top:8px;" oninput="renoTextManual = true">
         </div>
         <div class="form-group" id="man-echec-group" style="display:none;">
             <label style="display:flex; align-items:center; gap:10px; text-transform:none; font-size:14px; letter-spacing:0; color:var(--palette-vibrant-red); font-weight:750;">
@@ -1848,11 +1852,41 @@ function removeBg(src,sens){
         }, { passive: true });
     });
 
+    // « Autre » : saisie libre. Le texte de la provenance est recopié automatiquement dans le renouvellement,
+    // tant que le renouvellement n'a pas été modifié à la main (renoTextManual).
+    let renoTextManual = false;
+    function syncOtherInputs() {
+        const stockAutre = document.getElementById('man-stock').value === '__autre__';
+        const renoAutre = document.getElementById('man-reno').value === 'autre';
+        document.getElementById('man-stock-autre').style.display = stockAutre ? 'block' : 'none';
+        document.getElementById('man-reno-autre').style.display = renoAutre ? 'block' : 'none';
+    }
     function onStockChange() {
         const selected = document.getElementById('man-stock').selectedOptions[0];
         const kind = selected ? selected.dataset.kind : "centre";
-        document.getElementById('man-reno').value = kind; // pré-sélection pratique, reste modifiable
+        const renoSel = document.getElementById('man-reno');
+        renoSel.value = kind; // pré-sélection pratique, reste modifiable (« autre » existe aussi côté renouvellement)
+        if (kind === 'autre') {
+            renoTextManual = false;
+            document.getElementById('man-reno-autre').value = document.getElementById('man-stock-autre').value;
+        }
+        syncOtherInputs();
+        if (kind === 'autre') document.getElementById('man-stock-autre').focus();
     }
+    function onStockTextInput() {
+        if (!renoTextManual && document.getElementById('man-reno').value === 'autre') {
+            document.getElementById('man-reno-autre').value = document.getElementById('man-stock-autre').value;
+        }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('man-reno').addEventListener('change', () => {
+            if (document.getElementById('man-reno').value === 'autre' && !document.getElementById('man-reno-autre').value) {
+                document.getElementById('man-reno-autre').value = document.getElementById('man-stock-autre').value;
+                renoTextManual = false;
+            }
+            syncOtherInputs();
+        });
+    });
 
     let cropPurpose = 'label'; // 'label' (sonde/boîtier, avec OCR) ou 'tampon' (centre, sans OCR)
 
@@ -2290,8 +2324,14 @@ function removeBg(src,sens){
             document.getElementById('manual-modal-title').innerText = "✏️ Ajustement Matériel";
             document.getElementById('man-type').value = item.type; updateManualModelOptions();
             document.getElementById('man-model').value = item.model; document.getElementById('man-sn').value = item.sn;
-            document.getElementById('man-exp').value = item.exp; document.getElementById('man-stock').value = item.stock;
+            document.getElementById('man-exp').value = item.exp;
+            const stockSel = document.getElementById('man-stock');
+            stockSel.value = item.stock;
+            if (stockSel.value !== item.stock) { stockSel.value = '__autre__'; document.getElementById('man-stock-autre').value = item.stock || ''; } // provenance saisie librement
+            else document.getElementById('man-stock-autre').value = '';
             document.getElementById('man-reno').value = item.reno || "centre";
+            document.getElementById('man-reno-autre').value = item.renoTexte || '';
+            renoTextManual = (item.reno === 'autre') && (item.renoTexte || '') !== (document.getElementById('man-stock-autre').value || '');
             document.getElementById('man-echec').checked = !!item.echec;
             document.getElementById('manual-photo-status').innerText = item.img ? "📸 Photo d'étiquette associée." : "";
             temporaryModalSnapshot = item.img || null;
@@ -2301,10 +2341,12 @@ function removeBg(src,sens){
             document.getElementById('man-sn').value = ""; document.getElementById('man-exp').value = "";
             document.getElementById('man-stock').value = document.getElementById('man-stock-centre').value;
             document.getElementById('man-reno').value = "centre";
+            document.getElementById('man-stock-autre').value = ""; document.getElementById('man-reno-autre').value = ""; renoTextManual = false;
             document.getElementById('man-echec').checked = false;
             document.getElementById('manual-photo-status').innerText = "";
             setManualPhotoPreview(null);
         }
+        syncOtherInputs();
         modal.style.display = "flex";
     }
 
@@ -2323,7 +2365,9 @@ function removeBg(src,sens){
         const itemData = {
             type: document.getElementById('man-type').value, model: document.getElementById('man-model').value,
             sn: document.getElementById('man-sn').value, exp: document.getElementById('man-exp').value,
-            stock: document.getElementById('man-stock').value, reno: document.getElementById('man-reno').value,
+            stock: (document.getElementById('man-stock').value === '__autre__') ? (document.getElementById('man-stock-autre').value.trim() || 'Autre') : document.getElementById('man-stock').value,
+            reno: document.getElementById('man-reno').value,
+            renoTexte: (document.getElementById('man-reno').value === 'autre') ? (document.getElementById('man-reno-autre').value.trim() || 'Autre') : undefined,
             img: temporaryModalSnapshot,
             echec: document.getElementById('man-type').value === 'SONDE' && document.getElementById('man-echec').checked
         };
@@ -2477,6 +2521,7 @@ function removeBg(src,sens){
             let suiviValue;
             if (item.reno === 'centre') suiviValue = `Stock du ${c}`;
             else if (item.reno === 'ing') suiviValue = `Stock de ${ing}`;
+            else if (item.reno === 'autre') suiviValue = (item.renoTexte || 'Autre').replace(/</g, '&lt;');
             else suiviValue = "Aucun renouvellement";
             
             row.innerHTML = `
@@ -2598,7 +2643,7 @@ function removeBg(src,sens){
             let expValue = toBoldUnicode(item.exp ? item.exp.split('-').reverse().join('/') : 'N/A');
             let renewalLine = "";
             if (!isPharmacie) {
-                let renewalText = (item.reno === 'centre') ? `Stock du ${centre}` : (item.reno === 'ing') ? `Stock de ${ingenieur}` : "Aucun renouvellement";
+                let renewalText = (item.reno === 'centre') ? `Stock du ${centre}` : (item.reno === 'ing') ? `Stock de ${ingenieur}` : (item.reno === 'autre') ? (item.renoTexte || 'Autre') : "Aucun renouvellement";
                 renewalLine = `\n   • Renouvellement : ${renewalText}`;
             }
             const echecLine = item.echec ? `\n   • ⚠️ ${toBoldUnicode('ÉCHEC DE POSE')}` : "";
