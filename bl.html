@@ -398,6 +398,9 @@
         .sticky-actions { gap: 10px; }
         .act-group { display: flex; flex-direction: column; gap: 5px; }
         .act-title { font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); padding-left: 4px; }
+        .act-num { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--blue-mp); color:#fff; font-size:11px; font-weight:800; margin-right:4px; letter-spacing:0; }
+        .act-hint { font-size: 12px; line-height: 1.4; color: var(--text-muted); padding: 0 4px; }
+        .act-hint b { color: var(--text-main); }
         .act-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .btn-compact { min-height: 46px; padding: 10px 8px; font-size: 14px; border-radius: 14px; gap: 6px; white-space: nowrap; }
         .btn-compact:disabled { font-size: 12px; white-space: normal; line-height: 1.15; }
@@ -620,19 +623,27 @@
                 <div class="signature-box">
                     <label>Transporteur</label>
                     <canvas id="pad-trans" class="sig-canvas"></canvas>
-                    <div class="grid-2" style="gap:6px; margin-top:8px;">
-                        <button class="btn-mini sign" onclick="openFullscreenSig('trans')">✍️ Signer</button>
-                        <button class="btn-mini edit" onclick="document.getElementById('import-sig-trans').click()">🖼️ Image</button>
+                    <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                        <button class="btn-mini sign" style="justify-content:center;" onclick="openFullscreenSig('trans')">✍️ Signer</button>
+                        <div class="grid-2" style="gap:6px;">
+                            <button class="btn-mini edit" style="justify-content:center; flex-direction:row; gap:3px; white-space:nowrap; font-size:12px; padding:9px 2px;" onclick="document.getElementById('photo-sig-trans').click()">📷 Photo</button>
+                            <button class="btn-mini edit" style="justify-content:center; flex-direction:row; gap:3px; white-space:nowrap; font-size:12px; padding:9px 2px;" onclick="document.getElementById('import-sig-trans').click()">🖼️ Image</button>
+                        </div>
                     </div>
+                    <input type="file" id="photo-sig-trans" accept="image/*" capture="environment" style="display:none;" onchange="handleSignatureImport(this, 'trans')">
                     <input type="file" id="import-sig-trans" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'trans')">
                 </div>
                 <div class="signature-box">
                     <label>Centre / Tampon</label>
                     <canvas id="pad-centre" class="sig-canvas"></canvas>
-                    <div class="grid-2" style="gap:6px; margin-top:8px;">
-                        <button class="btn-mini sign" onclick="openFullscreenSig('centre')">✍️ Signer</button>
-                        <button class="btn-mini edit" onclick="document.getElementById('import-sig-centre').click()">🖼️ Image</button>
+                    <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                        <button class="btn-mini sign" style="justify-content:center;" onclick="openFullscreenSig('centre')">✍️ Signer</button>
+                        <div class="grid-2" style="gap:6px;">
+                            <button class="btn-mini edit" style="justify-content:center; flex-direction:row; gap:3px; white-space:nowrap; font-size:12px; padding:9px 2px;" onclick="document.getElementById('photo-sig-centre').click()">📷 Photo</button>
+                            <button class="btn-mini edit" style="justify-content:center; flex-direction:row; gap:3px; white-space:nowrap; font-size:12px; padding:9px 2px;" onclick="document.getElementById('import-sig-centre').click()">🖼️ Image</button>
+                        </div>
                     </div>
+                    <input type="file" id="photo-sig-centre" accept="image/*" capture="environment" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
                     <input type="file" id="import-sig-centre" accept="image/*" style="display:none;" onchange="handleSignatureImport(this, 'centre')">
                 </div>
             </div>
@@ -640,31 +651,31 @@
 
         <div class="sticky-actions">
             <div class="act-group">
-                <div class="act-title">Envoyer par email</div>
-                <div class="act-row">
-                    <button class="btn-mail-ios btn-compact" id="btn-generate-email" onclick="generateEmail(false)">📤 BL complet</button>
-                    <button class="btn-mail-ios btn-compact btn-pharma" id="btn-generate-email-pharma" onclick="generateEmail(true)">🏥 Pharmacie</button>
-                </div>
-            </div>
-            <div class="act-group">
-                <div class="act-title">Télécharger l'image</div>
+                <div class="act-title"><span class="act-num">1</span> Télécharger l'image</div>
                 <div class="act-row">
                     <button class="btn-secondary-ios btn-compact" id="btn-download-bl" onclick="downloadCurrentBl(false)">📥 BL complet</button>
                     <button class="btn-secondary-ios btn-compact btn-pharma-outline" id="btn-download-bl-pharma" onclick="downloadCurrentBl(true)">📥 Pharmacie</button>
                 </div>
             </div>
-            <div class="act-row">
-                <button class="btn-primary-ios btn-compact" id="btn-save-bl" onclick="saveCurrentBlToHistory(false)">💾 Enregistrer</button>
-                <button class="btn-refresh-ios btn-compact" onclick="startNewBl()">🆕 Nouveau BL</button>
+            <div class="act-group">
+                <div class="act-title"><span class="act-num">2</span> Envoyer par email</div>
+                <div class="act-row">
+                    <button class="btn-mail-ios btn-compact" id="btn-generate-email" onclick="generateEmail(false)">📤 BL complet</button>
+                    <button class="btn-mail-ios btn-compact btn-pharma" id="btn-generate-email-pharma" onclick="generateEmail(true)">🏥 Pharmacie</button>
+                </div>
+                <div class="act-hint">Dans le mail, joignez l'image téléchargée (depuis Photos).</div>
             </div>
-            <label class="opt-line">
-                <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()">
-                Enregistrer auto à chaque envoi
-            </label>
-            <label class="opt-line">
-                <input type="checkbox" id="attachToggle" onchange="onAttachToggleChange()">
-                📎 Joindre l'image au mail <span style="font-weight:500">(via Partager)</span>
-            </label>
+            <div class="act-group">
+                <div class="act-title"><span class="act-num">3</span> Terminer</div>
+                <div class="act-row">
+                    <button class="btn-primary-ios btn-compact" id="btn-save-bl" onclick="saveCurrentBlToHistory(false)">💾 Enregistrer</button>
+                    <button class="btn-refresh-ios btn-compact" onclick="startNewBl()">🆕 Nouveau BL</button>
+                </div>
+                <label class="opt-line">
+                    <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()">
+                    Enregistrer auto à chaque envoi
+                </label>
+            </div>
         </div>
 
         <div id="image-result">
@@ -750,14 +761,6 @@
 <input type="file" id="label-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleLabelFile(this)">
 <input type="file" id="label-gallery-input" accept="image/*" style="display: none;" onchange="handleLabelFile(this)">
 
-<div id="share-ready-modal" class="ios-modal">
-    <div class="ios-modal-content">
-        <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">✅ Image du BL prête</h3>
-        <p style="font-size:13px; text-align:center; color:var(--text-muted); margin:0 0 16px 0;">Appuyez pour ouvrir le partage, puis choisissez Mail ou Outlook. Les destinataires sont copiés : collez-les dans le champ « À ».</p>
-        <button class="btn-mail-ios" onclick="runPendingShare()">📎 OUVRIR LE PARTAGE</button>
-        <button class="btn-secondary-ios" style="margin-top:10px;" onclick="cancelPendingShare()">ANNULER</button>
-    </div>
-</div>
 
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
@@ -972,7 +975,6 @@
         try {
             const savedAutoSave = localStorage.getItem('bl_autosave_enabled');
             document.getElementById('autoSaveToggle').checked = (savedAutoSave === 'true');
-            document.getElementById('attachToggle').checked = (localStorage.getItem('bl_attach_enabled') === 'true');
         } catch (e) { console.error("Préférence auto-save indisponible:", e); }
 
         try {
@@ -1979,11 +1981,11 @@ function removeBg(src,sens){
                 const image = document.getElementById('crop-preview');
                 if (cropPurpose === 'tampon') document.getElementById('admin-modal').style.display = 'none'; // réaffiché après le recadrage
                 image.src = e.target.result; modal.style.display = 'flex';
-                document.getElementById('crop-removebg-wrap').style.display = (cropPurpose === 'tampon') ? 'block' : 'none';
-                document.getElementById('btn-validate-crop').innerText = (cropPurpose === 'tampon') ? 'VALIDER LE TAMPON ✅' : 'ANALYSER 🔍';
+                document.getElementById('crop-removebg-wrap').style.display = (cropPurpose === 'tampon' || cropPurpose === 'sig') ? 'block' : 'none';
+                document.getElementById('btn-validate-crop').innerText = (cropPurpose === 'tampon') ? 'VALIDER LE TAMPON ✅' : (cropPurpose === 'sig' ? 'VALIDER LA SIGNATURE ✅' : 'ANALYSER 🔍');
                 if (cropper) cropper.destroy();
                 cropperIsReady = false;
-                document.getElementById('ocr-status').innerText = (cropPurpose === 'tampon') ? "Cadrez le tampon." : "Recherche du code-barres…";
+                document.getElementById('ocr-status').innerText = (cropPurpose === 'tampon') ? "Cadrez le tampon." : (cropPurpose === 'sig' ? "Cadrez la signature ou le tampon." : "Recherche du code-barres…");
 
                 // Zone de départ adaptée au format de l'étiquette : les sondes sont plutôt carrées,
                 // les boîtiers ont une étiquette en bande large (code-barres GS1 inclus). Le ratio n'est
@@ -1993,8 +1995,8 @@ function removeBg(src,sens){
 
                 cropper = new Cropper(image, {
                     viewMode: 1,
-                    autoCropArea: cropPurpose === 'tampon' ? 0.9 : (isBoitier ? 0.85 : 0.95),
-                    aspectRatio: cropPurpose === 'tampon' ? NaN : (isBoitier ? 3.6 : 1),
+                    autoCropArea: (cropPurpose === 'tampon' || cropPurpose === 'sig') ? 0.9 : (isBoitier ? 0.85 : 0.95),
+                    aspectRatio: (cropPurpose === 'tampon' || cropPurpose === 'sig') ? NaN : (isBoitier ? 3.6 : 1),
                     zoomOnTouch: true, // pincement à 2 doigts pour zoomer (natif à Cropper.js)
                     ready: function() {
                         cropperIsReady = true;
@@ -2002,7 +2004,7 @@ function removeBg(src,sens){
                         if (pendingAutoCrop) applyAutoCrop();   // cadrage automatique de l'étiquette (réglable ensuite à la main)
                     }
                 });
-                if (cropPurpose !== 'tampon') startLabelAnalysis(e.target.result);
+                if (cropPurpose === 'label') startLabelAnalysis(e.target.result);
             };
             reader.readAsDataURL(input.files[0]);
             input.value = ""; // permet de reprendre la même photo (même nom de fichier) sans que l'input ignore le changement
@@ -2355,12 +2357,13 @@ function removeBg(src,sens){
 
     async function processCroppedImage() {
         if (!cropper || !cropperIsReady) return;
-        document.getElementById('ocr-status').innerText = (cropPurpose === 'tampon') ? "Traitement de l'image... ⏳" : "Analyse OCR... ⏳";
+        document.getElementById('ocr-status').innerText = (cropPurpose === 'tampon' || cropPurpose === 'sig') ? "Traitement de l'image... ⏳" : "Analyse OCR... ⏳";
 
         const canvasFull = buildCroppedCanvas();
         const ctxFull = canvasFull.getContext('2d');
 
         if (cropPurpose === 'tampon') { await finalizeTamponUpload(canvasFull); return; }
+        if (cropPurpose === 'sig') { await finalizeSignatureImport(canvasFull); return; }
 
         // Code-barres : lu d'abord sur le recadrage en couleur ; à défaut, sur la photo entière (analyse faite à la prise de vue).
         const colorCanvas = document.createElement('canvas'); colorCanvas.width = canvasFull.width; colorCanvas.height = canvasFull.height;
@@ -2753,19 +2756,50 @@ function removeBg(src,sens){
         document.getElementById('sig-modal').style.display = 'none'; sync();
     }
 
+    // Signature / tampon pris en photo ou importé : passe par le recadrage (avec retrait optionnel du fond blanc).
+    let sigCropTarget = null;
     function handleSignatureImport(input, target) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                sigSource[target] = 'imported';
-                document.getElementById(`v-sig-${target}`).src = e.target.result;
-                const sCanvas = document.getElementById(`pad-${target}`);
-                const sCtx = sCanvas.getContext('2d'); sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
-                const img = new Image(); img.onload = () => { sCtx.drawImage(img, 0, 0, sCanvas.width, sCanvas.height); }; img.src = e.target.result;
-                sync();
-            };
-            reader.readAsDataURL(input.files[0]);
-            input.value = "";
+        if (!(input.files && input.files[0])) return;
+        modalScannerActive = false; cropPurpose = 'sig'; sigCropTarget = target;
+        handleLabelFile(input);
+    }
+
+    function applySignatureImage(target, dataUrl) {
+        sigSource[target] = 'imported';
+        document.getElementById(`v-sig-${target}`).src = dataUrl;
+        const sCanvas = document.getElementById(`pad-${target}`);
+        const sCtx = sCanvas.getContext('2d'); sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+        const img = new Image();
+        img.onload = () => { // aperçu sans déformation (l'image est ajustée dans le cadre)
+            const k = Math.min(sCanvas.width / img.width, sCanvas.height / img.height);
+            const w = img.width * k, h = img.height * k;
+            sCtx.drawImage(img, (sCanvas.width - w) / 2, (sCanvas.height - h) / 2, w, h);
+        };
+        img.src = dataUrl;
+        sync();
+    }
+
+    async function finalizeSignatureImport(canvasFull) {
+        try {
+            const target = sigCropTarget;
+            const wantRemoveBg = document.getElementById('crop-removebg').checked;
+            const base = tamponToCanvasMax(canvasFull, 1000);
+            const bd = base.getContext('2d').getImageData(0, 0, base.width, base.height).data;
+            let hasAlpha = false;
+            for (let i = 3; i < bd.length; i += 16) { if (bd[i] < 250) { hasAlpha = true; break; } }
+            let out;
+            if (hasAlpha) out = trimCanvas(base); // déjà détouré : on le garde tel quel
+            else {
+                const flat = document.createElement('canvas'); flat.width = base.width; flat.height = base.height;
+                const fctx = flat.getContext('2d'); fctx.fillStyle = '#fff'; fctx.fillRect(0, 0, flat.width, flat.height); fctx.drawImage(base, 0, 0);
+                out = wantRemoveBg ? trimCanvas(removeBg(flat, 50)) : flat;
+            }
+            if (target) applySignatureImage(target, out.toDataURL('image/png'));
+        } catch (e) {
+            console.error('Signature importée :', e);
+            alert("Impossible de traiter l'image, merci de réessayer.");
+        } finally {
+            closeCropModal();
         }
     }
 
@@ -3008,71 +3042,18 @@ function removeBg(src,sens){
         return raw.split(/[;,\s]+/).filter(a => a.includes('@')).map(a => encodeURIComponent(a).replace(/%40/g, '@')).join(',');
     }
 
-    // Envoi par e-mail. Deux modes (réglage « Joindre l'image du BL ») :
-    //  - mailto (par défaut) : destinataires + texte remplis dans l'app Mail/Outlook, image à joindre à la main ;
-    //  - partage : l'image du BL est jointe via le menu Partager d'iOS (Mail / Outlook), mais iOS ne permet alors
-    //    pas de pré-remplir les destinataires : ils sont copiés dans le presse-papiers pour être collés.
-    let pendingShare = null;
+    // Envoi par e-mail : destinataires, objet et texte sont pré-remplis dans l'app Mail / Outlook (mailto).
     function openMailto(isPharmacie, subject, body) {
         window.open(`mailto:${getMailRecipients(!!isPharmacie)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
     }
     async function generateEmail(isPharmacie) {
         setPharmaMode(!!isPharmacie); // l'image du BL suit la version choisie (sans ligne Renouvellement pour la pharmacie)
         const { subject, body } = buildEmailContent(!!isPharmacie);
-        const attach = document.getElementById('attachToggle') && document.getElementById('attachToggle').checked;
-
-        if (!attach || !navigator.share || !navigator.canShare) {
-            openMailto(isPharmacie, subject, body);
-        } else {
-            const btn = document.getElementById(isPharmacie ? 'btn-generate-email-pharma' : 'btn-generate-email');
-            const label = btn ? btn.innerText : "";
-            if (btn) { btn.disabled = true; btn.innerText = "⏳ Préparation de l'image..."; }
-            try {
-                const file = await getBlFileForSharing();
-                if (!file || !navigator.canShare({ files: [file] })) {
-                    openMailto(isPharmacie, subject, body); // repli : pas de pièce jointe possible
-                } else {
-                    const recipients = decodeURIComponent(getMailRecipients(!!isPharmacie)).replace(/,/g, '; ');
-                    pendingShare = { file, subject, body, recipients, isPharmacie };
-                    await runPendingShare();
-                }
-            } catch (e) {
-                console.error("Préparation de la pièce jointe impossible, repli sur le mail simple:", e);
-                openMailto(isPharmacie, subject, body);
-            } finally {
-                if (btn) { btn.disabled = false; btn.innerText = label; }
-                reactivateLivePreview();
-            }
-        }
+        openMailto(isPharmacie, subject, body);
 
         if (document.getElementById('autoSaveToggle').checked) {
             saveCurrentBlToHistory(true); // silencieux : ne bloque pas l'envoi du mail
         }
-    }
-
-    async function runPendingShare() {
-        if (!pendingShare) return;
-        const { file, subject, body, recipients } = pendingShare;
-        try { if (recipients && navigator.clipboard) await navigator.clipboard.writeText(recipients); } catch (e) {}
-        try {
-            await navigator.share({ files: [file], title: subject, text: body });
-            pendingShare = null; closeShareReady();
-        } catch (err) {
-            if (err && err.name === 'AbortError') { pendingShare = null; closeShareReady(); return; }
-            if (err && err.name === 'NotAllowedError') {
-                // iOS exige un appui direct pour ouvrir le partage : la génération de l'image a pris trop de temps.
-                document.getElementById('share-ready-modal').style.display = 'flex';
-                return;
-            }
-            console.error("Partage impossible, repli sur le mail simple:", err);
-            const ps = pendingShare; pendingShare = null; closeShareReady();
-            if (ps) openMailto(ps.isPharmacie, ps.subject, ps.body);
-        }
-    }
-    function closeShareReady() { document.getElementById('share-ready-modal').style.display = 'none'; }
-    function cancelPendingShare() { pendingShare = null; closeShareReady(); }
-    function onAttachToggleChange() {
-        try { localStorage.setItem('bl_attach_enabled', document.getElementById('attachToggle').checked ? 'true' : 'false'); } catch (e) {}
     }
 
     function onAutoSaveToggleChange() {
