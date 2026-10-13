@@ -555,6 +555,7 @@
   <a class="tile prog" href="depot.html?m=prog"><div class="ic">📟</div><div><div class="tt">Dépôt programmateurs</div><div class="td">Choisir un vendeur et un centre dans le fichier Excel.</div><div class="tm" id="progMeta"></div></div><div class="chev">›</div></a>
 
   <div class="sect">Gestion</div>
+  <a class="tile" id="tile-admin" href="admin.html" style="display:none"><div class="ic" style="background:#fff1f2">👤</div><div><div class="tt">Comptes</div><div class="td">Créer des comptes et leur associer une signature. Réservé à l'administrateur.</div></div><div class="chev">›</div></a>
   <div class="mini">
     <a class="tile" href="bl.html?admin=1"><div class="ic">⚙️</div><div><div class="tt">Centres &amp; tampons</div><div class="td">Médecins, adresses, tampons.</div></div></a>
     <a class="tile" href="bl.html?history=1"><div class="ic">🕘</div><div><div class="tt">Historique</div><div class="td">Bons de livraison créés.</div></div></a>
@@ -574,6 +575,7 @@ function metaProg(){
 }
 function enter(email){
   L.style.display='none'; A.style.display='block'; metaProg();
+  document.getElementById('tile-admin').style.display = ((email||'').toLowerCase()==='antoine.lecocq@cf.microport.com') ? 'flex' : 'none';
   const n=(email||'').split('@')[0].split('.').map(x=>x.charAt(0).toUpperCase()+x.slice(1)).join(' ');
   document.getElementById('hello').textContent=n?('Bonjour '+n+' 👋'):'';
 }

@@ -1025,6 +1025,29 @@
         } catch (e) {}
     }
 
+    // ====== PROFILS (comptes ↔ nom d'ingénieur/transporteur ↔ signature) ======
+    let profilsByNom = {}, profilsByEmail = {};
+    const profilSigCache = {};
+    async function loadProfils() {
+        try {
+            const { data, error } = await _supabase.from('profils').select('email, nom, role, signature_path');
+            if (error) throw error;
+            profilsByNom = {}; profilsByEmail = {};
+            (data || []).forEach(p => { profilsByNom[p.nom] = p; profilsByEmail[(p.email || '').toLowerCase()] = p; });
+        } catch (e) { console.error("Profils indisponibles (on continue avec la liste par défaut):", e); }
+    }
+    async function getProfilSignatureUrl(path) {
+        if (!path) return null;
+        const c = profilSigCache[path];
+        if (c && c.expiresAt > Date.now()) return c.url;
+        try {
+            const { data, error } = await _supabase.storage.from('signatures').createSignedUrl(path, 86400);
+            if (error || !data) throw error || new Error('lien introuvable');
+            profilSigCache[path] = { url: data.signedUrl, expiresAt: Date.now() + 20 * 3600 * 1000 };
+            return data.signedUrl;
+        } catch (e) { console.error("Signature introuvable:", e); return null; }
+    }
+
     async function synchroniserDonneesDepuisCloud() {
         try {
             let { data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url, mail_bl, mail_pharmacie').order('nom', { ascending: true });
@@ -1035,10 +1058,16 @@
             iSel.innerHTML = "";
             listIngs.forEach(i => iSel.add(new Option(i, i)));
 
+            // Profils (comptes créés depuis la page admin) : nom affiché + signature associée
+            await loadProfils();
+            Object.keys(profilsByNom).forEach(n => { if (![...iSel.options].some(o => o.value === n)) iSel.add(new Option(n, n)); });
+
             const { data: { session } } = await _supabase.auth.getSession();
             if (session && session.user && session.user.email) {
                 let em = session.user.email.toLowerCase();
-                if (em.includes('lecocq')) iSel.value = "Antoine LECOCQ";
+                const myProfil = profilsByEmail[em];
+                if (myProfil) iSel.value = myProfil.nom;
+                else if (em.includes('lecocq')) iSel.value = "Antoine LECOCQ";
                 else if (em.includes('desarmenien')) iSel.value = "Baptiste DESARMENIEN";
                 else if (em.includes('gartenlaub')) iSel.value = "Valentin GARTENLAUB";
                 else if (em.includes('maingault')) iSel.value = "Francois MAINGAULT";
@@ -2388,11 +2417,21 @@ function removeBg(src,sens){
         document.getElementById('v-objet').innerText = `OBJET : LIVRAISON MATÉRIEL POUR ${act.toUpperCase()} - ${c.toUpperCase()}`;
         
         document.getElementById('lbl-sig-ing').innerText = (sigSource['trans'] !== 'none') ? `${ing}\nIngénieur CRM` : "";
+        const sigRoleLabel = (profilsByNom[ing] && profilsByNom[ing].role === 'transporteur') ? 'Transporteur' : 'Ingénieur CRM';
+        if (sigSource['trans'] === 'none') document.getElementById('lbl-sig-ing').innerText = ing ? `${ing}\n${sigRoleLabel}` : "";
         document.getElementById('lbl-sig-doc').innerText = (sigSource['centre'] !== 'none') ? `${doc.toUpperCase()}\nService Cardiologie\n${c}` : "";
 
         if (sigSource['trans'] === 'none') {
             const sigTransImg = document.getElementById('v-sig-trans');
-            if (ing === "Antoine LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
+            const profSigPath = profilsByNom[ing] && profilsByNom[ing].signature_path;
+            delete sigTransImg.dataset.profSig;
+            if (profSigPath) {
+                // Signature associée au compte (page admin) : prioritaire sur les fichiers par défaut
+                sigTransImg.dataset.profSig = profSigPath;
+                getProfilSignatureUrl(profSigPath).then(url => {
+                    if (url && sigTransImg.dataset.profSig === profSigPath && sigTransImg.src !== url) sigTransImg.src = url;
+                });
+            } else if (ing === "Antoine LECOCQ") sigTransImg.src = "assets/signature-antoine.png";
             else if (ing === "Baptiste DESARMENIEN") sigTransImg.src = "assets/signature-baptiste.png";
             else if (ing === "Valentin GARTENLAUB") sigTransImg.src = "assets/signature-valentin.png";
             else if (ing === "Francois MAINGAULT") sigTransImg.src = "assets/signature-francois.png";

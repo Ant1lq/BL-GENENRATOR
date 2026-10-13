@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#042a72">
+<meta name="format-detection" content="telephone=no">
+<title>MicroPort Cardioflow · Comptes</title>
+<style>
+        :root { 
+            --palette-dark-navy: #12182c;       
+            --palette-white: #ffffff;           
+            --palette-muted-gray: #909191;      
+            --palette-light-gray: #e0e0e0;      
+            --palette-vibrant-red: #ff144b;     
+            --palette-plum-magenta: #c72676;    
+            --palette-purple: #802cf1;          
+            --palette-cyan: #00dbff;            
+            --palette-royal-blue: #4870ff;      
+            --palette-deep-blue: #042a72;       
+
+            --blue-mp: var(--palette-deep-blue);
+            --accent: var(--palette-royal-blue);
+            --neutral-bg: #f8fafc;
+            --card-bg: var(--palette-white);
+            --text-main: var(--palette-dark-navy);
+            --text-muted: #6b7280;
+            --border-color: #e2e8f0;
+
+            --dai-color: var(--palette-plum-magenta);
+            --dai-light: #fdf2f8;
+            --pm-color: var(--palette-purple);
+            --pm-light: #f5f3ff;
+            --sonde-color: var(--palette-cyan);
+            --sonde-light: #ecfeff;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--neutral-bg); 
+            margin: 0; 
+            padding: 0; 
+            color: var(--text-main);
+            padding-bottom: calc(60px + env(safe-area-inset-bottom));
+            overscroll-behavior-y: contain;
+        }
+
+        /* BANNIÈRE D'ÉTAT / ERREUR RÉSEAU */
+        #sync-banner {
+            display: none;
+            position: sticky;
+            top: 0;
+            z-index: 500;
+            background: #fef2f2;
+            color: var(--palette-vibrant-red);
+            border-bottom: 1px solid #fecaca;
+            padding: 10px 16px;
+            font-size: 12.5px;
+            font-weight: 700;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        #sync-banner button {
+            background: var(--palette-vibrant-red);
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 10px;
+            font-size: 11.5px;
+            font-weight: 800;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* ÉCRAN DE VERROUILLAGE SÉCURISÉ (LOCKSCREEN) */
+        #login-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--palette-dark-navy), var(--palette-deep-blue));
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)) 24px;
+        }
+        .login-card {
+            background: white;
+            width: 100%;
+            max-width: 360px;
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .login-card h2 {
+            font-size: 18px;
+            color: var(--blue-mp);
+            margin: 0 0 6px 0;
+            font-weight: 850;
+        }
+        .login-card p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 0 0 20px 0;
+        }
+
+        #app-content { display: none; }
+
+        .app-container { max-width: 100%; margin: 0 auto; padding: 16px; }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: calc(15px + env(safe-area-inset-top)) 4px 10px 4px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        }
+        header h1 {
+            font-size: 16.5px;
+            color: var(--blue-mp);
+            margin: 0;
+            font-weight: 850;
+            letter-spacing: -0.4px;
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        header > div { flex-shrink: 0; }
+        
+        .btn-header-icon {
+            background: #f1f5f9;
+            border: none;
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            font-size: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .btn-header-icon:active { background: #e2e8f0; }
+
+        .scan-zone {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn-smart-scan {
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 18px;
+            font-weight: 750;
+            font-size: 14px;
+            width: 100%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.3px;
+            min-height: 58px;
+        }
+        .btn-scan-boitier {
+            background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue));
+            box-shadow: 0 4px 14px rgba(4, 42, 114, 0.25);
+        }
+        .btn-scan-sonde {
+            background: linear-gradient(135deg, var(--palette-royal-blue), var(--palette-cyan));
+            box-shadow: 0 4px 14px rgba(72, 112, 255, 0.25);
+        }
+        .btn-smart-scan:active { transform: scale(0.97); opacity: 0.92; }
+
+        .app-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 20px rgba(18, 24, 44, 0.03);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .card-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--blue-mp);
+            text-transform: uppercase;
+            margin-top: 0;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            letter-spacing: 0.7px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+        label { 
+            display: block; 
+            font-size: 11px; 
+            font-weight: 700; 
+            margin-bottom: 6px; 
+            color: var(--text-muted); 
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        input, select, textarea { 
+            width: 100%; 
+            height: 50px; 
+            padding: 0 16px; 
+            border: 1.5px solid #e2e8f0; 
+            border-radius: 14px; 
+            font-size: 15px; 
+            background: #fff; 
+            color: var(--text-main);
+            transition: all 0.2s ease;
+            -webkit-appearance: none; 
+        }
+        select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 15px;
+            padding-right: 44px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(72, 112, 255, 0.12);
+            background: #fff;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px; }
+
+        .btn-action-block {
+            background: #f0f7ff;
+            border: 1.5px solid var(--palette-royal-blue);
+            color: var(--palette-royal-blue);
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 13.5px;
+            font-weight: 750;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.2s ease;
+            min-height: 50px;
+        }
+        .btn-action-block:active { background: #e0f0ff; transform: scale(0.98); }
+
+        .detected-item-card {
+            background: #fdfdfd;
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 12px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .detected-item-card.DAI { background: var(--dai-light); border-left: 5px solid var(--dai-color); border-color: rgba(199,38,118,0.15); }
+        .detected-item-card.PM { background: var(--pm-light); border-left: 5px solid var(--pm-color); border-color: rgba(128,44,241,0.15); }
+        .detected-item-card.SONDE { background: var(--sonde-light); border-left: 5px solid var(--sonde-color); border-color: rgba(0,219,255,0.15); }
+
+        .detected-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 800;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .detected-item-card.DAI .detected-header { color: var(--dai-color); }
+        .detected-item-card.PM .detected-header { color: var(--pm-color); }
+        .detected-item-card.SONDE .detected-header { color: var(--sonde-color); }
+
+        .detected-details { font-size: 12.5px; color: #334155; line-height: 1.6; }
+        .detected-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+        
+        .btn-mini {
+            padding: 11px 16px;
+            font-size: 12.5px;
+            border-radius: 12px;
+            border: 1.5px solid transparent;
+            cursor: pointer;
+            font-weight: 750;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 42px;
+            transition: opacity 0.2s, transform 0.15s ease;
+        }
+        .btn-mini.edit { background: #eef2f7; color: var(--text-main); border-color: #dbe3ec; }
+        .btn-mini.delete { background: #ffe4e6; color: var(--palette-vibrant-red); border-color: #ffcdd3; }
+        .btn-mini.sign { background: #eaf0ff; color: var(--palette-royal-blue); border-color: #cddcff; }
+        .btn-mini:active { opacity: 0.85; transform: scale(0.97); }
+
+        .signature-box {
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 18px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .sig-canvas {
+            width: 100%;
+            height: 90px;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            touch-action: none;
+        }
+
+        .ios-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(18, 24, 44, 0.65);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: flex-end; 
+        }
+        .ios-modal-content {
+            background: white;
+            width: 100%;
+            max-width: 440px;
+            border-top-left-radius: 28px;
+            border-top-right-radius: 28px;
+            padding: 24px;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 -10px 25px rgba(0,0,0,0.1);
+        }
+
+        /* Écran de gestion des centres/secteur : plein écran plutôt que feuille limitée, pour donner
+           toute la place disponible à la liste (plus de petite boîte de défilement perdue au milieu
+           d'un grand espace vide). */
+        #admin-modal { align-items: stretch; }
+        #admin-modal-content {
+            max-width: 100%;
+            width: 100%;
+            height: 100dvh;
+            max-height: 100dvh;
+            border-radius: 0;
+            padding: calc(20px + env(safe-area-inset-top)) 20px calc(16px + env(safe-area-inset-bottom)) 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .crop-wrapper { width: 100%; max-height: 58vh; overflow: hidden; background: #000; border-radius: 16px; margin-bottom: 16px; }
+        #crop-preview { max-width: 100%; display: block; }
+        #crop-modal .ios-modal-content { max-width: 100%; padding: 18px; }
+
+        .sticky-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+        
+        .btn-primary-ios, .btn-secondary-ios, .btn-mail-ios, .btn-refresh-ios {
+            border: none; padding: 16px; border-radius: 16px; font-weight: 750; font-size: 15px; cursor: pointer; text-align: center; width: 100%;
+            transition: transform 0.15s ease, opacity 0.15s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
+            min-height: 54px;
+        }
+        .btn-primary-ios { background: var(--blue-mp); color: white; box-shadow: 0 4px 14px rgba(4,42,114,0.22); }
+        .btn-secondary-ios { background: #ffffff; color: var(--text-main); border: 1.5px solid #cbd5e1; box-shadow: 0 2px 8px rgba(18,24,44,0.04); }
+        .btn-refresh-ios { background: #eef2f7; color: var(--text-main); border: 1.5px solid #dbe3ec; }
+        .btn-mail-ios { background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue)); color: white; box-shadow: 0 4px 14px rgba(4,42,114,0.22); }
+        .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active, .btn-refresh-ios:active { transform: scale(0.97); opacity: 0.92; }
+
+        #container-preview-zone { display: block; }
+
+        .bl-preview-header {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 30px;
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+        .bl-preview-title { font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .zoom-controls-wrapper { display: flex; align-items: center; gap: 12px; background: #e2e8f0; padding: 8px 14px; border-radius: 12px; }
+        .zoom-controls-wrapper label { margin: 0; font-size: 11px; color: #334155; white-space: nowrap; }
+        .zoom-slider { flex: 1; height: 24px; -webkit-appearance: none; background: transparent; }
+        .zoom-slider::-webkit-slider-runnable-track { width: 100%; height: 6px; background: #cbd5e1; border-radius: 3px; }
+        .zoom-slider::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: var(--blue-mp); margin-top: -6px; cursor: pointer; }
+        .zoom-badge { font-size: 12px; font-weight: bold; color: var(--blue-mp); min-width: 35px; text-align: right; }
+
+        #bl-wrapper { 
+            background: #475569; padding: 12px; border-radius: 20px; width: 100%; overflow-x: auto; overflow-y: hidden; display: block; box-sizing: border-box; -webkit-overflow-scrolling: touch;
+        }
+        
+        .bl-scaler { width: 794px; height: 1123px; transform-origin: top left; transition: transform 0.1s ease-out; }
+        #bl-canvas { width: 100%; height: 100%; background: white; padding: 40px 35px; box-sizing: border-box; color: black; font-family: Arial, sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        
+        .bl-title-block { font-size: 13px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 5px; letter-spacing: 0.5px; }
+        
+        .bl-header-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+        .bl-header-table td { border: 1px solid #000; padding: 7px 10px; font-size: 11px; font-family: Arial, sans-serif; }
+        .bl-header-table .bg-light { background-color: #e6e6e6; font-weight: bold; width: 28%; }
+        
+        .objet-container { margin: 15px 0; padding: 10px; background: #f2f2f2; font-size: 12px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; font-family: Arial, sans-serif; }
+        
+        table.main-bl-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table.main-bl-table th { border: 1px solid #000; padding: 10px; font-size: 11px; background-color: #e6e6e6; text-transform: uppercase; text-align: center; font-family: Arial, sans-serif; }
+        table.main-bl-table td { border: 1px solid #000; padding: 8px; font-size: 11px; vertical-align: middle; font-family: Arial, sans-serif; }
+        
+        .row-photo-flat { padding: 6px !important; text-align: center; background: #ffffff; }
+        .row-photo-flat img { max-width: 100%; height: auto; max-height: 110px; display: block; margin: 0 auto; filter: grayscale(1) contrast(1.7) brightness(0.95); }
+        
+        .bl-sig-img { max-height: 65px; max-width: 100%; display: block; margin: 5px auto; object-fit: contain; }
+        .legal-text { font-size: 9.5px; line-height: 1.4; color: #000; margin-top: 5px; font-family: Arial, sans-serif; }
+
+        #image-result { background: #f0fdf4; padding: 14px; border-radius: 20px; margin-top: 20px; text-align: center; display: none; border: 2px dashed #bbf7d0; width: 100%; }
+        #img-container { width: 100%; overflow: hidden; display: flex; justify-content: center; }
+        #img-container img { display: block; width: 100%; height: auto; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+
+        .ocr-inline-loading { display: none; background: #eff6ff; color: var(--palette-royal-blue); padding: 10px; border-radius: 10px; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 10px; border: 1px dashed var(--palette-royal-blue); }
+        .admin-section-title { background: #e2e8f0; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-top: 15px; margin-bottom: 10px; color: #334155; }
+
+        .admin-tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        .admin-tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: none; font-size: 12px; font-weight: bold; background: #f1f5f9; color: #64748b; cursor: pointer; }
+        .admin-tab-btn.active { background: var(--blue-mp); color: white; }
+        
+        .center-card-info { background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 16px; margin-top: 12px; }
+        .info-row { font-size: 13px; margin-bottom: 8px; color: #334155; line-height: 1.4; }
+        .info-row b { color: var(--blue-mp); font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+        
+        .doc-tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; margin: 4px 4px 0 0; }
+        .tampon-preview-box { background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; text-align: center; margin-top: 10px; }
+        .tampon-preview-box img { max-height: 100px; max-width: 100%; object-fit: contain; display: block; margin: 0 auto; }
+
+        .center-list-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px;
+            padding: 13px 14px; margin-bottom: 10px; cursor: pointer; transition: background 0.15s ease;
+        }
+        .center-list-item:active { background: #eef2f7; }
+        .center-list-item-info { flex: 1; min-width: 0; }
+        .center-list-item-name { font-weight: 800; font-size: 13.5px; color: var(--blue-mp); }
+        .center-list-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .center-list-item-chevron { color: #94a3b8; font-size: 15px; margin-left: 10px; white-space: nowrap; }
+
+        .cd-doctor-row {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+            padding: 9px 10px; margin-bottom: 6px; font-size: 13px;
+        }
+        .btn-mini:disabled { opacity: 0.35; cursor: not-allowed; }
+        
+        .checkbox-container-list {
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px;
+            background: #f8fafc;
+            margin-bottom: 16px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 4px;
+            font-size: 13px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+        }
+        .checkbox-item:last-child { border-bottom: none; }
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--blue-mp);
+            cursor: pointer;
+            -webkit-appearance: checkbox;
+            appearance: checkbox;
+        }
+
+        @media print {
+            body { background: white; color: black; padding-bottom: 0; }
+            #login-screen, .app-container, .sticky-actions, #image-result, .ios-modal, .bl-preview-header, #container-preview-zone { display: none !important; }
+            #bl-wrapper { background: transparent; padding: 0; margin: 0; display: block !important; height: auto !important; overflow: visible !important; }
+            .bl-scaler { transform: none !important; width: 210mm !important; height: 297mm !important; }
+            #bl-canvas { box-shadow: none !important; padding: 0; }
+        }
+
+
+.acct{background:#fff;border:1px solid var(--border-color);border-left:5px solid var(--accent);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px rgba(18,24,44,.04)}
+.acct .top{display:flex;gap:12px;align-items:center}
+.acct .nm{font-weight:850;color:var(--blue-mp)}
+.acct .em{font-size:12px;color:var(--text-muted);overflow-wrap:anywhere}
+.acct .meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.acct .sigthumb{margin-left:auto;width:84px;height:46px;border:1px solid var(--border-color);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;flex-shrink:0}
+.acct .sigthumb img{max-width:100%;max-height:100%;object-fit:contain}
+.acct .sigthumb span{font-size:10px;color:#94a3b8;text-align:center}
+.acct .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pill{display:inline-block;font-size:10px;font-weight:800;border-radius:99px;padding:2px 9px;margin-left:6px;vertical-align:middle}
+.pill.ing{background:#eaf0ff;color:var(--accent)} .pill.tra{background:#f5f3ff;color:var(--palette-purple)} .pill.adm{background:#fff1f2;color:var(--palette-vibrant-red)}
+.sigbox{border:2px dashed #cbd5e1;border-radius:16px;min-height:90px;display:flex;align-items:center;justify-content:center;background-color:#fff;background-image:conic-gradient(#eef1f5 25%,#fff 0 50%,#eef1f5 0 75%,#fff 0);background-size:16px 16px;margin:8px 0}
+.sigbox img{max-width:100%;max-height:140px}
+.sigbox span{font-size:12px;color:#94a3b8;background:#fff;padding:2px 8px;border-radius:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.pwrow{display:flex;gap:8px}.pwrow input{flex:1}.pwrow button{flex:0 0 auto;width:50px;height:50px;border-radius:14px;border:1.5px solid #cbd5e1;background:#fff;font-size:18px;cursor:pointer}
+.msg{font-size:13px;font-weight:750;text-align:center;margin:10px 0;min-height:1.2em}
+.msg.ok{color:#15803d}.msg.bad{color:var(--palette-vibrant-red)}
+#padcv{width:100%;height:220px;background:#fff;border:2px dashed var(--accent);border-radius:16px;touch-action:none}
+
+</style>
+</head>
+<body>
+<div id="login-screen">
+    <div class="login-card">
+        <h2>🔒 Accès Restreint</h2>
+        <p>Page réservée à l'administrateur.</p>
+        <div class="form-group" style="text-align: left;">
+            <label>Email Professionnel</label>
+            <input type="email" id="login-email" placeholder="nom@microport.com" style="height: 45px;">
+        </div>
+        <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+            <label>Mot de passe</label>
+            <input type="password" id="login-pass" placeholder="••••••••" style="height: 45px;" onkeydown="if(event.key==='Enter') handleLogin();">
+        </div>
+        <button class="btn-primary-ios" id="btn-login-submit" style="padding: 14px;" onclick="handleLogin()">SE CONNECTER</button>
+        <div id="login-error" style="color: var(--palette-vibrant-red); font-size: 12px; margin-top: 12px; font-weight: bold;"></div>
+    </div>
+</div>
+
+
+<div id="app-content">
+ <div class="app-container">
+  <header>
+    <button class="btn-header-icon" type="button" onclick="location.href='index.html'" aria-label="Accueil">🏠</button>
+    <h1>👤 Comptes</h1>
+    <button class="btn-header-icon" type="button" id="logout" aria-label="Se déconnecter">🔒</button>
+  </header>
+  <div class="msg" id="msg"></div>
+
+  <div class="app-card">
+    <div class="card-title">➕ Nouveau compte</div>
+    <div class="form-group"><label>Adresse e-mail (identifiant)</label><input type="email" id="n-email" inputmode="email" autocapitalize="off" autocomplete="off" placeholder="prenom.nom@cf.microport.com"></div>
+    <div class="form-group"><label>Mot de passe (8 caractères minimum)</label>
+      <div class="pwrow"><input type="text" id="n-pass" autocomplete="new-password" autocapitalize="off" spellcheck="false"><button type="button" onclick="document.getElementById('n-pass').value=genPass()" title="Générer">🎲</button></div></div>
+    <div class="form-group"><label>Nom affiché (ingénieur / transporteur)</label><input type="text" id="n-nom" autocomplete="off" placeholder="Ex : Valentin GARTENLAUB"></div>
+    <div class="form-group"><label>Rôle</label><select id="n-role"><option value="ingenieur">Ingénieur</option><option value="transporteur">Transporteur</option></select></div>
+    <div class="form-group"><label>Signature associée</label>
+      <div class="sigbox" id="n-sigbox"><span>Aucune signature</span></div>
+      <div class="grid-2">
+        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px" onclick="openPad('n')">✍️ Dessiner</button>
+        <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px" onclick="pickSig('n')">🖼️ Importer</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:10px"><input type="checkbox" id="n-rmbg" checked style="width:20px;height:20px"> Retirer le fond blanc d'une image importée</label>
+    </div>
+    <button class="btn-primary-ios" id="btn-create" onclick="createAccount()">CRÉER LE COMPTE</button>
+  </div>
+
+  <div class="card-title" style="margin:20px 4px 10px">Comptes existants</div>
+  <div id="list"><div style="color:var(--text-muted);font-size:13px;padding:8px">Chargement…</div></div>
+ </div>
+</div>
+
+<div id="edit-modal" class="ios-modal"><div class="ios-modal-content">
+  <h3 style="margin-top:0;color:var(--blue-mp);font-size:16px;text-align:center;font-weight:bold" id="e-title">Modifier</h3>
+  <div class="form-group"><label>Nom affiché</label><input type="text" id="e-nom"></div>
+  <div class="form-group"><label>Rôle</label><select id="e-role"><option value="ingenieur">Ingénieur</option><option value="transporteur">Transporteur</option></select></div>
+  <div class="form-group"><label>Nouveau mot de passe (laisser vide pour ne pas changer)</label>
+    <div class="pwrow"><input type="text" id="e-pass" autocomplete="new-password" autocapitalize="off" spellcheck="false"><button type="button" onclick="document.getElementById('e-pass').value=genPass()">🎲</button></div></div>
+  <div class="form-group"><label>Signature associée</label>
+    <div class="sigbox" id="e-sigbox"><span>Aucune signature</span></div>
+    <div class="grid-2">
+      <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px" onclick="openPad('e')">✍️ Dessiner</button>
+      <button type="button" class="btn-mini sign" style="justify-content:center;padding:12px" onclick="pickSig('e')">🖼️ Importer</button>
+    </div>
+    <button type="button" class="btn-mini delete" style="width:100%;justify-content:center;margin-top:8px" onclick="clearSig('e')">🗑️ Retirer la signature</button>
+    <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:10px"><input type="checkbox" id="e-rmbg" checked style="width:20px;height:20px"> Retirer le fond blanc d'une image importée</label>
+  </div>
+  <div class="msg" id="e-msg"></div>
+  <div class="grid-2" style="margin-top:12px"><button class="btn-mini edit" style="padding:14px;justify-content:center" onclick="closeEdit()">ANNULER</button><button class="btn-primary-ios" id="e-save" style="padding:14px;font-size:14px" onclick="saveEdit()">ENREGISTRER</button></div>
+</div></div>
+
+<div id="pad-modal" class="ios-modal"><div class="ios-modal-content">
+  <h3 style="margin-top:0;color:var(--blue-mp);font-size:15px;text-align:center;font-weight:bold">✍️ Signature</h3>
+  <canvas id="padcv"></canvas>
+  <div class="grid-2" style="margin-top:14px"><button class="btn-mini edit" style="padding:14px;justify-content:center" onclick="padClear()">EFFACER</button><button class="btn-mini edit" style="padding:14px;justify-content:center" onclick="closePad()">ANNULER</button></div>
+  <button class="btn-primary-ios" style="margin-top:12px;padding:14px" onclick="padOk()">VALIDER</button>
+</div></div>
+
+<input type="file" id="file-sig" accept="image/*" style="display:none">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const ADMIN_EMAIL = "antoine.lecocq@cf.microport.com";
+const _supabase = supabase.createClient("https://qwdwgrmhobkrstrnbcao.supabase.co","sb_publishable_fVGjFgTs7hsG_RIYljFSKQ_-ljz2sJ4",{auth:{persistSession:true,storageKey:'mp-cardioflow-session',storage:window.localStorage,autoRefreshToken:true}});
+const FN_URL = "https://qwdwgrmhobkrstrnbcao.supabase.co/functions/v1/admin-users";
+const L=document.getElementById('login-screen'), A=document.getElementById('app-content');
+const $=id=>document.getElementById(id);
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function say(el,t,cls){ el.textContent=t; el.className='msg'+(cls?' '+cls:''); }
+function genPass(){ const a='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; const r=new Uint32Array(12); crypto.getRandomValues(r); return [...r].map(x=>a[x%a.length]).join(''); }
+
+/* ---- image : fond blanc / recadrage ---- */
+/* Recadre sur le contenu (ignore le transparent, le blanc et les petites poussières) */
+function trimCanvas(c){
+  const w=c.width,h=c.height; const d=c.getContext("2d").getImageData(0,0,w,h).data;
+  const cols=new Uint32Array(w), rows=new Uint32Array(h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=(y*w+x)*4;
+    if(d[i+3]>24 && (d[i]<235||d[i+1]<235||d[i+2]<235)){ cols[x]++; rows[y]++; }
+  }
+  const tc=Math.max(2,Math.round(h*0.004)), tr=Math.max(2,Math.round(w*0.004));
+  let x0=0; while(x0<w && cols[x0]<tc) x0++;
+  let x1=w-1; while(x1>x0 && cols[x1]<tc) x1--;
+  let y0=0; while(y0<h && rows[y0]<tr) y0++;
+  let y1=h-1; while(y1>y0 && rows[y1]<tr) y1--;
+  if(x1<=x0 || y1<=y0) return c;
+  const pd=6; x0=Math.max(0,x0-pd); y0=Math.max(0,y0-pd); x1=Math.min(w-1,x1+pd); y1=Math.min(h-1,y1+pd);
+  const o=document.createElement("canvas"); o.width=x1-x0+1; o.height=y1-y0+1;
+  o.getContext("2d").drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height); return o;
+}
+/* Retire le fond blanc d'une photo : corrige les ombres (estimation du papier par zones),
+   puis transforme l'encre en transparence ("couleur vers alpha"). sens : 0..100 */
+function removeBg(src,sens){
+  const w=src.width,h=src.height;
+  const img=src.getContext("2d").getImageData(0,0,w,h), d=img.data;
+  // Pixels transparents = papier blanc (sinon leurs valeurs 0,0,0 sont lues comme de l'encre noire)
+  for(let i=0;i<d.length;i+=4){ const al=d[i+3]; if(al<255){ const k=al/255; d[i]=d[i]*k+255*(1-k); d[i+1]=d[i+1]*k+255*(1-k); d[i+2]=d[i+2]*k+255*(1-k); d[i+3]=255; } }
+  const cell=Math.max(16,Math.round(Math.max(w,h)/18));
+  const gx=Math.ceil(w/cell), gy=Math.ceil(h/cell);
+  const grid=[new Float32Array(gx*gy),new Float32Array(gx*gy),new Float32Array(gx*gy)];
+  const buf=new Uint8Array(cell*cell);
+  for(let ch=0;ch<3;ch++){
+    for(let cy=0;cy<gy;cy++) for(let cx=0;cx<gx;cx++){
+      let n=0; const x1=Math.min(w,(cx+1)*cell), y1=Math.min(h,(cy+1)*cell);
+      for(let y=cy*cell;y<y1;y++){ let i=(y*w+cx*cell)*4+ch; for(let x=cx*cell;x<x1;x++,i+=4) buf[n++]=d[i]; }
+      const sub=buf.subarray(0,n).slice().sort();
+      grid[ch][cy*gx+cx]=Math.max(60, sub[Math.min(n-1,Math.floor(n*0.85))]);
+    }
+  }
+  const t0=0.04+0.30*(sens/100), t1=Math.min(0.98,t0+0.30);
+  const fx=new Float32Array(w), x0i=new Int32Array(w), x1i=new Int32Array(w);
+  for(let x=0;x<w;x++){ const g=Math.min(gx-1,Math.max(0,(x+0.5)/cell-0.5)); x0i[x]=Math.floor(g); x1i[x]=Math.min(gx-1,x0i[x]+1); fx[x]=g-x0i[x]; }
+  for(let y=0;y<h;y++){
+    const gyf=Math.min(gy-1,Math.max(0,(y+0.5)/cell-0.5)); const ya=Math.floor(gyf), yb=Math.min(gy-1,ya+1), fy=gyf-ya;
+    for(let x=0;x<w;x++){
+      const i=(y*w+x)*4; const a=x0i[x], b=x1i[x], f=fx[x]; const c=[0,0,0];
+      for(let ch=0;ch<3;ch++){
+        const g=grid[ch];
+        const top=g[ya*gx+a]*(1-f)+g[ya*gx+b]*f, bot=g[yb*gx+a]*(1-f)+g[yb*gx+b]*f;
+        c[ch]=Math.min(1,d[i+ch]/(top*(1-fy)+bot*fy));
+      }
+      const mn=Math.min(c[0],c[1],c[2]); const araw=1-mn;
+      let alpha=0;
+      if(araw>t0) alpha=Math.min(1,(araw-t0)/(t1-t0));
+      if(alpha>0 && araw>0.001){
+        d[i]=Math.round(Math.max(0,Math.min(1,(c[0]-mn)/araw))*255);
+        d[i+1]=Math.round(Math.max(0,Math.min(1,(c[1]-mn)/araw))*255);
+        d[i+2]=Math.round(Math.max(0,Math.min(1,(c[2]-mn)/araw))*255);
+      }
+      d[i+3]=Math.round(alpha*255);
+    }
+  }
+  const o=document.createElement("canvas"); o.width=w; o.height=h;
+  o.getContext("2d").putImageData(img,0,0); return o;
+}
+
+
+    
+function loadImg(src){ return new Promise((ok,ko)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=()=>ko(new Error('Image illisible')); i.src=src; }); }
+function readFile(f){ return new Promise((ok,ko)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=()=>ko(new Error('Lecture impossible')); r.readAsDataURL(f); }); }
+function toBlob(c){ return new Promise(res=>c.toBlob(res,'image/png')); }
+
+/* ---- appel de la fonction sécurisée ---- */
+async function api(body){
+  const {data:{session}}=await _supabase.auth.getSession();
+  if(!session) throw new Error('Session expirée, reconnectez-vous');
+  const r=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':"sb_publishable_fVGjFgTs7hsG_RIYljFSKQ_-ljz2sJ4"},body:JSON.stringify(body)});
+  let j={}; try{ j=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(j.error||('Erreur '+r.status));
+  return j;
+}
+
+/* ---- widget signature (n = création, e = édition) ---- */
+const SIG={ n:{blob:null,url:null,removed:false}, e:{blob:null,url:null,removed:false,current:null} };
+function paintSig(k){
+  const s=SIG[k], box=$(k+'-sigbox'); box.replaceChildren();
+  const src = s.url || (!s.removed && s.current) || null;
+  if(src){ const i=new Image(); i.src=src; box.append(i); } else { const sp=document.createElement('span'); sp.textContent='Aucune signature'; box.append(sp); }
+}
+function setSigBlob(k,blob){ const s=SIG[k]; if(s.url) URL.revokeObjectURL(s.url); s.blob=blob; s.url=URL.createObjectURL(blob); s.removed=false; paintSig(k); }
+function clearSig(k){ const s=SIG[k]; if(s.url) URL.revokeObjectURL(s.url); s.blob=null; s.url=null; s.removed=true; paintSig(k); }
+let sigTarget='n';
+function pickSig(k){ sigTarget=k; $('file-sig').value=''; $('file-sig').click(); }
+$('file-sig').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  const k=sigTarget, msg=$(k==='n'?'msg':'e-msg');
+  try{
+    const img=await loadImg(await readFile(f));
+    const kk=Math.min(1,1200/Math.max(img.width,img.height));
+    const c=document.createElement('canvas'); c.width=Math.round(img.width*kk); c.height=Math.round(img.height*kk);
+    const x=c.getContext('2d'); x.drawImage(img,0,0,c.width,c.height);
+    // image déjà transparente : gardée telle quelle ; sinon fond blanc retiré si la case est cochée
+    const d=x.getImageData(0,0,c.width,c.height).data; let alpha=false; for(let i=3;i<d.length;i+=16){ if(d[i]<250){alpha=true;break;} }
+    let out;
+    if(alpha) out=trimCanvas(c);
+    else if($(k+'-rmbg').checked){ const flat=document.createElement('canvas'); flat.width=c.width; flat.height=c.height; const fx=flat.getContext('2d'); fx.fillStyle='#fff'; fx.fillRect(0,0,flat.width,flat.height); fx.drawImage(c,0,0); out=trimCanvas(removeBg(flat,50)); }
+    else out=c;
+    setSigBlob(k,await toBlob(out));
+  }catch(err){ say(msg,'Image impossible à lire : '+err.message,'bad'); }
+});
+
+/* ---- pad de dessin ---- */
+const pad=$('padcv'); let pctx=null, drawing=false, inked=false, last=null;
+function openPad(k){ sigTarget=k; $('pad-modal').style.display='flex'; requestAnimationFrame(()=>{ const r=pad.getBoundingClientRect(); pad.width=Math.round(r.width*2); pad.height=Math.round(r.height*2); pctx=pad.getContext('2d'); pctx.lineWidth=5; pctx.lineCap='round'; pctx.lineJoin='round'; pctx.strokeStyle='#0b1220'; inked=false; }); }
+function closePad(){ $('pad-modal').style.display='none'; }
+function padClear(){ if(pctx){ pctx.clearRect(0,0,pad.width,pad.height); inked=false; } }
+function pp(e){ const r=pad.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return {x:(t.clientX-r.left)*pad.width/r.width,y:(t.clientY-r.top)*pad.height/r.height}; }
+function pdown(e){ e.preventDefault(); drawing=true; last=pp(e); pctx.beginPath(); pctx.arc(last.x,last.y,2.5,0,6.3); pctx.fillStyle='#0b1220'; pctx.fill(); inked=true; }
+function pmove(e){ if(!drawing) return; e.preventDefault(); const p=pp(e); pctx.beginPath(); pctx.moveTo(last.x,last.y); pctx.lineTo(p.x,p.y); pctx.stroke(); last=p; }
+function pup(){ drawing=false; }
+pad.addEventListener('pointerdown',pdown); pad.addEventListener('pointermove',pmove); window.addEventListener('pointerup',pup);
+async function padOk(){ if(!inked){ closePad(); return; } setSigBlob(sigTarget,await toBlob(trimCanvas(pad))); closePad(); }
+
+/* ---- liste ---- */
+let USERS=[]; const thumbCache={};
+async function thumb(path){ if(!path) return null; if(thumbCache[path]) return thumbCache[path]; const {data}=await _supabase.storage.from('signatures').createSignedUrl(path,3600); if(data) thumbCache[path]=data.signedUrl; return data?data.signedUrl:null; }
+function fmtDate(s){ if(!s) return 'jamais'; const d=new Date(s); return d.toLocaleDateString('fr-FR')+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+async function loadList(){
+  const box=$('list');
+  try{
+    USERS=(await api({action:'list'})).users;
+    const urls=await Promise.all(USERS.map(u=>thumb(u.signature_path)));
+    box.replaceChildren();
+    USERS.forEach((u,i)=>{
+      const d=document.createElement('div'); d.className='acct';
+      d.innerHTML=`<div class="top"><div><div class="nm">${esc(u.nom||'(sans nom)')}<span class="pill ${u.role==='transporteur'?'tra':'ing'}">${u.role==='transporteur'?'Transporteur':'Ingénieur'}</span>${u.is_admin?'<span class="pill adm">Admin</span>':''}</div><div class="em">${esc(u.email)}</div><div class="meta">Dernière connexion : ${fmtDate(u.last_sign_in_at)}</div></div><div class="sigthumb">${urls[i]?`<img src="${urls[i]}">`:'<span>Pas de signature</span>'}</div></div>
+        <div class="acts"><button class="btn-mini edit" data-act="edit" data-i="${i}">✏️ Modifier / mot de passe</button>${u.is_admin?'':`<button class="btn-mini delete" data-act="del" data-i="${i}">🗑️ Supprimer</button>`}</div>`;
+      box.append(d);
+    });
+    box.querySelectorAll('button[data-act]').forEach(b=>b.addEventListener('click',()=>{ const u=USERS[+b.dataset.i]; b.dataset.act==='edit'?openEdit(u):delAccount(u); }));
+  }catch(e){ box.innerHTML='<div class="msg bad">Chargement impossible : '+esc(e.message)+'</div>'; }
+}
+
+/* ---- envoi de la signature ---- */
+async function uploadSig(email,blob){
+  const path='sig_'+email.toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now()+'.png';
+  const {error}=await _supabase.storage.from('signatures').upload(path,blob,{contentType:'image/png'});
+  if(error) throw new Error('Envoi de la signature impossible : '+error.message);
+  return path;
+}
+
+/* ---- création ---- */
+async function createAccount(){
+  const msg=$('msg'), btn=$('btn-create');
+  const email=$('n-email').value.trim().toLowerCase(), password=$('n-pass').value, nom=$('n-nom').value.trim(), role=$('n-role').value;
+  if(!email||!password||!nom){ say(msg,'E-mail, mot de passe et nom affiché sont obligatoires.','bad'); return; }
+  btn.disabled=true; say(msg,'Création…');
+  let path=null;
+  try{
+    if(SIG.n.blob) path=await uploadSig(email,SIG.n.blob);
+    try{ await api({action:'create',email,password,nom,role,signature_path:path}); }
+    catch(e){ if(path) await _supabase.storage.from('signatures').remove([path]); throw e; }
+    say(msg,'✅ Compte créé. Communiquez-lui son e-mail et son mot de passe.','ok');
+    ['n-email','n-pass','n-nom'].forEach(i=>$(i).value=''); clearSig('n'); SIG.n.removed=false;
+    await loadList();
+  }catch(e){ say(msg,'❌ '+e.message,'bad'); }
+  btn.disabled=false;
+}
+
+/* ---- modification ---- */
+let editing=null;
+async function openEdit(u){
+  editing=u; $('e-title').textContent=u.email; $('e-nom').value=u.nom||''; $('e-role').value=u.role||'ingenieur'; $('e-pass').value=''; say($('e-msg'),'');
+  const s=SIG.e; if(s.url) URL.revokeObjectURL(s.url); s.blob=null; s.url=null; s.removed=false; s.current=await thumb(u.signature_path); paintSig('e');
+  $('edit-modal').style.display='flex';
+}
+function closeEdit(){ $('edit-modal').style.display='none'; editing=null; }
+async function saveEdit(){
+  if(!editing) return; const m=$('e-msg'), btn=$('e-save'); btn.disabled=true; say(m,'Enregistrement…');
+  const body={action:'update',email:editing.email,nom:$('e-nom').value.trim(),role:$('e-role').value};
+  const pw=$('e-pass').value; if(pw) body.password=pw;
+  let newPath=null;
+  try{
+    if(SIG.e.blob){ newPath=await uploadSig(editing.email,SIG.e.blob); body.signature_path=newPath; }
+    else if(SIG.e.removed) body.signature_path=null;
+    try{ await api(body); } catch(e){ if(newPath) await _supabase.storage.from('signatures').remove([newPath]); throw e; }
+    closeEdit(); say($('msg'),'✅ Modifications enregistrées.'+(pw?' Nouveau mot de passe à communiquer.':''),'ok'); await loadList();
+  }catch(e){ say(m,'❌ '+e.message,'bad'); }
+  btn.disabled=false;
+}
+async function delAccount(u){
+  if(!confirm('Supprimer définitivement le compte '+u.email+' ?\n\nLa personne ne pourra plus se connecter. Les BL déjà enregistrés sont conservés.')) return;
+  try{ await api({action:'delete',email:u.email}); say($('msg'),'✅ Compte supprimé.','ok'); await loadList(); }
+  catch(e){ say($('msg'),'❌ '+e.message,'bad'); }
+}
+
+/* ---- connexion / accès réservé ---- */
+function isAdmin(email){ return (email||'').toLowerCase()===ADMIN_EMAIL; }
+function enter(email){
+  if(!isAdmin(email)){ alert("Page réservée à l'administrateur."); location.href='index.html'; return; }
+  L.style.display='none'; A.style.display='block'; loadList();
+}
+let busy=false;
+async function handleLogin(){
+  if(busy) return; const email=$('login-email').value.trim(), pass=$('login-pass').value, err=$('login-error'), btn=$('btn-login-submit');
+  err.innerText=''; if(!email||!pass){ err.innerText='Veuillez remplir tous les champs.'; return; }
+  busy=true; btn.disabled=true; btn.innerText='Connexion...';
+  try{ const {data,error}=await _supabase.auth.signInWithPassword({email,password:pass});
+    if(error) err.innerText='Identifiants incorrects ou compte inexistant.'; else if(data&&data.user){ enter(data.user.email); busy=false; btn.disabled=false; btn.innerText='SE CONNECTER'; return; }
+  }catch(e){ err.innerText='Connexion impossible. Vérifiez votre réseau.'; }
+  busy=false; btn.disabled=false; btn.innerText='SE CONNECTER';
+}
+$('logout').addEventListener('click',async()=>{ try{await _supabase.auth.signOut();}catch(e){} location.href='index.html'; });
+(async()=>{
+  try{ const {data:{session}}=await _supabase.auth.getSession(); if(session&&session.user){ enter(session.user.email); return; } }catch(e){ console.error(e); }
+  L.style.display='flex';
+})();
+</script>
+</body>
+</html>
