@@ -395,6 +395,17 @@
         .btn-mail-ios { background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue)); color: white; box-shadow: 0 4px 14px rgba(4,42,114,0.22); }
         .btn-primary-ios:active, .btn-secondary-ios:active, .btn-mail-ios:active, .btn-refresh-ios:active { transform: scale(0.97); opacity: 0.92; }
 
+        .sticky-actions { gap: 10px; }
+        .act-group { display: flex; flex-direction: column; gap: 5px; }
+        .act-title { font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); padding-left: 4px; }
+        .act-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-compact { min-height: 46px; padding: 10px 8px; font-size: 14px; border-radius: 14px; gap: 6px; white-space: nowrap; }
+        .btn-compact:disabled { font-size: 12px; white-space: normal; line-height: 1.15; }
+        .opt-line { display:flex; align-items:center; gap:8px; margin:0; padding:2px 4px; font-size:12px; font-weight:600; text-transform:none; letter-spacing:0; color:var(--text-muted); }
+        .opt-line input[type="checkbox"] { width:20px; height:20px; min-height:0; flex:0 0 20px; margin:0; padding:0; }
+        .btn-pharma { background: linear-gradient(135deg, var(--palette-purple), var(--palette-plum-magenta)); box-shadow: 0 4px 14px rgba(128,44,241,0.25); }
+        .btn-pharma-outline { border-color: #d8b4fe; color: var(--palette-purple); }
+
         #container-preview-zone { display: block; }
 
         .bl-preview-header {
@@ -628,21 +639,31 @@
         </div>
 
         <div class="sticky-actions">
-            <button class="btn-mail-ios" id="btn-generate-email" onclick="generateEmail(false)">📤 ENVOYER LE BL PAR EMAIL</button>
-            <button class="btn-mail-ios" id="btn-generate-email-pharma" onclick="generateEmail(true)" style="background: linear-gradient(135deg, var(--palette-purple), var(--palette-plum-magenta)); box-shadow: 0 4px 14px rgba(128,44,241,0.25);">🏥 ENVOYER VERSION PHARMACIE</button>
-            <button class="btn-secondary-ios" id="btn-download-bl" onclick="downloadCurrentBl(false)">📥 TÉLÉCHARGER LE BL</button>
-            <button class="btn-secondary-ios" id="btn-download-bl-pharma" onclick="downloadCurrentBl(true)" style="border-color:#d8b4fe; color:var(--palette-purple);">📥 TÉLÉCHARGER LE BL VERSION PHARMA</button>
-            <div class="grid-2">
-                <button class="btn-primary-ios" id="btn-save-bl" style="padding:13px; font-size:13px;" onclick="saveCurrentBlToHistory(false)">💾 ENREGISTRER CE BL</button>
-                <button class="btn-refresh-ios" style="padding:13px; font-size:13px;" onclick="startNewBl()">🆕 NOUVEAU BL</button>
+            <div class="act-group">
+                <div class="act-title">Envoyer par email</div>
+                <div class="act-row">
+                    <button class="btn-mail-ios btn-compact" id="btn-generate-email" onclick="generateEmail(false)">📤 BL complet</button>
+                    <button class="btn-mail-ios btn-compact btn-pharma" id="btn-generate-email-pharma" onclick="generateEmail(true)">🏥 Pharmacie</button>
+                </div>
             </div>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--text-muted); justify-content:center; margin-top:-2px;">
+            <div class="act-group">
+                <div class="act-title">Télécharger l'image</div>
+                <div class="act-row">
+                    <button class="btn-secondary-ios btn-compact" id="btn-download-bl" onclick="downloadCurrentBl(false)">📥 BL complet</button>
+                    <button class="btn-secondary-ios btn-compact btn-pharma-outline" id="btn-download-bl-pharma" onclick="downloadCurrentBl(true)">📥 Pharmacie</button>
+                </div>
+            </div>
+            <div class="act-row">
+                <button class="btn-primary-ios btn-compact" id="btn-save-bl" onclick="saveCurrentBlToHistory(false)">💾 Enregistrer</button>
+                <button class="btn-refresh-ios btn-compact" onclick="startNewBl()">🆕 Nouveau BL</button>
+            </div>
+            <label class="opt-line">
                 <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()">
-                Enregistrement automatique à chaque envoi
+                Enregistrer auto à chaque envoi
             </label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--text-muted); justify-content:center;">
+            <label class="opt-line">
                 <input type="checkbox" id="attachToggle" onchange="onAttachToggleChange()">
-                📎 Joindre l'image du BL (menu Partager, sans destinataires pré-remplis)
+                📎 Joindre l'image au mail <span style="font-weight:500">(via Partager)</span>
             </label>
         </div>
 
