@@ -1728,10 +1728,10 @@
             ? medecins.map((m, i) => `
                 <div class="cd-doctor-row" style="flex-direction:column; align-items:stretch; gap:8px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                        <span>👨‍⚕️ Dr ${m.nom}</span>
+                        <span>👨‍⚕️ ${m.nom}</span>
                         <button class="btn-mini delete" onclick="deleteDoctor(${m.id})">🗑️</button>
                     </div>
-                    ${docThumbs[i] ? `<div class="tampon-preview-box" style="margin-top:0;"><img src="${docThumbs[i]}" alt="Tampon du Dr ${m.nom}"></div>` : ''}
+                    ${docThumbs[i] ? `<div class="tampon-preview-box" style="margin-top:0;"><img src="${docThumbs[i]}" alt="Tampon de ${m.nom}"></div>` : ''}
                     <div style="display:flex; gap:6px; flex-wrap:wrap;">
                         <button class="btn-mini sign" onclick="triggerDoctorStamp(${m.id}, 'photo')">📷 ${m.tampon_url ? 'Photo' : 'Tampon : photo'}</button>
                         <button class="btn-mini sign" onclick="triggerDoctorStamp(${m.id}, 'import')">🖼️ ${m.tampon_url ? 'Image' : 'Tampon : importer'}</button>
@@ -1774,7 +1774,8 @@
             <div class="admin-section-title">👨‍⚕️ Médecins implanteurs</div>
             <div id="cd-doctors-list">${docsHtml}</div>
             <div style="display:flex; gap:8px; margin-top:8px; margin-bottom:22px;">
-                <input type="text" id="cd-new-doctor" placeholder="Nom du nouveau médecin" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addDoctorToCenter();}">
+                <select id="cd-new-doctor-title" style="flex:0 0 74px; padding:0 8px; font-weight:800;" aria-label="Titre"><option value="Dr">Dr</option><option value="Pr">Pr</option></select>
+                <input type="text" id="cd-new-doctor" placeholder="Nom du nouveau médecin" style="flex:1; min-width:0;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addDoctorToCenter();}">
                 <button class="btn-mini edit" style="white-space:nowrap;" onclick="addDoctorToCenter()">➕ Ajouter</button>
             </div>
 
@@ -1857,7 +1858,9 @@
 
     async function addDoctorToCenter() {
         const input = document.getElementById('cd-new-doctor');
-        const nomDoc = input.value.trim();
+        // Titre choisi (Dr / Pr) + nom saisi ; si l'utilisateur a déjà tapé « Dr … » / « Pr … », on ne le double pas
+        const bare = input.value.trim().replace(/^(dr|pr|docteur|professeur|pr?of)\.?\s+/i, '').trim();
+        const nomDoc = bare ? `${document.getElementById('cd-new-doctor-title').value} ${bare}` : '';
         const status = document.getElementById('admin-global-status');
         if (!nomDoc || !currentCenterDetail) return;
 
