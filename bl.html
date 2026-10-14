@@ -623,6 +623,16 @@
     .sugg-item b{font-size:13px;color:#042a72}
     .sugg-item span{font-size:11.5px;color:#64748b}
     .sugg-note{padding:6px 12px;font-size:10px;color:#94a3b8}
+
+    .ml-wrap{border:1.5px solid #cbd5e1;border-radius:14px;background:#fff;overflow:hidden}
+    .ml-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #eef2f7;font-size:13px;font-weight:650;color:var(--text-main)}
+    .ml-item span{flex:1;overflow-wrap:anywhere;min-width:0}
+    .ml-item.bad span{color:#ff144b}
+    .ml-item button{flex:0 0 32px;height:32px;border:0;border-radius:9px;background:#fff1f2;color:#ff144b;font-size:14px;font-weight:800}
+    .ml-empty{padding:10px 12px;font-size:12px;color:#94a3b8;font-style:italic}
+    .ml-add{display:flex;gap:8px;padding:8px;background:#f8fafc}
+    .ml-add input{flex:1;min-width:0;height:40px;font-size:14px}
+    .ml-add button{flex:0 0 44px;height:40px;border:0;border-radius:10px;background:linear-gradient(135deg,#042a72,#4870ff);color:#fff;font-size:18px;font-weight:800}
 </style>
 </head>
 <body>
@@ -1504,6 +1514,47 @@
 
     // ====== CRÉATION RAPIDE D'UN CENTRE ======
 
+
+    // ====== LISTES D'E-MAILS : affichage en liste (une adresse par ligne) ======
+    // Le champ texte d'origine reste le support de la valeur (séparée par des virgules) : l'enregistrement ne change pas.
+    const MailList = (() => {
+        const parse = v => String(v || '').split(/[;,\s]+/).map(a => a.trim()).filter(Boolean);
+        function bind(id) {
+            const input = document.getElementById(id); if (!input || input.dataset.ml) return;
+            input.dataset.ml = '1'; input.style.display = 'none';
+            let items = parse(input.value);
+            const wrap = document.createElement('div'); wrap.className = 'ml-wrap';
+            const list = document.createElement('div'); list.className = 'ml-list';
+            const row = document.createElement('div'); row.className = 'ml-add';
+            const inp = document.createElement('input'); inp.type = 'email'; inp.inputMode = 'email'; inp.autocapitalize = 'off'; inp.placeholder = 'Ajouter une adresse…'; inp.setAttribute('autocomplete', 'off');
+            const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = '＋'; btn.setAttribute('aria-label', 'Ajouter');
+            row.append(inp, btn); wrap.append(list, row); input.insertAdjacentElement('afterend', wrap);
+            function sync() { input.value = items.join(', '); }
+            function draw() {
+                list.innerHTML = '';
+                if (!items.length) { const e = document.createElement('div'); e.className = 'ml-empty'; e.textContent = 'Aucune adresse'; list.appendChild(e); }
+                items.forEach((a, i) => {
+                    const r = document.createElement('div'); r.className = 'ml-item' + (a.includes('@') ? '' : ' bad');
+                    const t = document.createElement('span'); t.textContent = a;
+                    const x = document.createElement('button'); x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Retirer ' + a);
+                    x.addEventListener('click', () => { items.splice(i, 1); sync(); draw(); });
+                    r.append(t, x); list.appendChild(r);
+                });
+            }
+            function add() {
+                const novel = parse(inp.value).filter(a => a.includes('@') && !items.some(b => b.toLowerCase() === a.toLowerCase()));
+                if (novel.length) { items.push(...novel); sync(); draw(); }
+                inp.value = '';
+            }
+            btn.addEventListener('click', () => { add(); inp.focus(); });
+            inp.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ',' || e.key === ';') { e.preventDefault(); add(); } });
+            inp.addEventListener('blur', add);
+            inp.addEventListener('paste', () => setTimeout(add, 0));
+            draw();
+        }
+        return { bind };
+    })();
+
     // ====== AIDE À LA SAISIE (adresse + établissement) ======
     // Adresses : Base Adresse Nationale (api-adresse.data.gouv.fr) — Établissements : Photon / OpenStreetMap.
     // Tout est facultatif : en cas d'échec réseau, la saisie libre continue de fonctionner.
@@ -1711,7 +1762,7 @@
             <div class="form-group"><label>Adresse postale complète</label><input type="text" id="cd-adr" value="${(centreData.adresse||'').replace(/"/g,'&quot;')}"></div>
             <div class="admin-section-title" style="margin-top:14px;">✉️ Mes destinataires (propres à mon compte)</div>
             <p style="font-size:11px; color:var(--text-muted); margin:0 0 8px 0;">Utilisés uniquement quand vous envoyez un BL depuis votre compte. Chaque compte règle les siens.</p>
-            <div class="form-group"><label>Destinataires du BL (séparés par une virgule)</label><input type="text" id="cd-my-bl" inputmode="email" autocapitalize="off" placeholder="cardiologie@hopital.fr, ..." value="${esc2(myBl)}"></div>
+            <div class="form-group"><label>Destinataires du BL</label><input type="text" id="cd-my-bl" inputmode="email" autocapitalize="off" placeholder="cardiologie@hopital.fr, ..." value="${esc2(myBl)}"></div>
             <div class="form-group"><label>Destinataires version pharmacie</label><input type="text" id="cd-my-pharma" inputmode="email" autocapitalize="off" placeholder="pharmacie@hopital.fr, ..." value="${esc2(myPh)}"></div>
             ${myOv ? `<button class="btn-mini edit" style="width:100%; justify-content:center; margin-bottom:10px;" onclick="resetMyMailLists()">↩️ Revenir à la liste par défaut du centre</button>` : ''}
             <details style="margin-bottom:12px;"><summary style="font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer;">Liste par défaut du centre (comptes sans liste personnelle)</summary>
@@ -1740,6 +1791,7 @@
                 <button class="btn-mini delete" style="width:100%; justify-content:center; padding:12px;" onclick="deleteCenterEntirely()">🗑️ Supprimer définitivement ce centre</button>
             </div>`;
         AddrAssist.bind('cd-nom','cd-adr');
+        ['cd-my-bl','cd-my-pharma','cd-mail-bl','cd-mail-pharma'].forEach(id => MailList.bind(id));
     }
 
     async function saveMyMailLists(c) {
