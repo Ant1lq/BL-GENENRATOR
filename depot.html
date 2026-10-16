@@ -870,7 +870,12 @@ function startMode(m){ S.mode=m; show(m); }
 window.__depotMode=startMode;
 
 /* ================= DÉPÔT CRM : lecture du PDF ================= */
-const RE = /(?:^|\s)([A-Z]{3}\d{3}[A-Z])\s+(.+?)\s+(\S+)\s+(\d{2}\/\d{2}\/\d{4})(?:\s+\*+)?\s+(\d{2}\/\d{2}\/\d{4})(?:\s+(\d+))?/;
+const DATE_PART = "(\\d{2}\\/\\d{2}\\/\\d{4})(?:\\s+\\*+)?\\s+(\\d{2}\\/\\d{2}\\/\\d{4})(?:\\s+(\\d+))?";
+// 1) ancrage sur la colonne « Zone » (le code article suit toujours) : accepte tous les formats de code (C0G014, EPQN7P015, TLD041C…)
+const RE_ZONE = new RegExp("ZONE\\s+\\S+\\s+(\\S+)\\s+(.+?)\\s+(\\S+)\\s+" + DATE_PART);
+// 2) secours : un code article = 4 à 12 caractères majuscules/chiffres mêlant lettres et chiffres
+const RE_CODE = new RegExp("(?:^|\\s)((?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\\d)[A-Z0-9]{4,12})\\s+(.+?)\\s+(\\S+)\\s+" + DATE_PART);
+function matchRow(text){ return RE_ZONE.exec(text) || RE_CODE.exec(text); }
 
 function setupPdfJs(){
   const lib = window.pdfjsLib;
@@ -904,17 +909,33 @@ async function parsePdf(bytes){
       if(last && Math.abs(last.cy - it.cy) < 5){ last.items.push(it); last.cy = (last.cy*(last.items.length-1)+it.cy)/last.items.length; }
       else lines.push({cy:it.cy, items:[it]});
     });
-    lines.forEach(line=>{
-      line.items.sort((a,b)=>a.x-b.x);
-      const text = line.items.map(i=>i.s).join(" ").replace(/\s+/g," ");
-      const m = RE.exec(text);
+    lines.forEach(line=>{ line.items.sort((a,b)=>a.x-b.x); line.text = line.items.map(i=>i.s).join(" ").replace(/\s+/g," "); line.m = matchRow(line.text); });
+    lines.forEach((line,li)=>{
+      const m = line.m, text = line.text;
       if(!m) return;
       if(!depot){ const d=/^\d{5,7}\s+(.+?)\s+\d{2}\s/.exec(text); if(d) depot=d[1]; }
       const lastItem = line.items[line.items.length-1];
       if(fallbackX[p-1]==null && /^\d+$/.test(lastItem.s)) fallbackX[p-1] = lastItem.x + 38;
+      // Désignation sur plusieurs lignes : les lignes de texte juste au-dessus, dans la colonne Désignation, font partie de la ligne
+      let des = m[2].trim();
+      const codeIt = line.items.find(i=>i.s===m[1]), lotIt = [...line.items].reverse().find(i=>i.s===m[3]);
+      if(codeIt && lotIt){
+        const x0 = codeIt.x + codeIt.w - 4, x1 = lotIt.x + 4; let prev = line, extra = [];
+        for(let k=li-1;k>=0 && extra.length<3;k--){
+          const up = lines[k];
+          if(up.m || /Désignation|Code Article|N° de Lot|Code Clients/i.test(up.text)) break;
+          const hh = Math.max(...up.items.map(i=>i.h), 5);
+          if(Math.abs(up.cy - prev.cy) > hh*1.5) break;
+          // on ne garde que ce qui tombe dans la colonne Désignation (un fragment d'en-tête voisin peut partager la ligne)
+          const inCol = up.items.filter(i=>i.x>=x0 && i.x+i.w<=x1+2);
+          if(!inCol.length) break;
+          extra.unshift(inCol.map(i=>i.s).join(" ")); prev = up;
+        }
+        if(extra.length) des = (extra.join(" ")+" "+des).trim();
+      }
       rows.push({
         id:rows.length, page:p-1, cy:line.cy, x0:line.items[0].x,
-        code:m[1], des:m[2].trim(), lot:m[3], theo:1,
+        code:m[1], des:des, lot:m[3], theo:1,
         meta:["Péremption "+m[5]],
         val:null, note:""
       });
