@@ -614,6 +614,7 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 .result .rn{flex-basis:100%;font-weight:750;color:var(--ok);overflow-wrap:anywhere;font-size:13px}
 .result>*:not(.rn){flex:1}
 
+.mailprev{margin-top:10px;font-size:12px;color:#475569}.mailprev summary{font-weight:800;cursor:pointer}.mp-s{font-weight:800;margin:6px 0;color:#042a72}.mp-b{white-space:pre-wrap;word-break:break-word;font-family:inherit;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0;font-size:11.5px}
 </style>
 </head>
 <body>
@@ -1700,6 +1701,41 @@ function clearResult(){
   box.classList.add("hidden"); box.replaceChildren();
   if(S.resultUrl){ URL.revokeObjectURL(S.resultUrl); S.resultUrl=null; }
 }
+const INVENTORY_TO = ["Aymeric.Rongier@cf.microport.com","Johann.Morin@cf.microport.com"]; // destinataires des inventaires
+// Objet + texte du mail, remplis d'après l'inventaire réalisé (centre, date, bilan, écarts)
+function buildInventoryMail(){
+  const crm = S.mode==="crm";
+  const centre = (crm ? S.hint : (S.ctx && S.ctx.et)) || "";
+  const date = fmtFR(S.date);
+  const sep = "──────────────────────";
+  const rows = S.rows;
+  const qty = r => (typeof r.val==="number") ? r.val : null;
+  const total = rows.reduce((a,r)=>a+(r.theo||1),0);
+  const counted = rows.reduce((a,r)=>a+(qty(r)||0),0);
+  const todo = rows.filter(r=>r.val===null);
+  const gaps = rows.filter(r=>r.val!==null && r.val < (r.theo||1));
+  const notes = rows.filter(r=>r.val!==null && r.val >= (r.theo||1) && (r.note||"").trim());
+  const label = r => r.des + " — lot " + r.lot + (r.theo>1 ? " (compté "+r.val+"/"+r.theo+")" : "");
+  const gapLine = r => "   • " + label(r) + (r.note&&r.note.trim() ? " : "+r.note.trim() : (r.val===0 ? " : absent" : ""));
+  const title = crm ? "Dépôt CRM" : "Dépôt programmateurs";
+  const subject = (crm ? "[INVENTAIRE DÉPÔT CRM] " : "[INVENTAIRE DÉPÔT PROG] ") + centre + " - " + date;
+  let ctx = sep+"\n📌 CONTEXTE\n"+sep+"\n• Centre : "+centre+"\n• Date de l'inventaire : "+date;
+  if(!crm && S.ctx){
+    if(S.ctx.ve && S.ctx.ve!=="-") ctx += "\n• Vendeur : "+S.ctx.ve;
+    if(S.ctx.lo) ctx += "\n• Localité : "+String(S.ctx.lo).replace(/\s*CEDEX.*$/i,"")+(S.ctx.dp?" ("+S.ctx.dp+")":"");
+  }
+  let bilan = sep+"\n📦 BILAN\n"+sep+"\n• Lignes inventoriées : "+(rows.length-todo.length)+" / "+rows.length+"\n• Quantité comptée : "+counted+" / "+total;
+  if(!gaps.length) bilan += "\n• ✅ Aucun écart : tout le matériel est présent.";
+  else bilan += "\n• ⚠️ Écarts : "+gaps.length+" ligne"+(gaps.length>1?"s":"");
+  let det = "";
+  if(gaps.length) det += "\n\n"+sep+"\n⚠️ ÉCARTS\n"+sep+"\n"+gaps.map(gapLine).join("\n");
+  if(notes.length) det += "\n\n"+sep+"\n📝 REMARQUES\n"+sep+"\n"+notes.map(r=>"   • "+label(r)+" : "+r.note.trim()).join("\n");
+  if(todo.length) det += "\n\n⚠️ "+todo.length+" ligne"+(todo.length>1?"s":"")+" non renseignée"+(todo.length>1?"s":"")+" dans ce document.";
+  const body = "Bonjour,\n\nVeuillez trouver ci-joint l'état de "+title.toLowerCase()+" complété pour "+centre+", inventaire réalisé le "+date+".\n\n"+ctx+"\n\n"+bilan+det+"\n\nCordialement,";
+  return {subject, body};
+}
+
+window.__buildInventoryMail=buildInventoryMail;
 function showResult(bytes,filename){
   clearResult();
   const blob=new Blob([bytes],{type:"application/pdf"});
@@ -1707,15 +1743,19 @@ function showResult(bytes,filename){
   box.append(h("div",{class:"rn"},filename));
   S.resultUrl=URL.createObjectURL(blob);
   box.append(h("a",{class:"primary",href:S.resultUrl,download:filename,rel:"noopener"},"⬇️ Télécharger le PDF"));
+  const mail=buildInventoryMail();
   try{
     const file=new File([blob],filename,{type:"application/pdf"});
     if(navigator.canShare && navigator.canShare({files:[file]})){
       box.append(h("button",{class:"secondary",type:"button",onclick:async()=>{
-        try{ await navigator.share({files:[file],title:filename}); }
+        try{ await navigator.share({files:[file],title:mail.subject,text:mail.body}); }
         catch(err){ if(!err || err.name!=="AbortError") setStatus("Partage impossible : "+(err&&err.message?err.message:"erreur"),"bad"); }
-      }},"📤 Partager / envoyer par mail"));
+      }},"📤 Partager le PDF (objet et texte pré-remplis)"));
     }
   }catch(e){}
+  box.append(h("button",{class:"secondary",type:"button",onclick:()=>{ window.open("mailto:"+INVENTORY_TO.join(",")+"?subject="+encodeURIComponent(mail.subject)+"&body="+encodeURIComponent(mail.body),"_blank"); }},"✉️ Écrire le mail à Aymeric et Johann (joindre le PDF téléchargé)"));
+  const det=h("details",{class:"mailprev"},h("summary",null,"Aperçu du mail"),h("div",{class:"mp-s"},"À : "+INVENTORY_TO.join(", ")),h("div",{class:"mp-s"},mail.subject),h("pre",{class:"mp-b"},mail.body));
+  box.append(det);
   box.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 
