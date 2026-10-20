@@ -961,7 +961,10 @@
                 <img id="man-photo-preview" style="width:100%; max-height:180px; object-fit:contain; background:#fafafa; border:1px solid #e2e8f0; border-radius:14px; display:block;">
                 <button type="button" onclick="clearManualPhoto()" style="position:absolute; top:8px; right:8px; background:rgba(15,23,42,0.75); color:white; border:none; width:28px; height:28px; border-radius:50%; font-size:14px; cursor:pointer;">✕</button>
             </div>
-            <button class="btn-action-block" style="margin-top:0;" onclick="triggerModalPhoto()">📷 Prendre / reprendre la photo</button>
+            <div class="grid-2" style="gap:8px;">
+                <button class="btn-action-block" style="margin-top:0;" onclick="triggerModalPhoto()">📷 Prendre la photo</button>
+                <button class="btn-action-block" style="margin-top:0;" onclick="triggerModalGallery()">🖼️ Depuis la galerie</button>
+            </div>
         </div>
         <div id="manual-photo-status" style="font-size: 11px; color: var(--text-muted); font-style: italic; margin-bottom: 10px; text-align: center;"></div>
         <div class="grid-2 modal-footer" style="margin-top:24px;">
@@ -2271,6 +2274,14 @@ function removeBg(src,sens){
         currentScanScope = (document.getElementById('man-type').value === "SONDE") ? "SONDE" : "BOITIER";
         document.getElementById('ocr-status').innerText = "Photo de l'étiquette entière (code-barres inclus) : cadrage automatique.";
         document.getElementById('label-camera-input').click();
+    }
+
+    // Même chaîne que la photo : cadrage automatique sur l'étiquette, lecture du code-barres (UDI/GS1) + OCR, noir et blanc
+    function triggerModalGallery() {
+        modalScannerActive = true; cropPurpose = 'label';
+        currentScanScope = (document.getElementById('man-type').value === "SONDE") ? "SONDE" : "BOITIER";
+        document.getElementById('ocr-status').innerText = "Image de l'étiquette entière (code-barres inclus) : cadrage automatique.";
+        const inp = document.getElementById('label-gallery-input'); inp.value = ''; inp.click();
     }
 
     function clearManualPhoto() {
