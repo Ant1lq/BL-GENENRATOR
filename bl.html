@@ -799,9 +799,9 @@
             <div class="act-group">
                 <div class="act-title">Méthode d'envoi</div>
                 <select id="send-method" onchange="setSendMethod(this.value)" style="height:44px; font-size:14px;">
+                    <option value="partage">Partage : BL joint, destinataires à coller</option>
                     <option value="outlook">Outlook : tout prérempli, BL à coller</option>
                     <option value="coller">Appli mail par défaut : tout prérempli, BL à coller</option>
-                    <option value="partage">Partage iOS : BL joint, destinataires à saisir</option>
                 </select>
             </div>
             <div class="act-group">
@@ -3657,14 +3657,14 @@ function removeBg(src,sens){
     //  • outlook : ouvre Outlook avec destinataires, objet et texte, l'image est dans le presse-papiers (à coller) ;
     //  • coller  : ouvre le mail complet, l'image est dans le presse-papiers (à coller) ;
     //  • partage : partage iOS (image jointe + texte ; destinataires et objet à saisir).
-    function getSendMethod() { try { return localStorage.getItem('bl_send_method') || 'outlook'; } catch (e) { return 'outlook'; } }
+    function getSendMethod() { try { return localStorage.getItem('bl_send_method') || 'partage'; } catch (e) { return 'partage'; } }
     function setSendMethod(v) { try { localStorage.setItem('bl_send_method', v); } catch (e) {} paintSendHint(); }
     function paintSendHint() {
         const sel = document.getElementById('send-method'); if (sel) sel.value = getSendMethod();
         const h = document.getElementById('send-one-hint'); if (!h) return;
         h.innerText = { outlook: "Outlook s'ouvre avec destinataires, objet et texte ; le BL est copié : appui long dans le message, puis Coller.",
                         coller: "L'appli mail par défaut s'ouvre complète ; le BL est copié : appui long dans le texte, puis Coller.",
-                        partage: "Partage iOS : le BL est joint, avec le texte. Destinataires et objet à saisir." }[getSendMethod()];
+                        partage: "Le BL est joint avec le texte. Les destinataires sont copiés : à coller dans « À »." }[getSendMethod()];
     }
     document.addEventListener('DOMContentLoaded', paintSendHint);
     // Texte du mail -> HTML : les caractères « gras Unicode » redeviennent du vrai gras
@@ -3707,9 +3707,16 @@ function removeBg(src,sens){
                 const q = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                 window.location.href = method === 'outlook' ? `ms-outlook://compose?to=${to}&${q}` : `mailto:${to}?${q}`;
             } else if (method === 'partage') {
+                // Destinataires copiés tout de suite (pendant le geste), à coller dans « À »
+                const toPlain = to.split(',').filter(Boolean).map(a => decodeURIComponent(a)).join('; ');
+                let copied = false;
+                if (toPlain) { try { await navigator.clipboard.writeText(toPlain); copied = true; } catch (e) { console.warn('Copie des destinataires impossible :', e); } }
                 const file = await getBlFileForSharing();
                 if (!file || !(navigator.canShare && navigator.canShare({ files: [file] }))) throw new Error('partage de fichier indisponible');
-                try { await navigator.share({ files: [file], title: subject, text: body }); } catch (err) { if (!(err && err.name === 'AbortError')) throw err; return; }
+                hint.innerText = !toPlain ? "Aucun destinataire enregistré pour ce centre : ajoutez-le dans sa fiche pour qu'il soit copié."
+                    : (copied ? "Destinataires copiés : appui long dans « À », puis Coller. → " + toPlain : "Destinataires à saisir : " + toPlain);
+                // Outlook ne reprend pas l'objet transmis par le partage : il est aussi placé en première ligne du texte
+                try { await navigator.share({ files: [file], title: subject, text: subject + "\n\n" + body }); } catch (err) { if (!(err && err.name === 'AbortError')) throw err; return; }
             }
             if (document.getElementById('autoSaveToggle').checked) saveCurrentBlToHistory(true);
         } catch (e) {
