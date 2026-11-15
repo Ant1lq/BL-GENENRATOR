@@ -292,7 +292,11 @@
         .it-main { flex: 1; min-width: 0; }
         .it-title { font-size: 15.5px; font-weight: 850; color: var(--text-main); line-height: 1.25; }
         .it-line { font-size: 13.5px; color: var(--text-main); margin-top: 2px; }
-        .it-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .it-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 5px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+        .it-stock { font-size: 11.5px; font-weight: 800; border-radius: 99px; padding: 3px 9px; background: #fff; border: 1px solid rgba(0,0,0,.08); color: var(--text-main); }
+        .it-stock.centre { color: #0f766e; border-color: #99f6e4; background: #f0fdfa; }
+        .it-stock.ing { color: var(--blue-mp); border-color: #c7d4f5; background: #eef3ff; }
+        .it-stock.autre { color: #9a3412; border-color: #fed7aa; background: #fff7ed; }
         .it-warn { color: var(--palette-vibrant-red); font-weight: 800; white-space: nowrap; }
         .it-del { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(255,255,255,.75); color: #64748b; font-size: 15px; font-weight: 800; cursor: pointer; }
         .detected-item-card.DAI { background: var(--dai-light); border-left: 5px solid var(--dai-color); border-color: rgba(199,38,118,0.15); }
@@ -3113,6 +3117,14 @@ function removeBg(src,sens){
         emptyState.style.display = "none"; document.getElementById('badge-total').innerText = basketItems.length;
 
         const TYPE_LBL = { SONDE: 'Sonde', DAI: 'Défibrillateur', PM: 'Stimulateur' };
+        // Provenance du stock, lisible d'un coup d'œil : centre, ingénieur, ou autre (texte saisi)
+        const stockBadge = st => {
+            const t = String(st || '');
+            if (!t) return '';
+            if (t.startsWith('Stock du ')) return '<span class="it-stock centre">🏥 Stock centre</span>';
+            if (t.startsWith('Stock MICROPORT CF')) return '<span class="it-stock ing">👤 Stock ingénieur</span>';
+            return `<span class="it-stock autre">📦 ${t}</span>`;
+        };
         basketItems.forEach((item, index) => {
             const div = document.createElement('div'); div.className = `detected-item-card ${item.type}`;
             const thumb = item.img ? `<img src="${item.img}" alt="">` : '<div class="it-noimg">📷</div>';
@@ -3125,11 +3137,11 @@ function removeBg(src,sens){
                 <div class="it-main">
                     <div class="it-title">${item.model}${item.echec ? ' <span class="it-warn">· échec de pose</span>' : ''}</div>
                     <div class="it-line">${item.sn ? `<b>${item.sn}</b>` : '<span class="it-warn">N° de série à saisir</span>'} · ${expHtml}</div>
-                    <div class="it-sub">${TYPE_LBL[item.type] || item.type} · ${refsMap[item.model] || 'REF ?'} · ${item.stock || ''}</div>
+                    <div class="it-sub">${stockBadge(item.stock)}<span>${TYPE_LBL[item.type] || item.type} · ${refsMap[item.model] || 'REF ?'}</span></div>
                 </div>
                 <button class="it-del" aria-label="Retirer du BL">✕</button>`;
             div.addEventListener('click', () => openManualAddModal(index));
-            div.querySelector('.it-del').addEventListener('click', e => { e.stopPropagation(); if (confirm(`Retirer ${item.model}${item.sn ? ' (' + item.sn + ')' : ''} du BL ?`)) deleteBasketItem(index); });
+            div.querySelector('.it-del').addEventListener('click', e => { e.stopPropagation(); deleteBasketItem(index); });
             container.appendChild(div);
         });
         sync();
