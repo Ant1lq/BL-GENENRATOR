@@ -97,11 +97,12 @@
   }
 
   /** Tous les matériels MicroPort lisibles sur l'image, sans doublon, dans l'ordre de lecture. */
-  async function decodeCanvas(srcCanvas) {
+  async function decodeCanvas(srcCanvas, opts) {
     var Z = await loadZXing();
     if (!Z) return [];
     var maxSide = Math.max(srcCanvas.width, srcCanvas.height), scales = [];
-    [2600, 1500, 900].forEach(function (target) { var sc = Math.min(1, target / maxSide); if (!scales.some(function (x) { return Math.abs(x - sc) < 0.05; })) scales.push(sc); });
+    // opts.live : lecture en continu (caméra) — une seule passe, rapide
+    ((opts && opts.live) ? [1600] : [2600, 1500, 900]).forEach(function (target) { var sc = Math.min(1, target / maxSide); if (!scales.some(function (x) { return Math.abs(x - sc) < 0.05; })) scales.push(sc); });
     var gs1 = new Map(), plain = new Map();
     for (var si = 0; si < scales.length; si++) {
       var sc = scales[si];
@@ -110,7 +111,7 @@
         var c = document.createElement('canvas'); c.width = w; c.height = h;
         var ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(srcCanvas, 0, 0, w, h);
         var res = await Z.readBarcodes(ctx.getImageData(0, 0, w, h), {
-          formats: ['DataMatrix', 'Code128', 'Code39'], tryHarder: true, tryRotate: true, tryInvert: true, tryDownscale: true, maxNumberOfSymbols: 40
+          formats: ['DataMatrix', 'Code128', 'Code39'], tryHarder: true, tryRotate: true, tryInvert: !(opts && opts.live), tryDownscale: !(opts && opts.live), maxNumberOfSymbols: 40
         });
         (res || []).forEach(function (r) {
           if (r.isValid === false || !r.text || !r.position) return;

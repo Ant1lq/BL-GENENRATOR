@@ -692,7 +692,8 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
         <button class="chip" data-filter="todo" aria-pressed="false" id="f-todo" type="button"></button>
         <button class="chip" data-filter="ko" aria-pressed="false" id="f-ko" type="button"></button>
         <button class="chip action" id="allOk" type="button">Marquer le reste présent</button>
-        <button class="chip action" id="scanBtn" type="button">📷 Scanner des boîtes</button>
+        <button class="chip action" id="zapBtn" type="button">🔫 Zapette</button>
+        <button class="chip action" id="scanBtn" type="button">📷 Photos</button>
         <input type="file" id="scanFile" accept="image/*" multiple style="display:none">
       </div>
       <div id="scanRes" class="hidden" style="margin-top:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:13px;line-height:1.5"></div>
@@ -778,6 +779,29 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 
 
 
+<div id="zap" style="display:none;position:fixed;inset:0;z-index:99999;background:#000;flex-direction:column;color:#fff">
+  <div style="position:relative;flex:1;min-height:0;overflow:hidden">
+    <video id="zapVideo" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover"></video>
+    <div style="position:absolute;left:8%;right:8%;top:50%;height:120px;margin-top:-60px;border:3px solid rgba(255,255,255,.9);border-radius:16px;box-shadow:0 0 0 2000px rgba(0,0,0,.28)"></div>
+    <div style="position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;display:flex;align-items:center;gap:10px;background:linear-gradient(rgba(0,0,0,.65),rgba(0,0,0,0))">
+      <b id="zapCount" style="flex:1;font-size:14px"></b>
+      <button id="zapTorch" type="button" style="display:none;opacity:.6;border:none;border-radius:12px;background:rgba(255,255,255,.22);color:#fff;font-size:18px;padding:8px 12px">🔦</button>
+      <button id="zapZoom" type="button" style="display:none;border:none;border-radius:12px;background:rgba(255,255,255,.22);color:#fff;font-size:15px;font-weight:800;padding:9px 12px">×1</button>
+      <button id="zapClose" type="button" style="border:none;border-radius:12px;background:#fff;color:#042a72;font-size:14px;font-weight:850;padding:10px 16px">Terminer</button>
+    </div>
+  </div>
+  <div style="background:#0b1220;padding:12px 14px calc(env(safe-area-inset-bottom) + 12px)">
+    <div id="zapLast" class="zapLast"></div>
+    <div id="zapLog" style="max-height:92px;overflow:hidden;margin-top:8px;font-size:12px;line-height:1.55;opacity:.85"></div>
+  </div>
+</div>
+<style>
+.zapLast{border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.35;background:#1e293b;min-height:58px}
+.zapLast b{display:block;font-size:16px}
+.zapLast.ok{background:#15803d}.zapLast.deja,.zapLast.multi{background:#475569}.zapLast.inconnu{background:#b91c1c}
+.zapLine{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zapLine.ok{color:#86efac}.zapLine.inconnu{color:#fca5a5}
+</style>
 <script src="assets/local-db.js"></script>
 <script src="assets/scan.js"></script>
 <script src="assets/vendor/pdf.min.js"></script>
@@ -1237,6 +1261,27 @@ function enterWork(){
 // Une ou plusieurs photos (une étagère entière si besoin) : chaque n° de série lu est pointé « présent » dans la liste.
 const SC = { seen:new Map() };   // n° de série déjà scannés pendant cet inventaire -> infos lues
 function snKey(v){ return String(v==null?"":v).toUpperCase().replace(/[^A-Z0-9]/g,""); }
+function lotIndex(){ const m=new Map(); S.rows.forEach(r=>{ const k=snKey(r.lot); if(k) m.set(k,r); }); return m; }
+// Pointe un matériel lu. Résultat : "ok" (pointé présent), "deja", "multi" (lot en plusieurs exemplaires), "inconnu" (absent de la liste)
+function registerScan(it,byLot){
+  const k=snKey(it.sn); if(!k) return null;
+  SC.seen.set(k,it);
+  const r=byLot.get(k); if(!r) return {state:"inconnu",it};
+  if(r.theo>1) return {state:"multi",it,row:r};
+  if(r.val===1) return {state:"deja",it,row:r};
+  setVal(r,1); return {state:"ok",it,row:r};
+}
+function renderScanSummary(stats){
+  const box=$("scanRes"); box.classList.remove("hidden"); box.replaceChildren();
+  const byLot=lotIndex(), inconnus=[...SC.seen.entries()].filter(([k])=>!byLot.has(k)).map(([,it])=>it);
+  const neu=stats.ok, deja=stats.deja, multi=stats.multi;
+  box.append(h("b",null,"✅ "+neu+" matériel"+(neu>1?"s":"")+" pointé"+(neu>1?"s":"")+" présent"+(neu>1?"s":"")+(deja?" · "+deja+" déjà pointé"+(deja>1?"s":""):"")));
+  if(multi) box.append(h("div",null,"ℹ️ "+multi+" lot"+(multi>1?"s":"")+" en plusieurs exemplaires : quantité à saisir à la main."));
+  if(inconnus.length){
+    box.append(h("div",{style:"margin-top:6px;color:#b45309;font-weight:700"},"⚠️ "+inconnus.length+" scanné"+(inconnus.length>1?"s":"")+" mais absent"+(inconnus.length>1?"s":"")+" de la liste :"));
+    inconnus.forEach(it=>box.append(h("div",null,"• "+it.sn+(it.exp?" — péremption "+fmtFR(it.exp):"")+(it.ref?" — "+it.ref:""))));
+  }
+}
 async function scanFiles(files){
   const box=$("scanRes"); box.classList.remove("hidden"); box.textContent="🔍 Lecture des codes-barres…";
   let read=[], failed=0;
@@ -1244,30 +1289,100 @@ async function scanFiles(files){
     try{ const c=await LabelScan.fileToCanvas(f,3000); read=read.concat(await LabelScan.decodeCanvas(c)); }
     catch(e){ console.error(e); failed++; }
   }
-  const byLot=new Map(); S.rows.forEach(r=>{ const k=snKey(r.lot); if(k) byLot.set(k,r); });
-  let neu=0, deja=0, multi=0; const first=[];
-  read.forEach(it=>{
-    const k=snKey(it.sn); if(!k) return;
-    SC.seen.set(k,it);
-    const r=byLot.get(k); if(!r) return;
-    if(r.theo>1){ multi++; return; }                 // lot en plusieurs exemplaires : à compter à la main
-    if(r.val===1) deja++; else { setVal(r,1); neu++; first.push(r); }
-  });
-  const inconnus=[...SC.seen.entries()].filter(([k])=>!byLot.has(k)).map(([,it])=>it);
-  const total=read.filter(it=>it.sn).length;
-  box.replaceChildren();
-  if(!total){
-    box.append(h("b",null, failed?"Photo illisible.":"Aucun code-barres MicroPort lu sur la photo."), h("div",null,"Rapprochez-vous, évitez les reflets, et gardez les codes-barres bien à plat."));
+  const byLot=lotIndex(), stats={ok:0,deja:0,multi:0,inconnu:0}; let first=null;
+  read.forEach(it=>{ const r=registerScan(it,byLot); if(!r) return; stats[r.state]++; if(r.state==="ok"&&!first) first=r.row; });
+  if(!read.filter(it=>it.sn).length){
+    box.replaceChildren(h("b",null, failed?"Photo illisible.":"Aucun code-barres MicroPort lu sur la photo."), h("div",null,"Rapprochez-vous, évitez les reflets, et gardez les codes-barres bien à plat."));
     return;
   }
-  box.append(h("b",null,"✅ "+neu+" matériel"+(neu>1?"s":"")+" pointé"+(neu>1?"s":"")+" présent"+(neu>1?"s":"")+(deja?" · "+deja+" déjà pointé"+(deja>1?"s":""):"")));
-  if(multi) box.append(h("div",null,"ℹ️ "+multi+" lot"+(multi>1?"s":"")+" en plusieurs exemplaires : quantité à saisir à la main."));
-  if(inconnus.length){
-    box.append(h("div",{style:"margin-top:6px;color:#b45309;font-weight:700"},"⚠️ "+inconnus.length+" scanné"+(inconnus.length>1?"s":"")+" mais absent"+(inconnus.length>1?"s":"")+" de la liste :"));
-    inconnus.forEach(it=>box.append(h("div",null,"• "+it.sn+(it.exp?" — péremption "+fmtFR(it.exp):"")+(it.ref?" — "+it.ref:""))));
-  }
-  if(first.length){ S.filter="all"; applyFilter(); const el=els[first[0].id]; if(el) el.root.scrollIntoView({behavior:"smooth",block:"center"}); }
+  renderScanSummary(stats);
+  if(first){ S.filter="all"; applyFilter(); const el=els[first.id]; if(el) el.root.scrollIntoView({behavior:"smooth",block:"center"}); }
 }
+
+/* ================= Zapette : lecture en continu avec la caméra ================= */
+// Le téléphone sert de douchette : on vise un code-barres, il est lu, comparé à la liste et pointé, sans rien toucher.
+const ZAP={ stream:null, running:false, stats:null, recent:new Map(), audio:null, lastMsg:0 };
+function zapBeep(kind){
+  try{
+    const ac=ZAP.audio||(ZAP.audio=new (window.AudioContext||window.webkitAudioContext)());
+    const tones={ok:[[880,0,.09],[1320,.09,.12]], deja:[[660,0,.08]], inconnu:[[300,0,.16],[240,.18,.2]], multi:[[660,0,.08],[660,.12,.08]]}[kind]||[];
+    tones.forEach(([f,t,d])=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type="sine"; o.frequency.value=f; g.gain.value=.25;
+      o.connect(g); g.connect(ac.destination); o.start(ac.currentTime+t); o.stop(ac.currentTime+t+d); });
+  }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate(kind==="inconnu"?[60,60,60]:40); }catch(e){}
+}
+function zapShow(res){
+  const el=$("zapLast"), it=res.it, r=res.row;
+  const txt={ ok:"✓ Pointé présent", deja:"Déjà pointé", multi:"Lot en plusieurs exemplaires : à compter à la main", inconnu:"✗ Absent de la liste" }[res.state];
+  el.className="zapLast "+res.state;
+  el.replaceChildren(h("b",null,txt), h("div",null,(r?r.des+" · ":"")+it.sn+(it.exp?" · pér. "+fmtFR(it.exp):"")));
+  const line=h("div",{class:"zapLine "+res.state},(res.state==="ok"?"✓ ":res.state==="inconnu"?"✗ ":"• ")+it.sn+(r?" — "+r.des:" — absent de la liste"));
+  $("zapLog").prepend(line); while($("zapLog").children.length>30) $("zapLog").lastChild.remove();
+  zapCount();
+}
+function zapCount(){
+  const total=S.rows.length, done=S.rows.filter(r=>r.val!==null).length;
+  $("zapCount").textContent=done+" / "+total+" renseignées · "+ZAP.stats.ok+" scannée"+(ZAP.stats.ok>1?"s":"");
+}
+async function zapLoop(){
+  const v=$("zapVideo"), c=document.createElement("canvas"), ctx=c.getContext("2d",{willReadFrequently:true});
+  const byLot=lotIndex();
+  while(ZAP.running){
+    const t0=performance.now();
+    try{
+      if(v.readyState>=2 && v.videoWidth){
+        const k=Math.min(1,1600/Math.max(v.videoWidth,v.videoHeight));
+        c.width=Math.round(v.videoWidth*k); c.height=Math.round(v.videoHeight*k);
+        ctx.drawImage(v,0,0,c.width,c.height);
+        const read=await LabelScan.decodeCanvas(c,{live:true});
+        if(!ZAP.running) break;
+        const now=Date.now();
+        read.forEach(it=>{
+          const k2=snKey(it.sn); if(!k2) return;
+          const last=ZAP.recent.get(k2)||0; ZAP.recent.set(k2,now);
+          if(now-last<4000) return;                       // même boîte encore devant l'objectif : on ne rebipe pas
+          const res=registerScan(it,byLot); if(!res) return;
+          ZAP.stats[res.state]++; zapBeep(res.state); zapShow(res);
+        });
+      }
+    }catch(e){ console.error(e); }
+    await new Promise(r=>setTimeout(r,Math.max(60,180-(performance.now()-t0))));
+  }
+}
+async function zapOpen(){
+  const msg=$("zapLast");
+  $("zap").style.display="flex"; ZAP.stats={ok:0,deja:0,multi:0,inconnu:0}; ZAP.recent.clear(); $("zapLog").replaceChildren();
+  msg.className="zapLast"; msg.textContent="Démarrage de la caméra…"; zapCount();
+  try{ const ac=ZAP.audio||(ZAP.audio=new (window.AudioContext||window.webkitAudioContext)()); if(ac.state==="suspended") await ac.resume(); }catch(e){}
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error("caméra indisponible dans ce navigateur");
+    const Z=await LabelScan.loadZXing(); if(!Z) throw new Error("lecteur de codes-barres pas encore installé : ouvrez l'appli une fois avec du réseau");
+    ZAP.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}});
+    const v=$("zapVideo"); v.srcObject=ZAP.stream; await v.play();
+    // zoom ×2 quand l'appareil le permet : codes-barres fins plus faciles à lire sans coller le téléphone
+    const track=ZAP.stream.getVideoTracks()[0], caps=(track.getCapabilities&&track.getCapabilities())||{};
+    const zb=$("zapZoom"); zb.style.display=(caps.zoom&&caps.zoom.max>=2)?"":"none"; zb.dataset.on="0"; zb.textContent="×1";
+    zb.onclick=async()=>{ const on=zb.dataset.on!=="1"; try{ await track.applyConstraints({advanced:[{zoom:on?Math.min(2,caps.zoom.max):Math.max(1,caps.zoom.min||1)}]}); zb.dataset.on=on?"1":"0"; zb.textContent=on?"×2":"×1"; }catch(e){} };
+    const tb=$("zapTorch"); tb.style.display=caps.torch?"":"none"; tb.dataset.on="0";
+    tb.onclick=async()=>{ const on=tb.dataset.on!=="1"; try{ await track.applyConstraints({advanced:[{torch:on}]}); tb.dataset.on=on?"1":"0"; tb.style.opacity=on?"1":".6"; }catch(e){} };
+    msg.textContent="Visez le code-barres d'une boîte.";
+    ZAP.running=true; zapLoop();
+  }catch(e){
+    console.error(e);
+    msg.className="zapLast inconnu";
+    msg.textContent=(e&&e.name==="NotAllowedError") ? "Accès à la caméra refusé. Autorisez la caméra pour ce site dans Réglages > Safari, puis réessayez." : "Caméra impossible à démarrer : "+((e&&e.message)||e)+".";
+  }
+}
+function zapClose(){
+  ZAP.running=false;
+  try{ if(ZAP.stream) ZAP.stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  ZAP.stream=null; try{ $("zapVideo").srcObject=null; }catch(e){}
+  $("zap").style.display="none";
+  if(ZAP.stats && (ZAP.stats.ok||ZAP.stats.deja||ZAP.stats.multi||ZAP.stats.inconnu)) renderScanSummary(ZAP.stats);
+}
+$("zapBtn").addEventListener("click",zapOpen);
+$("zapClose").addEventListener("click",zapClose);
+document.addEventListener("visibilitychange",()=>{ if(document.hidden && ZAP.running) zapClose(); });
 $("scanBtn").addEventListener("click",()=>{ $("scanFile").value=""; $("scanFile").click(); });
 $("scanFile").addEventListener("change",e=>{ const fs=[...(e.target.files||[])]; if(fs.length) scanFiles(fs); });
 
