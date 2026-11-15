@@ -287,6 +287,14 @@
             position: relative;
             transition: all 0.2s ease;
         }
+        .detected-item-card { display: flex; align-items: center; gap: 12px; padding: 12px; cursor: pointer; }
+        .detected-item-card > img, .detected-item-card .it-noimg { width: 54px; height: 54px; object-fit: contain; border-radius: 10px; border: 1px solid rgba(0,0,0,.08); background: #fff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; opacity: .9; }
+        .it-main { flex: 1; min-width: 0; }
+        .it-title { font-size: 15.5px; font-weight: 850; color: var(--text-main); line-height: 1.25; }
+        .it-line { font-size: 13.5px; color: var(--text-main); margin-top: 2px; }
+        .it-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .it-warn { color: var(--palette-vibrant-red); font-weight: 800; white-space: nowrap; }
+        .it-del { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(255,255,255,.75); color: #64748b; font-size: 15px; font-weight: 800; cursor: pointer; }
         .detected-item-card.DAI { background: var(--dai-light); border-left: 5px solid var(--dai-color); border-color: rgba(199,38,118,0.15); }
         .detected-item-card.PM { background: var(--pm-light); border-left: 5px solid var(--pm-color); border-color: rgba(128,44,241,0.15); }
         .detected-item-card.SONDE { background: var(--sonde-light); border-left: 5px solid var(--sonde-color); border-color: rgba(0,219,255,0.15); }
@@ -393,7 +401,7 @@
         #crop-preview { max-width: 100%; display: block; }
         #crop-modal .ios-modal-content { max-width: 100%; padding: 18px; }
 
-        .sticky-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+        .sticky-actions { display: flex; flex-direction: column; gap: 12px; margin: 0 0 20px; }
         
         .btn-primary-ios, .btn-secondary-ios, .btn-mail-ios, .btn-refresh-ios {
             border: none; padding: 16px; border-radius: 16px; font-weight: 750; font-size: 15px; cursor: pointer; text-align: center; width: 100%;
@@ -464,7 +472,7 @@
         .act-more > summary::-webkit-details-marker { display: none; }
         .act-more[open] > summary { color: var(--blue-mp); }
         .dock-box { background: linear-gradient(135deg, #f97316, #ea580c); }
-        .dock-scan .dock-btn { padding-left: 4px; padding-right: 4px; font-size: 12.5px; }
+        .dock-scan .dock-manual { flex: 0 0 27%; }
         .dock-manual { background: #fff; color: var(--blue-mp); border: 1.5px solid #c7d4f5; box-shadow: 0 4px 12px rgba(18,24,44,0.08); }
         .tip-card { font-size: 12px; line-height: 1.45; color: var(--text-muted); padding: 2px 6px 0; }
         #bl-summary .sum-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid #f1f5f9; }
@@ -661,13 +669,12 @@
     </div>
     <div class="app-container">
         <header>
+            <button class="btn-header-icon" onclick="location.href='index.html'" aria-label="Accueil">🏠</button>
+            <h1>Bon de livraison</h1>
             <div style="display:flex; gap:6px;">
-                <button class="btn-header-icon" onclick="location.href='index.html'" aria-label="Accueil">🏠</button>
-                <button class="btn-header-icon" onclick="openAdminModal()">⚙️</button>
-                <button class="btn-header-icon" onclick="openHistoryModal()">🕘</button>
+                <button class="btn-header-icon" onclick="openHistoryModal()" aria-label="Historique des BL">🕘</button>
+                <button class="btn-header-icon" onclick="openAdminModal()" aria-label="Centres et tampons">🏥</button>
             </div>
-            <h1>⚡ Bon de livraison</h1>
-            <button class="btn-header-icon" onclick="location.href='admin.html'" aria-label="Réglages">👤</button>
         </header>
 
         <div class="tab-panel active" id="tab-infos">
@@ -717,14 +724,13 @@
             
             <div id="detected-items-list">
                 <div id="empty-state-msg" style="text-align:center; color:var(--text-muted); font-size:13px; padding:20px 0; line-height:1.4;">
-                    Aucun matériel pour l'instant.<br>Scannez un <b>boîtier</b> ou une <b>sonde</b> avec les boutons du bas, ou ajoutez-le à la main.
+                    Aucun matériel pour l'instant.<br>Photographiez les <b>étiquettes</b> collées sur la feuille ou les <b>boîtes</b> : plusieurs à la fois si vous voulez.
                 </div>
             </div>
         </div>
 
             <div class="dock dock-scan">
-                <button class="dock-btn dock-boitier" onclick="triggerSmartAnalysis('BOITIER')"><span>📷</span>Boîtier</button>
-                <button class="dock-btn dock-sonde" onclick="triggerSmartAnalysis('SONDE')"><span>📷</span>Sonde</button>
+                <button class="dock-btn dock-boitier" onclick="triggerSmartAnalysis('AUTO')"><span>📷</span>Étiquettes</button>
                 <button class="dock-btn dock-box" onclick="triggerSmartAnalysis('BOX')"><span>📦</span>Boîtes</button>
                 <button class="dock-btn dock-manual" onclick="openManualAddModal()"><span>✏️</span>Manuel</button>
             </div>
@@ -775,6 +781,45 @@
                 <div class="card-title">✅ Avant d'envoyer</div>
                 <div id="bl-summary"></div>
             </div>
+        <div class="sticky-actions">
+            <div class="act-group">
+                <div class="act-title">Envoyer</div>
+                <div class="act-row">
+                    <button class="btn-mail-ios btn-compact" id="btn-send-one" onclick="sendBlOneTap(false)">📤 BL complet</button>
+                    <button class="btn-mail-ios btn-compact btn-pharma" id="btn-send-one-pharma" onclick="sendBlOneTap(true)">🏥 Pharmacie</button>
+                </div>
+                <div class="act-hint" id="send-one-hint">Le mail s'ouvre complet (destinataires, objet, texte). Le BL est copié : appui long dans le texte du mail, puis Coller.</div>
+            </div>
+            <details class="act-more">
+            <summary>Télécharger l'image · autre méthode d'envoi</summary>
+            <div class="act-group">
+                <div class="act-title"><span class="act-num">1</span> Télécharger l'image</div>
+                <div class="act-row">
+                    <button class="btn-secondary-ios btn-compact" id="btn-download-bl" onclick="downloadCurrentBl(false)">📥 BL complet</button>
+                    <button class="btn-secondary-ios btn-compact btn-pharma-outline" id="btn-download-bl-pharma" onclick="downloadCurrentBl(true)">📥 Pharmacie</button>
+                </div>
+            </div>
+            <div class="act-group">
+                <div class="act-title"><span class="act-num">2</span> Envoyer par email</div>
+                <div class="act-row">
+                    <button class="btn-mail-ios btn-compact" id="btn-generate-email" onclick="generateEmail(false)">📤 BL complet</button>
+                    <button class="btn-mail-ios btn-compact btn-pharma" id="btn-generate-email-pharma" onclick="generateEmail(true)">🏥 Pharmacie</button>
+                </div>
+                <div class="act-hint">Dans le mail, joignez l'image téléchargée (depuis Photos).</div>
+            </div>
+            </details>
+            <div class="act-group">
+                <div class="act-title">Terminer</div>
+                <div class="act-row">
+                    <button class="btn-primary-ios btn-compact" id="btn-save-bl" onclick="saveCurrentBlToHistory(false)">💾 Enregistrer</button>
+                    <button class="btn-refresh-ios btn-compact" onclick="startNewBl()">🆕 Nouveau BL</button>
+                </div>
+                <label class="opt-line">
+                    <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()">
+                    Enregistrer auto à chaque envoi
+                </label>
+            </div>
+        </div>
         <div id="image-result">
             <p style="font-weight: bold; color: var(--palette-plum-magenta); font-size: 13px; margin:0 0 10px 0;">✅ Image générée. Restez appuyé pour copier.</p>
             <div id="img-container"></div>
@@ -853,45 +898,6 @@
             </div>
         </div>
 
-        <div class="sticky-actions">
-            <div class="act-group">
-                <div class="act-title"><span class="act-num">⚡</span> Envoyer en un geste</div>
-                <div class="act-row">
-                    <button class="btn-mail-ios btn-compact" id="btn-send-one" onclick="sendBlOneTap(false)">📤 BL complet</button>
-                    <button class="btn-mail-ios btn-compact btn-pharma" id="btn-send-one-pharma" onclick="sendBlOneTap(true)">🏥 Pharmacie</button>
-                </div>
-                <div class="act-hint" id="send-one-hint">Le mail s'ouvre complet (destinataires, objet, texte). Le BL est copié : appui long dans le texte du mail, puis Coller.</div>
-            </div>
-            <details class="act-more">
-            <summary>Autre méthode : en deux étapes</summary>
-            <div class="act-group">
-                <div class="act-title"><span class="act-num">1</span> Télécharger l'image</div>
-                <div class="act-row">
-                    <button class="btn-secondary-ios btn-compact" id="btn-download-bl" onclick="downloadCurrentBl(false)">📥 BL complet</button>
-                    <button class="btn-secondary-ios btn-compact btn-pharma-outline" id="btn-download-bl-pharma" onclick="downloadCurrentBl(true)">📥 Pharmacie</button>
-                </div>
-            </div>
-            <div class="act-group">
-                <div class="act-title"><span class="act-num">2</span> Envoyer par email</div>
-                <div class="act-row">
-                    <button class="btn-mail-ios btn-compact" id="btn-generate-email" onclick="generateEmail(false)">📤 BL complet</button>
-                    <button class="btn-mail-ios btn-compact btn-pharma" id="btn-generate-email-pharma" onclick="generateEmail(true)">🏥 Pharmacie</button>
-                </div>
-                <div class="act-hint">Dans le mail, joignez l'image téléchargée (depuis Photos).</div>
-            </div>
-            </details>
-            <div class="act-group">
-                <div class="act-title"><span class="act-num">3</span> Terminer</div>
-                <div class="act-row">
-                    <button class="btn-primary-ios btn-compact" id="btn-save-bl" onclick="saveCurrentBlToHistory(false)">💾 Enregistrer</button>
-                    <button class="btn-refresh-ios btn-compact" onclick="startNewBl()">🆕 Nouveau BL</button>
-                </div>
-                <label class="opt-line">
-                    <input type="checkbox" id="autoSaveToggle" onchange="onAutoSaveToggleChange()">
-                    Enregistrer auto à chaque envoi
-                </label>
-            </div>
-        </div>
 
         </div>
     </div>
@@ -1123,7 +1129,7 @@
 
         try {
             const savedAutoSave = localStorage.getItem('bl_autosave_enabled');
-            document.getElementById('autoSaveToggle').checked = (savedAutoSave === 'true');
+            document.getElementById('autoSaveToggle').checked = (savedAutoSave !== 'false');
         } catch (e) { console.error("Préférence auto-save indisponible:", e); }
 
         let email = '';
@@ -2908,7 +2914,7 @@ function removeBg(src,sens){
             if (modalScannerActive) processInlineModalOCR(text, savedCleanSnapshot, bc);
             else {
                 const upText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
-                const looksBoitier = currentScanScope === "BOITIER" || (currentScanScope === "BOX" && !!matchModelInText(upText, [...listDefis, ...listPaces]) && !matchModelInText(upText, listSondes));
+                const looksBoitier = currentScanScope === "BOITIER" || ((currentScanScope === "BOX" || currentScanScope === "AUTO") && !!matchModelInText(upText, [...listDefis, ...listPaces]) && !matchModelInText(upText, listSondes));
                 if (looksBoitier) parseBoitierText(text, savedCleanSnapshot, bc);
                 else parseSondeText(text, savedCleanSnapshot, bc);
             }
@@ -3106,21 +3112,24 @@ function removeBg(src,sens){
         if (basketItems.length === 0) { emptyState.style.display = "block"; document.getElementById('badge-total').innerText = "0"; sync(); return; }
         emptyState.style.display = "none"; document.getElementById('badge-total').innerText = basketItems.length;
 
+        const TYPE_LBL = { SONDE: 'Sonde', DAI: 'Défibrillateur', PM: 'Stimulateur' };
         basketItems.forEach((item, index) => {
             const div = document.createElement('div'); div.className = `detected-item-card ${item.type}`;
-            const thumb = item.img ? `<img src="${item.img}" style="width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid rgba(0,0,0,0.08); flex-shrink:0;">` : '';
+            const thumb = item.img ? `<img src="${item.img}" alt="">` : '<div class="it-noimg">📷</div>';
+            const days = item.exp ? Math.floor((new Date(item.exp) - new Date()) / 86400000) : null;
+            const expTxt = item.exp ? item.exp.split('-').reverse().join('/') : '';
+            const expHtml = !item.exp ? '<span class="it-warn">Péremption à saisir</span>'
+                : (days < 0 ? `<span class="it-warn">Périmé le ${expTxt}</span>` : (days < 31 ? `<span class="it-warn">Périme le ${expTxt}</span>` : `<span style="white-space:nowrap">Pér. ${expTxt}</span>`));
             div.innerHTML = `
-                <div style="display:flex; gap:10px; align-items:flex-start;">
-                    ${thumb}
-                    <div style="flex:1; min-width:0;">
-                        <div class="detected-header"><span>${item.type} &bull; ${item.model}</span><span>REF: ${refsMap[item.model]||'??'}</span></div>
-                        <div class="detected-details"><b>S/N :</b> ${item.sn || '<span style="color:red;">⚠️</span>'}${(item.bcSn && item.bcSn === item.sn) ? ' <span title="Lu par code-barres" style="font-size:11px;">🔳</span>' : ''} | <b>EXP :</b> ${item.exp ? item.exp.split('-').reverse().join('/') : 'N/A'}<br><b>Stock :</b> ${item.stock || 'N/A'}${item.echec ? '<br><b style="color:var(--palette-vibrant-red);">⚠️ ÉCHEC DE POSE</b>' : ''}</div>
-                    </div>
+                ${thumb}
+                <div class="it-main">
+                    <div class="it-title">${item.model}${item.echec ? ' <span class="it-warn">· échec de pose</span>' : ''}</div>
+                    <div class="it-line">${item.sn ? `<b>${item.sn}</b>` : '<span class="it-warn">N° de série à saisir</span>'} · ${expHtml}</div>
+                    <div class="it-sub">${TYPE_LBL[item.type] || item.type} · ${refsMap[item.model] || 'REF ?'} · ${item.stock || ''}</div>
                 </div>
-                <div class="detected-actions">
-                    <button class="btn-mini edit" onclick="openManualAddModal(${index})">✏️ Ajuster</button>
-                    <button class="btn-mini delete" onclick="deleteBasketItem(${index})">🗑️ Retirer</button>
-                </div>`;
+                <button class="it-del" aria-label="Retirer du BL">✕</button>`;
+            div.addEventListener('click', () => openManualAddModal(index));
+            div.querySelector('.it-del').addEventListener('click', e => { e.stopPropagation(); if (confirm(`Retirer ${item.model}${item.sn ? ' (' + item.sn + ')' : ''} du BL ?`)) deleteBasketItem(index); });
             container.appendChild(div);
         });
         sync();

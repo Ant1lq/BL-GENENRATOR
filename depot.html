@@ -615,6 +615,7 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 .result>*:not(.rn){flex:1}
 
 .mailprev{margin-top:10px;font-size:12px;color:#475569}.mailprev summary{font-weight:800;cursor:pointer}.mp-s{font-weight:800;margin:6px 0;color:#042a72}.mp-b{white-space:pre-wrap;word-break:break-word;font-family:inherit;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0;font-size:11.5px}
+.noteBtn{margin-left:auto;border:none;background:transparent;font-size:16px;padding:0 4px;opacity:.55;cursor:pointer}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
@@ -682,6 +683,7 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
       <div class="depot" id="fdepot"></div>
     </div>
 
+    <button id="zapBtn" type="button" style="width:100%;margin:0 0 10px;padding:15px;border:none;border-radius:16px;background:linear-gradient(135deg,#042a72,#4870ff);color:#fff;font-size:15.5px;font-weight:850;box-shadow:0 6px 16px rgba(4,42,114,.22)">🔫 Scanner les boîtes (zapette)</button>
     <div class="toolbar">
       <div class="progress">
         <div class="bar" aria-hidden="true"><i class="p" id="barP"></i><i class="a" id="barA"></i></div>
@@ -691,9 +693,8 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
         <button class="chip" data-filter="all" aria-pressed="true" id="f-all" type="button"></button>
         <button class="chip" data-filter="todo" aria-pressed="false" id="f-todo" type="button"></button>
         <button class="chip" data-filter="ko" aria-pressed="false" id="f-ko" type="button"></button>
-        <button class="chip action" id="allOk" type="button">Marquer le reste présent</button>
-        <button class="chip action" id="zapBtn" type="button">🔫 Zapette</button>
         <button class="chip action" id="scanBtn" type="button">📷 Photos</button>
+        <button class="chip action" id="allOk" type="button">Reste présent</button>
         <input type="file" id="scanFile" accept="image/*" multiple style="display:none">
       </div>
       <div id="scanRes" class="hidden" style="margin-top:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:13px;line-height:1.5"></div>
@@ -1175,13 +1176,17 @@ function buildRow(r){
   const chips = h("div",{class:"chips"});
   const metaEl = h("div",{class:"meta"}, h("span",{class:"lot"},r.lot), h("span",null,r.code));
   r.meta.forEach(m=>metaEl.append(h("span",null,m)));
+  const noteBox = h("div",{class:"noteBox"},input,chips);
+  const noteBtn = h("button",{type:"button",class:"noteBtn","aria-label":"Ajouter un commentaire"},"💬");
+  noteBtn.addEventListener("click",()=>{ r.noteOpen=true; paintRow(r); input.focus(); });
+  metaEl.append(noteBtn);
   const root = h("article",{class:"row",id:"r"+r.id},
     h("div",{class:"info"}, h("div",{class:"des"},r.des), metaEl),
     ctrl,
-    h("div",{class:"noteBox"},input,chips)
+    noteBox
   );
   input.addEventListener("input",()=>{ r.note=input.value; saveDraft(); });
-  els[r.id] = {root,b1,b0,num,input,chips};
+  els[r.id] = {root,b1,b0,num,input,chips,noteBox,noteBtn};
   paintRow(r);
   return root;
 }
@@ -1191,6 +1196,7 @@ function paintRow(r){
   const ok = r.val!==null && r.val===r.theo, ko = r.val!==null && r.val!==r.theo;
   e.root.classList.toggle("v1", ok);
   e.root.classList.toggle("v0", ko);
+  const showNote = ko || !!r.note || !!r.noteOpen; e.noteBox.classList.toggle("hidden", !showNote); e.noteBtn.classList.toggle("hidden", showNote);
   if(e.num){ if(document.activeElement!==e.num) e.num.value = r.val===null?"":String(r.val); }
   else{
     e.b1.setAttribute("aria-pressed", String(r.val===1));
@@ -1210,6 +1216,7 @@ function setVal(r,v,fromTyping){
     // ne pas réécrire le champ pendant la saisie
     const e=els[r.id]; const ok=v!==null&&v===r.theo, ko=v!==null&&v!==r.theo;
     e.root.classList.toggle("v1",ok); e.root.classList.toggle("v0",ko);
+    const showNote = ko || !!r.note || !!r.noteOpen; e.noteBox.classList.toggle("hidden", !showNote); e.noteBtn.classList.toggle("hidden", showNote);
     e.chips.replaceChildren();
     if(ko) chipLabels().forEach(t=>e.chips.append(h("button",{type:"button",onclick:()=>{ r.note=t; e.input.value=t; saveDraft(); }},t)));
   }else paintRow(r);

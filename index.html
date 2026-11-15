@@ -529,6 +529,9 @@
 .notice{display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:18px;padding:16px;margin:0 0 16px;font-size:13.5px;line-height:1.45;color:#1e3a8a}
 .notice.warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
 .notice b{display:block;font-size:15px;margin-bottom:4px}
+.notice.slim{align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:14px;text-decoration:none;font-size:13px}
+.notice.slim b{display:inline;font-size:13px;margin:0}
+.notice.slim .go{font-size:22px;line-height:1;color:#9a3412}
 .notice a{display:inline-block;margin-top:10px;background:var(--blue-mp);color:#fff;text-decoration:none;font-weight:800;font-size:13px;padding:10px 16px;border-radius:12px}
 </style>
 </head>
@@ -543,7 +546,7 @@
   <div class="hello" id="hello"></div>
   <div class="status" id="status"></div>
   <div class="notice" id="welcome"><b>👋 Bienvenue</b>L'application fonctionne maintenant entièrement sur cet iPhone, sans connexion. Commencez par créer votre profil ou récupérer vos données existantes.<br><a href="admin.html">Ouvrir les réglages</a></div>
-  <div class="notice warn" id="backup-note"><b>💾 Pensez à sauvegarder</b><span id="backup-txt"></span><br><a href="admin.html#sauvegarde">Faire une sauvegarde</a></div>
+  <a class="notice warn slim" id="backup-note" href="admin.html#sauvegarde"><span>💾 <b>Sauvegarde à faire</b> · <span id="backup-txt"></span></span><span class="go">›</span></a>
 
   <a class="tile bl" href="bl.html"><div class="ic">📦</div><div><div class="tt">Bon de livraison</div><div class="td">Scanner le matériel et générer le BL.</div></div><div class="chev">›</div></a>
 
@@ -586,9 +589,9 @@ async function home(){
   const days = last ? Math.floor((Date.now() - last) / 86400000) : null;
   if (!empty && (days === null || days >= 30)) {
     document.getElementById('backup-txt').textContent = days === null
-      ? "Vos données sont enregistrées uniquement sur cet iPhone. Gardez-en une copie (Fichiers, iCloud…) pour ne rien perdre en cas de casse ou de changement de téléphone."
-      : ("Dernière sauvegarde il y a " + days + " jours.");
-    document.getElementById('backup-note').style.display = 'block';
+      ? "aucune copie de vos données hors de cet iPhone"
+      : ("la dernière date de " + days + " jours");
+    document.getElementById('backup-note').style.display = 'flex';
   }
 }
 home().catch(e => console.error(e));
