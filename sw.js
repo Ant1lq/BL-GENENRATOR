@@ -1,13 +1,13 @@
 /* MicroPort Cardioflow — service worker : l'appli complète est copiée sur l'appareil
    à la première ouverture, puis fonctionne sans réseau. Changer VERSION à chaque mise à jour. */
-const VERSION = 'v2.0.2';
+const VERSION = 'v2.0.3';
 const APP = 'mp-app-' + VERSION, CDN = 'mp-cdn-v1', TILES = 'mp-tiles-v1';
 const MAX_TILES = 2500;
 
 // Indispensable au fonctionnement
 const CORE = [
   './', 'index.html', 'bl.html', 'depot.html', 'carte.html', 'admin.html', 'manifest.webmanifest',
-  'assets/local-db.js', 'assets/logo-microport.png', 'assets/icon-180.png', 'assets/icon-192.png', 'assets/icon-512.png',
+  'assets/local-db.js', 'assets/scan.js', 'assets/logo-microport.png', 'assets/icon-180.png', 'assets/icon-192.png', 'assets/icon-512.png',
   'assets/vendor/html2canvas.min.js', 'assets/vendor/cropper.min.js', 'assets/vendor/cropper.min.css',
   'assets/vendor/xlsx.full.min.js', 'assets/vendor/pdf.min.js', 'assets/vendor/pdf.worker.min.js', 'assets/vendor/pdf-lib.min.js',
   'assets/vendor/leaflet/leaflet.min.js', 'assets/vendor/leaflet/leaflet.min.css',
@@ -68,7 +68,7 @@ self.addEventListener('install', event => {
     const cache = await caches.open(APP);
     const got = await Promise.all(CORE.map(u => obtain(u, cache, true).catch(() => null)));
     // Les pages et le moteur de stockage sont indispensables ; le reste peut arriver plus tard
-    const vital = ['index.html', 'bl.html', 'depot.html', 'carte.html', 'admin.html', 'assets/local-db.js'];
+    const vital = ['index.html', 'bl.html', 'depot.html', 'carte.html', 'admin.html', 'assets/local-db.js', 'assets/scan.js'];
     CORE.forEach((u, i) => { if (vital.includes(u) && !(got[i] && got[i].ok)) throw new Error('Fichier indispensable manquant : ' + u); });
     await Promise.all(HEAVY.map(u => obtain(u, cache, true).catch(() => null)));
     try { const r = await fetch(ZXING, { mode: 'cors', credentials: 'omit' }); if (r.ok) await (await caches.open(CDN)).put(ZXING, r); } catch (e) {}

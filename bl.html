@@ -18,6 +18,7 @@
     <script src="assets/vendor/cropper.min.js"></script>
     <script src="assets/vendor/tesseract/tesseract.min.js"></script>
     <script src="assets/local-db.js"></script>
+    <script src="assets/scan.js"></script>
 
     <style>
         :root { 
@@ -458,6 +459,8 @@
         .dock-btn:active { transform: scale(0.97); opacity: .92; }
         .dock-boitier { background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue)); }
         .dock-sonde { background: linear-gradient(135deg, var(--palette-royal-blue), #00c8ff); }
+        .dock-box { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .dock-scan .dock-btn { padding-left: 4px; padding-right: 4px; font-size: 12.5px; }
         .dock-manual { background: #fff; color: var(--blue-mp); border: 1.5px solid #c7d4f5; box-shadow: 0 4px 12px rgba(18,24,44,0.08); }
         .tip-card { font-size: 12px; line-height: 1.45; color: var(--text-muted); padding: 2px 6px 0; }
         #bl-summary .sum-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid #f1f5f9; }
@@ -718,6 +721,7 @@
             <div class="dock dock-scan">
                 <button class="dock-btn dock-boitier" onclick="triggerSmartAnalysis('BOITIER')"><span>📷</span>Boîtier</button>
                 <button class="dock-btn dock-sonde" onclick="triggerSmartAnalysis('SONDE')"><span>📷</span>Sonde</button>
+                <button class="dock-btn dock-box" onclick="triggerSmartAnalysis('BOX')"><span>📦</span>Boîtes</button>
                 <button class="dock-btn dock-manual" onclick="openManualAddModal()"><span>✏️</span>Manuel</button>
             </div>
         </div>
@@ -2202,6 +2206,7 @@ function removeBg(src,sens){
 
     let cropPurpose = 'label'; // 'label' (sonde/boîtier, avec OCR) ou 'tampon' (centre, sans OCR)
 
+    // scope « BOX » : photo de boîtes (une ou plusieurs) — l'étiquette du BL est redessinée à partir des codes-barres
     function triggerSmartAnalysis(scope) {
         modalScannerActive = false; currentScanScope = scope; cropPurpose = 'label';
         document.getElementById('ocr-status').innerText = "Photo de l'étiquette (ou de plusieurs étiquettes) avec le code-barres : lecture et cadrage automatiques.";
@@ -2505,39 +2510,15 @@ function removeBg(src,sens){
     // Tous les codes-barres GS1 de la photo (plusieurs étiquettes collées sur une même feuille), sans doublon,
     // rangés dans l'ordre de lecture (haut → bas, gauche → droite).
     async function decodeAllLabelBarcodes(srcCanvas) {
-        const Z = await loadZXing();
-        if (!Z) return [];
-        const maxSide = Math.max(srcCanvas.width, srcCanvas.height);
-        const scales = [];
-        [2600, 1500, 900].forEach(target => { const sc = Math.min(1, target / maxSide); if (!scales.some(x => Math.abs(x - sc) < 0.05)) scales.push(sc); });
-        const found = new Map();
-        for (const sc of scales) {
-            try {
-                const w = Math.max(1, Math.round(srcCanvas.width * sc)), h = Math.max(1, Math.round(srcCanvas.height * sc));
-                const c = document.createElement('canvas'); c.width = w; c.height = h;
-                const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(srcCanvas, 0, 0, w, h);
-                const res = await Z.readBarcodes(ctx.getImageData(0, 0, w, h), {
-                    formats: ['DataMatrix', 'Code128'], tryHarder: true, tryRotate: true, tryInvert: true, tryDownscale: true, maxNumberOfSymbols: 12
-                });
-                for (const r of (res || [])) {
-                    if (r.isValid === false || !r.text) continue;
-                    const parsed = parseGS1(r.text);
-                    if (!parsed) continue;
-                    const key = (parsed.gtin || '') + '|' + (parsed.sn || parsed.raw);
-                    if (found.has(key)) continue;
-                    const p = r.position;
-                    parsed.format = /matrix/i.test(r.format || '') ? 'dm' : 'linear';
-                    parsed.position = p ? [p.topLeft, p.topRight, p.bottomRight, p.bottomLeft].map(pt => ({ x: pt.x / sc, y: pt.y / sc })) : null;
-                    found.set(key, parsed);
-                }
-            } catch (e) { console.error('Lecture codes-barres :', e); }
-            if (found.size && sc === scales[0] && scales.length > 1 && found.size >= 3) break; // tout est déjà lu en pleine définition
-        }
-        const all = [...found.values()];
-        const cy = b => b.position ? (b.position[0].y + b.position[2].y) / 2 : 0, cx = b => b.position ? (b.position[0].x + b.position[2].x) / 2 : 0;
-        const band = maxSide * 0.08; // deux étiquettes côte à côte = même rangée
-        all.sort((a, b) => Math.abs(cy(a) - cy(b)) > band ? cy(a) - cy(b) : cx(a) - cx(b));
+        const all = await LabelScan.decodeCanvas(srcCanvas);   // assets/scan.js : étiquettes UDI et boîtes à codes séparés
+        all.forEach(b => { b.model = modelFromGtin(b.gtin) || modelFromRef(b.ref); });
         return all;
+    }
+    // Référence catalogue (REF) -> modèle, pour les boîtes dont les codes-barres sont séparés
+    function modelFromRef(ref) {
+        if (!ref) return null;
+        const k = Object.keys(refsMap).find(m => refsMap[m] === String(ref).toUpperCase());
+        return k || null;
     }
 
     function labelBoxFromBarcode(bc) {
@@ -2691,11 +2672,17 @@ function removeBg(src,sens){
     function showFastPanel(res) {
         const inBasket = new Set(basketItems.map(i => String(i.sn || '').toUpperCase()).filter(Boolean));
         fastItems = res.all.filter(b => b.sn && b.position).map(bc => {
-            const box = labelBoxFromBarcode(bc), band = bc.format !== 'dm';
+            const band = bc.format !== 'dm';
+            // Boîte (ou codes séparés, ou sonde à code linéaire = forcément une boîte) : étiquette redessinée.
+            // Étiquette autocollante : découpe de la photo, selon sa forme connue.
+            const recreate = currentScanScope === 'BOX' || bc.plain || (band && bc.model && listSondes.includes(bc.model));
             let img = null;
-            try { img = binarizeCanvas(extractLabelCanvas(res.base, box, 0.05, band ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85); } catch (e) { console.error(e); }
+            try {
+                if (recreate) img = LabelScan.drawLabel({ model: bc.model, ref: bc.ref || refsMap[bc.model] || '', sn: bc.sn, exp: bc.exp, mfg: bc.mfg, gtin: bc.gtin }).toDataURL('image/jpeg', 0.9);
+                else { const box = labelBoxFromBarcode(bc); img = binarizeCanvas(extractLabelCanvas(res.base, box, 0.05, band ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85); }
+            } catch (e) { console.error(e); }
             const dup = inBasket.has(String(bc.sn).toUpperCase());
-            return { bc, img, band, dup, checked: !dup, model: bc.model || '' };
+            return { bc, img, band: band || recreate, recreate, dup, checked: !dup, model: bc.model || '' };
         });
         const list = document.getElementById('fast-list'); list.innerHTML = '';
         const allModels = [...listDefis, ...listPaces, ...listSondes];
@@ -2711,12 +2698,16 @@ function removeBg(src,sens){
             list.appendChild(d);
         });
         list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => { const it = fastItems[+cb.dataset.i]; it.checked = cb.checked; cb.closest('.fast-card').classList.toggle('off', !cb.checked); fastRefreshButton(); }));
-        list.querySelectorAll('select').forEach(sel => sel.addEventListener('change', () => { fastItems[+sel.dataset.i].model = sel.value; }));
+        list.querySelectorAll('select').forEach(sel => sel.addEventListener('change', () => {
+            const it = fastItems[+sel.dataset.i]; it.model = sel.value;
+            if (it.recreate && it.model) { try { it.img = LabelScan.drawLabel({ model: it.model, ref: it.bc.ref || refsMap[it.model] || '', sn: it.bc.sn, exp: it.bc.exp, mfg: it.bc.mfg, gtin: it.bc.gtin }).toDataURL('image/jpeg', 0.9); const im = sel.closest('.fast-card').querySelector('img'); if (im) im.src = it.img; } catch (e) {} }
+        }));
         document.getElementById('fast-panel').style.display = 'block';
         document.querySelector('#crop-modal .crop-wrapper').style.display = 'none';
         document.getElementById('crop-footer').style.display = 'none';
         const n = fastItems.length;
-        document.getElementById('ocr-status').innerText = n > 1 ? `✅ ${n} étiquettes lues par code-barres.` : "✅ Étiquette lue par code-barres.";
+        const what = currentScanScope === 'BOX' ? ['boîtes lues', 'Boîte lue'] : ['étiquettes lues', 'Étiquette lue'];
+        document.getElementById('ocr-status').innerText = n > 1 ? `✅ ${n} ${what[0]} par code-barres.` : `✅ ${what[1]} par code-barres.`;
         fastRefreshButton();
     }
     function fastRefreshButton() {

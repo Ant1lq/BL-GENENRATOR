@@ -692,7 +692,10 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
         <button class="chip" data-filter="todo" aria-pressed="false" id="f-todo" type="button"></button>
         <button class="chip" data-filter="ko" aria-pressed="false" id="f-ko" type="button"></button>
         <button class="chip action" id="allOk" type="button">Marquer le reste présent</button>
+        <button class="chip action" id="scanBtn" type="button">📷 Scanner des boîtes</button>
+        <input type="file" id="scanFile" accept="image/*" multiple style="display:none">
       </div>
+      <div id="scanRes" class="hidden" style="margin-top:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:13px;line-height:1.5"></div>
     </div>
 
     <div class="list" id="list"></div>
@@ -776,6 +779,7 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 
 
 <script src="assets/local-db.js"></script>
+<script src="assets/scan.js"></script>
 <script src="assets/vendor/pdf.min.js"></script>
 <script src="assets/vendor/pdf.worker.min.js"></script>
 <script src="assets/vendor/pdf-lib.min.js"></script>
@@ -1221,12 +1225,51 @@ function renderAll(){
 }
 
 function enterWork(){
+  SC.seen.clear(); $("scanRes").classList.add("hidden");
   $("status").textContent=""; $("status").className="status";
   $("genBlank").classList.toggle("hidden",S.mode!=="prog");
   renderAll();
   show("work");
   suggestStamp();
 }
+
+/* ================= Pointage par photo des boîtes ================= */
+// Une ou plusieurs photos (une étagère entière si besoin) : chaque n° de série lu est pointé « présent » dans la liste.
+const SC = { seen:new Map() };   // n° de série déjà scannés pendant cet inventaire -> infos lues
+function snKey(v){ return String(v==null?"":v).toUpperCase().replace(/[^A-Z0-9]/g,""); }
+async function scanFiles(files){
+  const box=$("scanRes"); box.classList.remove("hidden"); box.textContent="🔍 Lecture des codes-barres…";
+  let read=[], failed=0;
+  for(const f of files){
+    try{ const c=await LabelScan.fileToCanvas(f,3000); read=read.concat(await LabelScan.decodeCanvas(c)); }
+    catch(e){ console.error(e); failed++; }
+  }
+  const byLot=new Map(); S.rows.forEach(r=>{ const k=snKey(r.lot); if(k) byLot.set(k,r); });
+  let neu=0, deja=0, multi=0; const first=[];
+  read.forEach(it=>{
+    const k=snKey(it.sn); if(!k) return;
+    SC.seen.set(k,it);
+    const r=byLot.get(k); if(!r) return;
+    if(r.theo>1){ multi++; return; }                 // lot en plusieurs exemplaires : à compter à la main
+    if(r.val===1) deja++; else { setVal(r,1); neu++; first.push(r); }
+  });
+  const inconnus=[...SC.seen.entries()].filter(([k])=>!byLot.has(k)).map(([,it])=>it);
+  const total=read.filter(it=>it.sn).length;
+  box.replaceChildren();
+  if(!total){
+    box.append(h("b",null, failed?"Photo illisible.":"Aucun code-barres MicroPort lu sur la photo."), h("div",null,"Rapprochez-vous, évitez les reflets, et gardez les codes-barres bien à plat."));
+    return;
+  }
+  box.append(h("b",null,"✅ "+neu+" matériel"+(neu>1?"s":"")+" pointé"+(neu>1?"s":"")+" présent"+(neu>1?"s":"")+(deja?" · "+deja+" déjà pointé"+(deja>1?"s":""):"")));
+  if(multi) box.append(h("div",null,"ℹ️ "+multi+" lot"+(multi>1?"s":"")+" en plusieurs exemplaires : quantité à saisir à la main."));
+  if(inconnus.length){
+    box.append(h("div",{style:"margin-top:6px;color:#b45309;font-weight:700"},"⚠️ "+inconnus.length+" scanné"+(inconnus.length>1?"s":"")+" mais absent"+(inconnus.length>1?"s":"")+" de la liste :"));
+    inconnus.forEach(it=>box.append(h("div",null,"• "+it.sn+(it.exp?" — péremption "+fmtFR(it.exp):"")+(it.ref?" — "+it.ref:""))));
+  }
+  if(first.length){ S.filter="all"; applyFilter(); const el=els[first[0].id]; if(el) el.root.scrollIntoView({behavior:"smooth",block:"center"}); }
+}
+$("scanBtn").addEventListener("click",()=>{ $("scanFile").value=""; $("scanFile").click(); });
+$("scanFile").addEventListener("change",e=>{ const fs=[...(e.target.files||[])]; if(fs.length) scanFiles(fs); });
 
 document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{ S.filter=b.dataset.filter; applyFilter(); }));
 $("allOk").addEventListener("click",()=>{
