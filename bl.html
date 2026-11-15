@@ -581,6 +581,46 @@
         .ocr-inline-loading { display: none; background: #eff6ff; color: var(--palette-royal-blue); padding: 10px; border-radius: 10px; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 10px; border: 1px dashed var(--palette-royal-blue); }
         .admin-section-title { background: #e2e8f0; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-top: 15px; margin-bottom: 10px; color: #334155; }
 
+        .cm-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .cm-top h3 { flex: 1; margin: 0; color: var(--blue-mp); font-size: 19px; font-weight: 850; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cm-close { flex: 0 0 40px; height: 40px; border-radius: 50%; border: none; background: #eef2f7; color: #475569; font-size: 16px; font-weight: 800; cursor: pointer; }
+        .cm-searchrow { display: flex; gap: 8px; }
+        .cm-searchrow input { flex: 1; min-width: 0; }
+        .cm-add { flex: 0 0 50px; height: 50px; border-radius: 14px; border: none; background: var(--blue-mp); color: #fff; font-size: 24px; font-weight: 700; line-height: 1; cursor: pointer; }
+        .cm-filters { display: flex; gap: 6px; margin: 10px 0; overflow-x: auto; }
+        .cm-chip { flex: 0 0 auto; border: 1.5px solid #dbe3ec; background: #fff; color: #475569; border-radius: 99px; padding: 8px 13px; font-size: 12.5px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+        .cm-chip.on { background: var(--blue-mp); border-color: var(--blue-mp); color: #fff; }
+        .cm-hint { display: none; font-size: 12px; line-height: 1.4; color: #1e3a8a; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+        .cm-empty, .cd-none { text-align: center; font-size: 13px; color: var(--text-muted); padding: 14px 0; margin: 0; }
+        .cm-row { display: flex; align-items: center; gap: 8px; background: #fff; border: 1.5px solid var(--border-color); border-radius: 16px; padding: 10px 10px 10px 4px; margin-bottom: 8px; cursor: pointer; }
+        .cm-row:active { background: #f1f5f9; }
+        .cm-star { flex: 0 0 42px; height: 42px; border: none; background: transparent; font-size: 20px; color: #94a3b8; cursor: pointer; }
+        .cm-main { flex: 1; min-width: 0; }
+        .cm-name { font-size: 15px; font-weight: 850; color: var(--blue-mp); line-height: 1.25; }
+        .cm-adr { font-size: 12px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cm-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+        .cm-tag { font-size: 11px; font-weight: 800; border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
+        .cm-tag.ok { background: #ecfdf5; color: #15803d; }
+        .cm-tag.ko { background: #fff7ed; color: #b45309; }
+        .cm-chev { color: #94a3b8; font-size: 20px; flex: 0 0 auto; }
+        .cd-headrow { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+        .cd-starbtn { background: #fff; border-color: #dbe3ec; color: #475569; }
+        .cd-starbtn.on { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+        .cd-card { background: #fff; border: 1.5px solid var(--border-color); border-radius: 18px; padding: 14px; margin-bottom: 12px; }
+        .cd-card h4 { margin: 0 0 12px; font-size: 14.5px; font-weight: 850; color: var(--blue-mp); display: flex; align-items: center; gap: 8px; }
+        .cd-count { margin-left: auto; background: #eef2f7; color: #475569; border-radius: 99px; padding: 1px 9px; font-size: 12px; }
+        .cd-doc { border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 8px; background: #f8fafc; }
+        .cd-doc > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; cursor: pointer; font-size: 14px; font-weight: 750; }
+        .cd-doc > summary::-webkit-details-marker { display: none; }
+        .cd-doc-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cd-doc-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+        .cd-btnrow { display: flex; gap: 8px; }
+        .cd-btnrow .btn-mini { flex: 1; justify-content: center; padding: 11px 6px; font-size: 13px; }
+        .cd-addrow { display: flex; gap: 8px; margin-top: 4px; }
+        .cd-addrow select { flex: 0 0 72px; padding: 0 8px; font-weight: 800; }
+        .cd-addrow input { flex: 1; min-width: 0; }
+        .cd-tip { font-size: 11.5px; color: var(--text-muted); margin: 10px 0 0; line-height: 1.35; }
+        .cd-delete { display: block; width: 100%; background: none; border: none; color: var(--palette-vibrant-red); font-size: 13px; font-weight: 750; padding: 12px; margin-bottom: 8px; cursor: pointer; }
         .admin-tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
         .admin-tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: none; font-size: 12px; font-weight: bold; background: #f1f5f9; color: #64748b; cursor: pointer; }
         .admin-tab-btn.active { background: var(--blue-mp); color: white; }
@@ -1027,28 +1067,31 @@
 
 <div id="admin-modal" class="ios-modal">
     <div class="ios-modal-content" id="admin-modal-content">
-        <h3 style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; text-align:center; margin-bottom:14px; flex-shrink:0;">🏢 Centres & tampons</h3>
-        
-        <div class="admin-tabs" style="flex-shrink:0;">
-            <button id="tab-btn-view" class="admin-tab-btn active" onclick="switchAdminTab('view')">🏢 CENTRES</button>
-            <button id="tab-btn-edit" class="admin-tab-btn" onclick="switchAdminTab('edit')">🌐 MON SECTEUR</button>
+        <div class="cm-top" style="flex-shrink:0;">
+            <h3 id="centers-title">Centres</h3>
+            <button class="cm-close" onclick="closeAdminModal()" aria-label="Fermer">✕</button>
         </div>
+        <div id="admin-global-status" style="font-size:12.5px; font-weight:800; text-align:center; color:var(--palette-royal-blue); min-height:0; flex-shrink:0;"></div>
 
-        <div id="admin-global-status" style="font-size:12px; font-weight:bold; text-align:center; color:var(--palette-royal-blue); margin-bottom:10px; flex-shrink:0;"></div>
-
-        <div style="flex:1; overflow-y:auto; min-height:0;">
+        <div style="flex:1; overflow-y:auto; min-height:0; -webkit-overflow-scrolling:touch;">
             <div id="admin-tab-content-view">
                 <div id="centers-list-view">
-                    <button class="btn-action-block" style="margin-top:0;" onclick="openNewCenterModal()">➕ CRÉER UN NOUVEAU CENTRE</button>
-                    <div class="form-group" style="margin-top:14px; margin-bottom:8px;">
-                        <input type="text" id="centers-search" placeholder="🔎 Rechercher un établissement..." oninput="renderCentersList()">
+                    <div class="cm-searchrow">
+                        <input type="text" id="centers-search" placeholder="🔎 Rechercher un centre…" oninput="renderCentersList()">
+                        <button class="cm-add" onclick="openNewCenterModal()" aria-label="Créer un centre">＋</button>
                     </div>
+                    <div class="cm-filters">
+                        <button id="cf-all" class="cm-chip on" onclick="setCentersFilter('all')">Tous</button>
+                        <button id="cf-sector" class="cm-chip" onclick="setCentersFilter('sector')">⭐ Mon secteur</button>
+                        <button id="cf-todo" class="cm-chip" onclick="setCentersFilter('todo')">À compléter</button>
+                    </div>
+                    <div id="centers-hint" class="cm-hint"></div>
                     <div id="centers-list"></div>
                 </div>
                 <div id="center-detail-view" style="display:none;"></div>
             </div>
 
-            <div id="admin-tab-content-edit" style="display:none;">
+            <div id="admin-tab-content-edit" style="display:none !important;">
                 <div class="admin-section-title">🔒 MON SECTEUR (CENTRES VISIBLES AU BL)</div>
                 <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 8px 0; line-height: 1.3;">
                     Cochez les centres qui doivent apparaître dans votre liste déroulante d'établissement lors de la création d'un BL.<br>
@@ -1064,9 +1107,6 @@
             </div>
         </div>
 
-        <div style="margin-top:16px; padding-top:15px; border-top:1px solid #e2e8f0; flex-shrink:0;">
-            <button class="btn-secondary-ios" style="padding:14px;" onclick="closeAdminModal()">FERMER LA GESTION</button>
-        </div>
     </div>
 </div>
 
@@ -1342,16 +1382,7 @@
 
     let currentCenterDetail = null; // nom du centre actuellement ouvert dans la fiche détail
 
-    function switchAdminTab(tab) {
-        document.getElementById('tab-btn-view').className = 'admin-tab-btn' + (tab === 'view' ? ' active' : '');
-        document.getElementById('tab-btn-edit').className = 'admin-tab-btn' + (tab === 'edit' ? ' active' : '');
-        
-        document.getElementById('admin-tab-content-view').style.display = (tab === 'view' ? 'block' : 'none');
-        document.getElementById('admin-tab-content-edit').style.display = (tab === 'edit' ? 'block' : 'none');
-        
-        if (tab === 'view') { closeCenterDetail(); renderCentersList(); }
-        if (tab === 'edit') renderEngineerCentersCheckboxes();
-    }
+    function switchAdminTab() { closeCenterDetail(); }   // (ancienne navigation par onglets : conservée pour compatibilité)
 
     async function renderEngineerCentersCheckboxes() {
         const currentIng = document.getElementById('inIng').value || "";
@@ -1460,34 +1491,94 @@
 
     function openAdminModal() {
         document.getElementById('admin-global-status').innerText = "";
-        switchAdminTab('view');
+        document.getElementById('center-detail-view').style.display = 'none';
+        document.getElementById('centers-list-view').style.display = 'block';
+        currentCenterDetail = null;
         document.getElementById('admin-modal').style.display = "flex";
+        refreshCentersList();
     }
 
     function closeAdminModal() { document.getElementById('admin-modal').style.display = "none"; }
 
     // ====== LISTE DES CENTRES ======
+    // Liste des centres : un coup d'œil suffit pour voir ce qui manque (médecins, tampon, destinataires).
+    // L'étoile ajoute ou retire le centre de « mon secteur » (les centres proposés à la création d'un BL).
+    let centersFilter = 'all', sectorNames = new Set(), doctorCounts = {};
+    async function loadCentersExtras() {
+        const ing = document.getElementById('inIng').value || '';
+        try {
+            const [links, meds] = await Promise.all([
+                _supabase.from('engineer_centers').select('center_name').eq('engineer_name', ing),
+                _supabase.from('medecins').select('centre_nom')
+            ]);
+            sectorNames = new Set((links.data || []).map(l => l.center_name));
+            doctorCounts = {}; (meds.data || []).forEach(m => { doctorCounts[m.centre_nom] = (doctorCounts[m.centre_nom] || 0) + 1; });
+        } catch (e) { console.error(e); }
+    }
+    async function refreshCentersList() { await loadCentersExtras(); renderCentersList(); }
+    function setCentersFilter(f) {
+        centersFilter = f;
+        ['all', 'sector', 'todo'].forEach(k => document.getElementById('cf-' + k).classList.toggle('on', k === f));
+        renderCentersList();
+    }
+    function centerMailCount(c) {
+        const ov = mailOverrides[c.id], raw = ((ov && ov.mail_bl != null) ? ov.mail_bl : c.mail_bl) || '';
+        return raw.split(/[;,\s]+/).filter(a => a.includes('@')).length;
+    }
+    function centerMissing(c) { return !doctorCounts[c.nom] || !c.tampon_url || !centerMailCount(c); }
+    async function toggleSector(nom, ev) {
+        if (ev) ev.stopPropagation();
+        const ing = document.getElementById('inIng').value || '';
+        if (!ing) { document.getElementById('admin-global-status').innerText = "Choisissez d'abord l'ingénieur dans l'onglet Infos."; return; }
+        try {
+            if (sectorNames.has(nom)) {
+                const { error } = await _supabase.from('engineer_centers').delete().eq('engineer_name', ing).eq('center_name', nom); if (error) throw error;
+                sectorNames.delete(nom);
+            } else {
+                const { error } = await _supabase.from('engineer_centers').insert([{ engineer_name: ing, center_name: nom }]); if (error) throw error;
+                sectorNames.add(nom);
+            }
+            renderCentersList();
+            if (currentCenterDetail === nom) { const b = document.getElementById('cd-star'); if (b) { b.classList.toggle('on', sectorNames.has(nom)); b.innerText = sectorNames.has(nom) ? '⭐ Dans mon secteur' : '☆ Ajouter à mon secteur'; } }
+            updateDynamicStocksAndFilter();   // la liste des établissements du BL suit tout de suite
+        } catch (e) { console.error(e); document.getElementById('admin-global-status').innerText = "❌ Modification du secteur impossible."; }
+    }
     function renderCentersList() {
-        const listDiv = document.getElementById('centers-list');
+        const listDiv = document.getElementById('centers-list'), hint = document.getElementById('centers-hint');
         const searchEl = document.getElementById('centers-search');
-        const search = (searchEl && searchEl.value ? searchEl.value.trim().toUpperCase() : "");
+        const norm = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+        const search = norm(searchEl && searchEl.value ? searchEl.value.trim() : '');
         listDiv.innerHTML = "";
-
-        let filtered = dbCloudCentres.filter(c => !search || c.nom.toUpperCase().includes(search));
+        let filtered = dbCloudCentres.filter(c => !search || norm(c.nom + ' ' + (c.adresse || '')).includes(search));
+        if (centersFilter === 'sector') filtered = filtered.filter(c => sectorNames.has(c.nom));
+        if (centersFilter === 'todo') filtered = filtered.filter(centerMissing);
+        const nSector = dbCloudCentres.filter(c => sectorNames.has(c.nom)).length;
+        document.getElementById('cf-all').innerText = `Tous (${dbCloudCentres.length})`;
+        document.getElementById('cf-sector').innerText = `⭐ Mon secteur (${nSector})`;
+        document.getElementById('cf-todo').innerText = `À compléter (${dbCloudCentres.filter(centerMissing).length})`;
+        hint.innerText = nSector ? '' : "Aucun centre dans votre secteur : tous sont proposés à la création d'un BL. Touchez ☆ pour n'en garder que certains.";
+        hint.style.display = nSector ? 'none' : 'block';
         if (filtered.length === 0) {
-            listDiv.innerHTML = "<p style='text-align:center; font-size:12px; color:var(--text-muted); padding:20px 0;'>Aucun centre trouvé.</p>";
+            listDiv.innerHTML = "<p class='cm-empty'>Aucun centre ne correspond.</p>";
             return;
         }
         filtered.forEach(c => {
             const row = document.createElement('div');
-            row.className = 'center-list-item';
+            row.className = 'cm-row';
             row.onclick = () => openCenterDetail(c.nom);
+            const nd = doctorCounts[c.nom] || 0, nm = centerMailCount(c), star = sectorNames.has(c.nom);
+            const tag = (ok, txt) => `<span class="cm-tag ${ok ? 'ok' : 'ko'}">${txt}</span>`;
             row.innerHTML = `
-                <div class="center-list-item-info">
-                    <div class="center-list-item-name">🏥 ${c.nom}</div>
-                    <div class="center-list-item-meta">${c.adresse ? c.adresse : 'Adresse non renseignée'}</div>
+                <button class="cm-star ${star ? 'on' : ''}" aria-label="${star ? 'Retirer de mon secteur' : 'Ajouter à mon secteur'}">${star ? '⭐' : '☆'}</button>
+                <div class="cm-main">
+                    <div class="cm-name"></div>
+                    <div class="cm-adr"></div>
+                    <div class="cm-tags">${tag(nd > 0, nd > 0 ? `👨‍⚕️ ${nd} médecin${nd > 1 ? 's' : ''}` : 'Aucun médecin')}${tag(!!c.tampon_url, c.tampon_url ? '🖋️ Tampon' : 'Pas de tampon')}${tag(nm > 0, nm > 0 ? `✉️ ${nm} destinataire${nm > 1 ? 's' : ''}` : 'Pas de mail')}</div>
                 </div>
-                <span class="center-list-item-chevron">${c.tampon_url ? '🖋️ ' : ''}›</span>`;
+                <span class="cm-chev">›</span>`;
+            row.querySelector('.cm-name').textContent = c.nom;
+            row.querySelector('.cm-adr').textContent = c.adresse || 'Adresse non renseignée';
+            row.querySelector('.cm-star').addEventListener('click', e => toggleSector(c.nom, e));
             listDiv.appendChild(row);
         });
     }
@@ -1683,6 +1774,8 @@
         currentCenterDetail = null;
         document.getElementById('center-detail-view').style.display = 'none';
         document.getElementById('centers-list-view').style.display = 'block';
+        document.getElementById('centers-title').innerText = 'Centres';
+        refreshCentersList();
     }
 
     function handleTamponImgError(imgEl) {
@@ -1705,75 +1798,86 @@
         } catch (e) { console.error("Erreur chargement médecins:", e); }
 
         const docThumbs = await Promise.all(medecins.map(m => m.tampon_url ? getDisplayableTamponUrl(m.tampon_url) : null));
-        let docsHtml = medecins.length > 0
+        const escH = v => String(v == null ? '' : v).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        // Un médecin = une ligne ; on la touche pour gérer son tampon ou le retirer
+        const docsHtml = medecins.length > 0
             ? medecins.map((m, i) => `
-                <div class="cd-doctor-row" style="flex-direction:column; align-items:stretch; gap:8px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                        <span>👨‍⚕️ ${m.nom}</span>
-                        <button class="btn-mini delete" onclick="deleteDoctor(${m.id})">🗑️</button>
+                <details class="cd-doc">
+                    <summary><span class="cd-doc-name">${escH(m.nom)}</span><span class="cm-tag ${m.tampon_url ? 'ok' : 'ko'}">${m.tampon_url ? '🖋️ Tampon' : 'Pas de tampon'}</span></summary>
+                    <div class="cd-doc-body">
+                        ${docThumbs[i] ? `<div class="tampon-preview-box" style="margin-top:0;"><img src="${docThumbs[i]}" alt="Tampon"></div>` : ''}
+                        <div class="cd-btnrow">
+                            <button class="btn-mini sign" onclick="triggerDoctorStamp(${m.id}, 'photo')">📷 Photo du tampon</button>
+                            <button class="btn-mini sign" onclick="triggerDoctorStamp(${m.id}, 'import')">🖼️ Image</button>
+                        </div>
+                        <div class="cd-btnrow">
+                            ${m.tampon_url ? `<button class="btn-mini edit" onclick="removeDoctorStamp(${m.id})">Retirer le tampon</button>` : ''}
+                            <button class="btn-mini delete" onclick="deleteDoctor(${m.id})">🗑️ Retirer le médecin</button>
+                        </div>
                     </div>
-                    ${docThumbs[i] ? `<div class="tampon-preview-box" style="margin-top:0;"><img src="${docThumbs[i]}" alt="Tampon de ${m.nom}"></div>` : ''}
-                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                        <button class="btn-mini sign" onclick="triggerDoctorStamp(${m.id}, 'photo')">📷 ${m.tampon_url ? 'Photo' : 'Tampon : photo'}</button>
-                        <button class="btn-mini sign" onclick="triggerDoctorStamp(${m.id}, 'import')">🖼️ ${m.tampon_url ? 'Image' : 'Tampon : importer'}</button>
-                        ${m.tampon_url ? `<button class="btn-mini delete" onclick="removeDoctorStamp(${m.id})">Retirer le tampon</button>` : ''}
-                    </div>
-                </div>`).join("")
-            : "<p style='font-size:12px; color:var(--text-muted); font-style:italic;'>Aucun médecin rattaché pour le moment.</p>";
+                </details>`).join("")
+            : "<p class='cd-none'>Aucun médecin pour ce centre.</p>";
 
         let tamponHtml;
         if (centreData.tampon_url) {
             const displayTamponUrl = await getDisplayableTamponUrl(centreData.tampon_url);
             tamponHtml = displayTamponUrl
-                ? `<div class="tampon-preview-box"><img src="${displayTamponUrl}" alt="Tampon officiel" onerror="handleTamponImgError(this)"></div>`
-                : `<p style="font-size:12px; color:var(--palette-vibrant-red); font-weight:700; margin:6px 0 0 0;">⚠️ Impossible de générer le lien d'accès au tampon.</p>`;
+                ? `<div class="tampon-preview-box" style="margin-top:0;"><img src="${displayTamponUrl}" alt="Tampon du centre" onerror="handleTamponImgError(this)"></div>`
+                : `<p class="cd-none" style="color:var(--palette-vibrant-red);">⚠️ Tampon illisible : remplacez-le.</p>`;
         } else {
-            tamponHtml = "<p style='font-size:12px; color:var(--text-muted); font-style:italic; margin:6px 0 0 0;'>Aucun tampon enregistré pour ce centre.</p>";
+            tamponHtml = "<p class='cd-none'>Aucun tampon pour ce centre.</p>";
         }
 
         const esc2 = v => String(v == null ? '' : v).replace(/"/g, '&quot;');
         const myOv = mailOverrides[centreData.id] || null;
         const myBl = (myOv && myOv.mail_bl != null) ? myOv.mail_bl : (centreData.mail_bl || '');
         const myPh = (myOv && myOv.mail_pharmacie != null) ? myOv.mail_pharmacie : (centreData.mail_pharmacie || '');
+        const inSector = sectorNames.has(centreData.nom);
+        document.getElementById('centers-title').innerText = centreData.nom;
         detail.innerHTML = `
-            <button class="btn-mini edit" onclick="closeCenterDetail()">← Retour à la liste</button>
-
-            <div class="admin-section-title" style="margin-top:14px;">🏥 Informations générales</div>
-            <div class="form-group"><label>Nom de l'établissement</label><input type="text" id="cd-nom" value="${(centreData.nom||'').replace(/"/g,'&quot;')}"></div>
-            <div class="form-group"><label>Adresse postale complète</label><input type="text" id="cd-adr" value="${(centreData.adresse||'').replace(/"/g,'&quot;')}"></div>
-            <div class="admin-section-title" style="margin-top:14px;">✉️ Mes destinataires (propres à mon compte)</div>
-            <p style="font-size:11px; color:var(--text-muted); margin:0 0 8px 0;">Utilisés uniquement quand vous envoyez un BL depuis votre compte. Chaque compte règle les siens.</p>
-            <div class="form-group"><label>Destinataires du BL</label><input type="text" id="cd-my-bl" inputmode="email" autocapitalize="off" placeholder="cardiologie@hopital.fr, ..." value="${esc2(myBl)}"></div>
-            <div class="form-group"><label>Destinataires version pharmacie</label><input type="text" id="cd-my-pharma" inputmode="email" autocapitalize="off" placeholder="pharmacie@hopital.fr, ..." value="${esc2(myPh)}"></div>
-            ${myOv ? `<button class="btn-mini edit" style="width:100%; justify-content:center; margin-bottom:10px;" onclick="resetMyMailLists()">↩️ Revenir à la liste par défaut du centre</button>` : ''}
-            <details style="margin-bottom:12px;"><summary style="font-size:12px; font-weight:800; color:var(--text-muted); cursor:pointer;">Liste par défaut du centre (comptes sans liste personnelle)</summary>
-                <div class="form-group" style="margin-top:8px;"><label>Destinataires du BL</label><input type="text" id="cd-mail-bl" inputmode="email" autocapitalize="off" value="${esc2(centreData.mail_bl)}"></div>
-                <div class="form-group"><label>Destinataires version pharmacie</label><input type="text" id="cd-mail-pharma" inputmode="email" autocapitalize="off" value="${esc2(centreData.mail_pharmacie)}"></div>
-            </details>
-            <button class="btn-primary-ios" id="cd-save-info-btn" style="padding:12px; font-size:13px; margin-bottom:22px;" onclick="saveCenterDetailInfo()">💾 Enregistrer les infos</button>
-
-            <div class="admin-section-title">👨‍⚕️ Médecins implanteurs</div>
-            <div id="cd-doctors-list">${docsHtml}</div>
-            <div style="display:flex; gap:8px; margin-top:8px; margin-bottom:22px;">
-                <select id="cd-new-doctor-title" style="flex:0 0 74px; padding:0 8px; font-weight:800;" aria-label="Titre"><option value="Dr">Dr</option><option value="Pr">Pr</option></select>
-                <input type="text" id="cd-new-doctor" placeholder="Nom du nouveau médecin" style="flex:1; min-width:0;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addDoctorToCenter();}">
-                <button class="btn-mini edit" style="white-space:nowrap;" onclick="addDoctorToCenter()">➕ Ajouter</button>
+            <div class="cd-headrow">
+                <button class="btn-mini edit" onclick="closeCenterDetail()">‹ Centres</button>
+                <button class="btn-mini cd-starbtn ${inSector ? 'on' : ''}" id="cd-star" onclick="toggleSector(currentCenterDetail)">${inSector ? '⭐ Dans mon secteur' : '☆ Ajouter à mon secteur'}</button>
             </div>
 
-            <div class="admin-section-title">🖋️ Tampon officiel</div>
-            <div id="cd-tampon-preview">${tamponHtml}</div>
-            <div class="grid-2" style="margin-top:10px; margin-bottom:10px;">
-                <button class="btn-smart-scan btn-scan-sonde" style="padding:12px; font-size:12.5px;" onclick="triggerCenterDetailStampPhoto()">📷 Prendre une photo</button>
-                <button class="btn-smart-scan btn-scan-boitier" style="padding:12px; font-size:12.5px;" onclick="triggerCenterDetailStampImport()">🖼️ Importer une image</button>
-            </div>
-            <button class="btn-mini delete" style="width:100%; justify-content:center; margin-bottom:6px;" onclick="removeCenterStamp()" ${centreData.tampon_url ? '' : 'disabled'}>🗑️ Retirer le tampon</button>
-            <p style="font-size:11px; color:var(--text-muted); margin:0 0 22px 0; line-height:1.3;">Au recadrage, vous choisissez de retirer ou non le fond blanc. Pour un bon résultat : tampon à plat, en pleine lumière, sur du papier blanc, sans ombre.</p>
+            <section class="cd-card">
+                <h4>🏥 Coordonnées</h4>
+                <div class="form-group"><label>Nom</label><input type="text" id="cd-nom" value="${esc2(centreData.nom)}"></div>
+                <div class="form-group" style="margin-bottom:0;"><label>Adresse</label><input type="text" id="cd-adr" value="${esc2(centreData.adresse)}"></div>
+            </section>
 
-            <div style="border-top:1px dashed #fecaca; padding-top:14px;">
-                <button class="btn-mini delete" style="width:100%; justify-content:center; padding:12px;" onclick="deleteCenterEntirely()">🗑️ Supprimer définitivement ce centre</button>
-            </div>`;
+            <section class="cd-card">
+                <h4>✉️ Destinataires des BL</h4>
+                <div class="form-group"><label>BL complet</label><input type="text" id="cd-my-bl" inputmode="email" autocapitalize="off" placeholder="cardiologie@hopital.fr" value="${esc2(myBl)}"></div>
+                <div class="form-group" style="margin-bottom:0;"><label>Version pharmacie</label><input type="text" id="cd-my-pharma" inputmode="email" autocapitalize="off" placeholder="pharmacie@hopital.fr" value="${esc2(myPh)}"></div>
+                <input type="hidden" id="cd-mail-bl" value="${esc2(centreData.mail_bl)}"><input type="hidden" id="cd-mail-pharma" value="${esc2(centreData.mail_pharmacie)}">
+            </section>
+            <button class="btn-primary-ios" id="cd-save-info-btn" style="padding:14px; font-size:14px; margin-bottom:16px;" onclick="saveCenterDetailInfo()">💾 Enregistrer coordonnées et destinataires</button>
+
+            <section class="cd-card">
+                <h4>👨‍⚕️ Médecins implanteurs <span class="cd-count">${medecins.length}</span></h4>
+                <div id="cd-doctors-list">${docsHtml}</div>
+                <div class="cd-addrow">
+                    <select id="cd-new-doctor-title" aria-label="Titre"><option value="Dr">Dr</option><option value="Pr">Pr</option></select>
+                    <input type="text" id="cd-new-doctor" placeholder="Nom du médecin" onkeydown="if(event.key==='Enter'){event.preventDefault(); addDoctorToCenter();}">
+                    <button class="cm-add" onclick="addDoctorToCenter()" aria-label="Ajouter le médecin">＋</button>
+                </div>
+            </section>
+
+            <section class="cd-card">
+                <h4>🖋️ Tampon du centre</h4>
+                <div id="cd-tampon-preview">${tamponHtml}</div>
+                <div class="cd-btnrow" style="margin-top:10px;">
+                    <button class="btn-mini sign" onclick="triggerCenterDetailStampPhoto()">📷 Photo</button>
+                    <button class="btn-mini sign" onclick="triggerCenterDetailStampImport()">🖼️ Image</button>
+                    ${centreData.tampon_url ? `<button class="btn-mini edit" onclick="removeCenterStamp()">Retirer</button>` : ''}
+                </div>
+                <p class="cd-tip">Tampon à plat, en pleine lumière, sur papier blanc. Le fond se retire au recadrage.</p>
+            </section>
+
+            <button class="cd-delete" onclick="deleteCenterEntirely()">Supprimer ce centre</button>`;
         AddrAssist.bind('cd-nom','cd-adr');
-        ['cd-my-bl','cd-my-pharma','cd-mail-bl','cd-mail-pharma'].forEach(id => MailList.bind(id));
+        ['cd-my-bl','cd-my-pharma'].forEach(id => MailList.bind(id));
     }
 
     async function saveMyMailLists(c) {
