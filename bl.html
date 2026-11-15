@@ -799,8 +799,8 @@
             <div class="act-group">
                 <div class="act-title">Méthode d'envoi</div>
                 <select id="send-method" onchange="setSendMethod(this.value)" style="height:44px; font-size:14px;">
-                    <option value="outlook">Outlook : tout prérempli, BL intégré au message</option>
-                    <option value="coller">Mail : tout prérempli, BL à coller</option>
+                    <option value="outlook">Outlook : tout prérempli, BL à coller</option>
+                    <option value="coller">Appli mail par défaut : tout prérempli, BL à coller</option>
                     <option value="partage">Partage iOS : BL joint, destinataires à saisir</option>
                 </select>
             </div>
@@ -3654,7 +3654,7 @@ function removeBg(src,sens){
     }
     // ====== ENVOI DU BL ======
     // Trois méthodes, au choix (mémorisé sur l'appareil) :
-    //  • outlook : ouvre Outlook avec destinataires, objet, texte ET l'image du BL intégrée au message (rien à coller) ;
+    //  • outlook : ouvre Outlook avec destinataires, objet et texte, l'image est dans le presse-papiers (à coller) ;
     //  • coller  : ouvre le mail complet, l'image est dans le presse-papiers (à coller) ;
     //  • partage : partage iOS (image jointe + texte ; destinataires et objet à saisir).
     function getSendMethod() { try { return localStorage.getItem('bl_send_method') || 'outlook'; } catch (e) { return 'outlook'; } }
@@ -3662,8 +3662,8 @@ function removeBg(src,sens){
     function paintSendHint() {
         const sel = document.getElementById('send-method'); if (sel) sel.value = getSendMethod();
         const h = document.getElementById('send-one-hint'); if (!h) return;
-        h.innerText = { outlook: "Outlook s'ouvre avec destinataires, objet, texte et BL intégré : il reste à appuyer sur Envoyer.",
-                        coller: "Le mail s'ouvre complet ; le BL est copié : appui long dans le texte, puis Coller.",
+        h.innerText = { outlook: "Outlook s'ouvre avec destinataires, objet et texte ; le BL est copié : appui long dans le message, puis Coller.",
+                        coller: "L'appli mail par défaut s'ouvre complète ; le BL est copié : appui long dans le texte, puis Coller.",
                         partage: "Partage iOS : le BL est joint, avec le texte. Destinataires et objet à saisir." }[getSendMethod()];
     }
     document.addEventListener('DOMContentLoaded', paintSendHint);
@@ -3698,20 +3698,18 @@ function removeBg(src,sens){
         const to = getMailRecipients(pharma);
         btn.disabled = true; btn.innerText = "⏳ Préparation…";
         try {
-            if (method === 'outlook') {
-                const img = await blImageDataUrl(1100, 0.82);
-                const html = `<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;font-size:15px;line-height:1.45">${mailTextToHtml(body)}</div><br><img src="${img}" alt="Bon de livraison" style="width:100%;max-width:760px;border:1px solid #ccc">`;
-                window.location.href = `ms-outlook://compose?to=${to}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(html)}`;
-            } else if (method === 'partage') {
-                const file = await getBlFileForSharing();
-                if (!file || !(navigator.canShare && navigator.canShare({ files: [file] }))) throw new Error('partage de fichier indisponible');
-                try { await navigator.share({ files: [file], title: subject, text: body }); } catch (err) { if (!(err && err.name === 'AbortError')) throw err; return; }
-            } else {
+            if (method === 'outlook' || method === 'coller') {
                 if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) throw new Error('presse-papiers image indisponible');
                 // La copie doit être demandée pendant le geste : on passe une promesse, l'image arrive ensuite
                 const png = renderBlCanvasAsync().then(canvas => new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('image vide')), 'image/png')));
                 await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-                window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                // Texte brut uniquement : Outlook n'interprète pas la mise en forme passée par ce lien
+                const q = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                window.location.href = method === 'outlook' ? `ms-outlook://compose?to=${to}&${q}` : `mailto:${to}?${q}`;
+            } else if (method === 'partage') {
+                const file = await getBlFileForSharing();
+                if (!file || !(navigator.canShare && navigator.canShare({ files: [file] }))) throw new Error('partage de fichier indisponible');
+                try { await navigator.share({ files: [file], title: subject, text: body }); } catch (err) { if (!(err && err.name === 'AbortError')) throw err; return; }
             }
             if (document.getElementById('autoSaveToggle').checked) saveCurrentBlToHistory(true);
         } catch (e) {
