@@ -378,6 +378,16 @@
             overflow: hidden;
         }
 
+        #fast-list { max-height: 62vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .fast-card { display: flex; gap: 12px; align-items: center; background: #fff; border: 1.5px solid var(--border-color); border-radius: 16px; padding: 10px; margin-bottom: 10px; }
+        .fast-card.off { opacity: .55; }
+        .fast-card img { width: 92px; height: 92px; object-fit: contain; background: #f1f5f9; border-radius: 10px; border: 1px solid var(--border-color); flex-shrink: 0; }
+        .fast-card.band img { width: 132px; height: 52px; }
+        .fast-card .fi { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.45; }
+        .fast-card .fi b { display: block; font-size: 14.5px; color: var(--blue-mp); }
+        .fast-card .fi .warn { color: var(--palette-vibrant-red); font-weight: 800; }
+        .fast-card .fi select { width: 100%; height: 38px; font-size: 13px; margin-bottom: 4px; }
+        .fast-card input[type="checkbox"] { width: 24px; height: 24px; flex-shrink: 0; }
         .crop-wrapper { width: 100%; max-height: 58vh; overflow: hidden; background: #000; border-radius: 16px; margin-bottom: 16px; }
         #crop-preview { max-width: 100%; display: block; }
         #crop-modal .ios-modal-content { max-width: 100%; padding: 18px; }
@@ -883,6 +893,14 @@
     <div class="ios-modal-content">
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
 
+        <div id="fast-panel" style="display:none;">
+            <div id="fast-list"></div>
+            <button class="btn-primary-ios" id="fast-add" style="padding:15px; font-size:15px; margin-top:6px;" onclick="fastAddSelected()">AJOUTER</button>
+            <div class="grid-2" style="margin-top:10px;">
+                <button class="btn-mini edit" style="padding:13px; justify-content:center; font-size:13px;" onclick="closeCropModal()">ANNULER</button>
+                <button class="btn-mini edit" style="padding:13px; justify-content:center; font-size:13px;" onclick="fastToManual()">✂️ Recadrer à la main</button>
+            </div>
+        </div>
         <div class="crop-wrapper"><img id="crop-preview"></div>
         <div id="ocr-status" style="font-size:13px; text-align:center; font-weight:bold; color:var(--accent); margin:10px 0 16px 0;">Cadrez le texte (SN, REF, EXP).</div>
         <div id="crop-removebg-wrap" style="display:none; margin:0 0 14px 0;">
@@ -891,7 +909,7 @@
             </label>
             <div style="font-size:11px; color:var(--text-muted); margin-top:4px; line-height:1.3;">Décochez pour garder l'image telle quelle (par exemple une image déjà détourée ou un fond coloré).</div>
         </div>
-        <div class="grid-2 modal-footer">
+        <div class="grid-2 modal-footer" id="crop-footer">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeCropModal()">ANNULER</button>
             <button class="btn-primary-ios" id="btn-validate-crop" style="padding:14px; font-size:14px;" onclick="processCroppedImage()">ANALYSER 🔍</button>
         </div>
@@ -2186,14 +2204,14 @@ function removeBg(src,sens){
 
     function triggerSmartAnalysis(scope) {
         modalScannerActive = false; currentScanScope = scope; cropPurpose = 'label';
-        document.getElementById('ocr-status').innerText = "Photo de l'étiquette entière (code-barres inclus) : cadrage automatique.";
+        document.getElementById('ocr-status').innerText = "Photo de l'étiquette (ou de plusieurs étiquettes) avec le code-barres : lecture et cadrage automatiques.";
         document.getElementById('label-camera-input').click();
     }
 
     function triggerModalPhoto() {
         modalScannerActive = true; cropPurpose = 'label';
         currentScanScope = (document.getElementById('man-type').value === "SONDE") ? "SONDE" : "BOITIER";
-        document.getElementById('ocr-status').innerText = "Photo de l'étiquette entière (code-barres inclus) : cadrage automatique.";
+        document.getElementById('ocr-status').innerText = "Photo de l'étiquette (ou de plusieurs étiquettes) avec le code-barres : lecture et cadrage automatiques.";
         document.getElementById('label-camera-input').click();
     }
 
@@ -2234,6 +2252,7 @@ function removeBg(src,sens){
                 document.getElementById('btn-validate-crop').innerText = (cropPurpose === 'tampon') ? 'VALIDER LE TAMPON ✅' : (cropPurpose === 'sig' ? 'VALIDER LA SIGNATURE ✅' : 'ANALYSER 🔍');
                 if (cropper) cropper.destroy();
                 cropperIsReady = false;
+                hideFastPanel();
                 document.getElementById('ocr-status').innerText = (cropPurpose === 'tampon') ? "Cadrez le tampon." : (cropPurpose === 'sig' ? "Cadrez la signature ou le tampon." : "Recherche du code-barres…");
 
                 // Zone de départ adaptée au format de l'étiquette : les sondes sont plutôt carrées,
@@ -2277,6 +2296,7 @@ function removeBg(src,sens){
 
     function closeCropModal() {
         document.getElementById('crop-modal').style.display = 'none';
+        if (typeof hideFastPanel === 'function') hideFastPanel();
         if (cropper) { cropper.destroy(); cropper = null; }
         cropperIsReady = false;
         labelAnalysisToken++; labelAnalysis = null; labelAnalysisPromise = null; pendingAutoCrop = null;
@@ -2482,6 +2502,44 @@ function removeBg(src,sens){
 
     // Position approximative de l'étiquette, déduite de celle du code-barres (taille et forme d'étiquette constantes).
     // Renvoie centre, taille et angle (en degrés) dans le repère de la photo.
+    // Tous les codes-barres GS1 de la photo (plusieurs étiquettes collées sur une même feuille), sans doublon,
+    // rangés dans l'ordre de lecture (haut → bas, gauche → droite).
+    async function decodeAllLabelBarcodes(srcCanvas) {
+        const Z = await loadZXing();
+        if (!Z) return [];
+        const maxSide = Math.max(srcCanvas.width, srcCanvas.height);
+        const scales = [];
+        [2600, 1500, 900].forEach(target => { const sc = Math.min(1, target / maxSide); if (!scales.some(x => Math.abs(x - sc) < 0.05)) scales.push(sc); });
+        const found = new Map();
+        for (const sc of scales) {
+            try {
+                const w = Math.max(1, Math.round(srcCanvas.width * sc)), h = Math.max(1, Math.round(srcCanvas.height * sc));
+                const c = document.createElement('canvas'); c.width = w; c.height = h;
+                const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(srcCanvas, 0, 0, w, h);
+                const res = await Z.readBarcodes(ctx.getImageData(0, 0, w, h), {
+                    formats: ['DataMatrix', 'Code128'], tryHarder: true, tryRotate: true, tryInvert: true, tryDownscale: true, maxNumberOfSymbols: 12
+                });
+                for (const r of (res || [])) {
+                    if (r.isValid === false || !r.text) continue;
+                    const parsed = parseGS1(r.text);
+                    if (!parsed) continue;
+                    const key = (parsed.gtin || '') + '|' + (parsed.sn || parsed.raw);
+                    if (found.has(key)) continue;
+                    const p = r.position;
+                    parsed.format = /matrix/i.test(r.format || '') ? 'dm' : 'linear';
+                    parsed.position = p ? [p.topLeft, p.topRight, p.bottomRight, p.bottomLeft].map(pt => ({ x: pt.x / sc, y: pt.y / sc })) : null;
+                    found.set(key, parsed);
+                }
+            } catch (e) { console.error('Lecture codes-barres :', e); }
+            if (found.size && sc === scales[0] && scales.length > 1 && found.size >= 3) break; // tout est déjà lu en pleine définition
+        }
+        const all = [...found.values()];
+        const cy = b => b.position ? (b.position[0].y + b.position[2].y) / 2 : 0, cx = b => b.position ? (b.position[0].x + b.position[2].x) / 2 : 0;
+        const band = maxSide * 0.08; // deux étiquettes côte à côte = même rangée
+        all.sort((a, b) => Math.abs(cy(a) - cy(b)) > band ? cy(a) - cy(b) : cx(a) - cx(b));
+        return all;
+    }
+
     function labelBoxFromBarcode(bc) {
         const P = bc && bc.position; if (!P) return null;
         const d = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
@@ -2491,9 +2549,9 @@ function removeBg(src,sens){
         let W, H, off;
         if (bc.format === 'dm') {            // sondes : étiquette carrée, Data Matrix en bas à droite (~30 % de la largeur)
             const side = (d(P[0], P[1]) + d(P[3], P[2]) + d(P[0], P[3]) + d(P[1], P[2])) / 4;
-            W = side / 0.30; H = W; off = { x: -0.29 * W, y: -0.15 * H };
+            W = side / 0.30; H = W; off = { x: -0.265 * W, y: -0.15 * H };
         } else {                             // boîtiers : étiquette en bande (~3,7:1), code-barres ~69 % de la largeur
-            const L = d(P[0], P[1]); W = L / 0.69; H = W / 3.72; off = { x: -0.02 * W, y: -0.02 * H };
+            const L = d(P[0], P[1]); W = L / 0.69; H = W / 3.72; off = { x: -0.035 * W, y: -0.05 * H };
         }
         return { cx: mid.x + ex.x * off.x + ey.x * off.y, cy: mid.y + ex.y * off.x + ey.y * off.y, w: W, h: H, angle: ang * 180 / Math.PI };
     }
@@ -2552,11 +2610,12 @@ function removeBg(src,sens){
         const k = Math.min(1, 3000 / Math.max(img.naturalWidth, img.naturalHeight));
         const base = document.createElement('canvas'); base.width = Math.round(img.naturalWidth * k); base.height = Math.round(img.naturalHeight * k);
         base.getContext('2d').drawImage(img, 0, 0, base.width, base.height);
-        const bc = await decodeLabelBarcode(base);
+        const allBc = await decodeAllLabelBarcodes(base);
+        const bc = allBc[0] || null;
         let box = bc ? labelBoxFromBarcode(bc) : null;
         let source = box ? 'barcode' : null;
         if (!box) { box = labelBoxFromBrightness(base); if (box) source = 'bright'; }
-        const out = { bc, auto: null, rotatedUrl: null, source };
+        const out = { bc, auto: null, rotatedUrl: null, source, all: allBc, base };
         if (box) {
             let workCanvas = base, cx = box.cx, cy = box.cy;
             // redressement si l'étiquette est penchée (ou la photo tournée) : on tourne la photo, puis on cadre à l'horizontale
@@ -2589,6 +2648,7 @@ function removeBg(src,sens){
             if (token !== labelAnalysisToken) return null; // une autre photo a pris le relais
             labelAnalysis = res;
             const st = document.getElementById('ocr-status');
+            if (fastEligible(res)) { showFastPanel(res); return res; }
             if (res.auto && cropper) {
                 pendingAutoCrop = res.auto;
                 if (res.rotatedUrl) { cropperIsReady = false; cropper.replace(res.rotatedUrl); }   // « ready » appliquera le cadrage
@@ -2599,6 +2659,105 @@ function removeBg(src,sens){
             return res;
         }).catch(err => { console.error('Analyse photo :', err); if (token === labelAnalysisToken) document.getElementById('ocr-status').innerText = "Cadrez l'étiquette entière (SN, REF, EXP et code-barres)."; return null; });
         return labelAnalysisPromise;
+    }
+
+    // ====== LECTURE RAPIDE ======
+    // Quand le code-barres donne tout (référence, n° de série, péremption), plus besoin de recadrer ni de lancer
+    // l'analyse : chaque étiquette de la photo est découpée toute seule (forme connue : carrée pour les sondes,
+    // en bande pour les boîtiers) et proposée telle quelle. Une photo peut contenir plusieurs étiquettes.
+    let fastItems = [];
+    function fastEligible(res) {
+        return cropPurpose === 'label' && !modalScannerActive && res && res.all && res.all.some(b => b.sn && b.position);
+    }
+    function typeOfModel(model) { return listSondes.includes(model) ? 'SONDE' : (listPaces.includes(model) ? 'PM' : 'DAI'); }
+    // Découpe une étiquette dans la photo, redressée selon l'inclinaison de son code-barres
+    function extractLabelCanvas(base, box, padX, padY) {
+        const w = Math.round(box.w * (1 + 2 * padX)), h = Math.round(box.h * (1 + 2 * padY));
+        const k = Math.max(1, 1100 / w) > 1 ? Math.min(2, 1100 / w) : Math.min(1, 1600 / w); // largeur utile 1100–1600 px
+        const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+        const x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height);
+        x.imageSmoothingQuality = 'high';
+        x.translate(c.width / 2, c.height / 2); x.scale(k, k); x.rotate(-box.angle * Math.PI / 180); x.drawImage(base, -box.cx, -box.cy);
+        return c;
+    }
+    // Même rendu noir et blanc que le recadrage manuel (image conservée sur le BL)
+    function binarizeCanvas(c) {
+        const ctx = c.getContext('2d'), img = ctx.getImageData(0, 0, c.width, c.height), d = img.data, g = new Uint8Array(d.length / 4);
+        for (let i = 0, p = 0; i < d.length; i += 4, p++) g[p] = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+        const thr = computeOtsuThreshold(g);
+        for (let i = 0, p = 0; i < d.length; i += 4, p++) d[i] = d[i + 1] = d[i + 2] = (g[p] > thr) ? 255 : 0;
+        ctx.putImageData(img, 0, 0); return c;
+    }
+    function showFastPanel(res) {
+        const inBasket = new Set(basketItems.map(i => String(i.sn || '').toUpperCase()).filter(Boolean));
+        fastItems = res.all.filter(b => b.sn && b.position).map(bc => {
+            const box = labelBoxFromBarcode(bc), band = bc.format !== 'dm';
+            let img = null;
+            try { img = binarizeCanvas(extractLabelCanvas(res.base, box, 0.05, band ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85); } catch (e) { console.error(e); }
+            const dup = inBasket.has(String(bc.sn).toUpperCase());
+            return { bc, img, band, dup, checked: !dup, model: bc.model || '' };
+        });
+        const list = document.getElementById('fast-list'); list.innerHTML = '';
+        const allModels = [...listDefis, ...listPaces, ...listSondes];
+        fastItems.forEach((it, i) => {
+            const d = document.createElement('div'); d.className = 'fast-card' + (it.band ? ' band' : '') + (it.checked ? '' : ' off');
+            const expTxt = it.bc.exp ? it.bc.exp.split('-').reverse().join('/') : '';
+            const soon = it.bc.exp && (new Date(it.bc.exp) - new Date()) < 31 * 86400000;
+            d.innerHTML = `${it.img ? `<img src="${it.img}">` : ''}
+                <div class="fi">${it.model ? `<b>${it.model}</b>` : `<select data-i="${i}"><option value="">Modèle à choisir…</option>${allModels.map(m => `<option>${m}</option>`).join('')}</select>`}
+                    S/N : ${it.bc.sn}<br>EXP : ${expTxt ? `<span class="${soon ? 'warn' : ''}">${expTxt}${soon ? ' ⚠️' : ''}</span>` : '<span class="warn">à saisir</span>'}
+                    ${it.dup ? '<br><span class="warn">Déjà dans ce BL</span>' : ''}</div>
+                <input type="checkbox" data-i="${i}" ${it.checked ? 'checked' : ''}>`;
+            list.appendChild(d);
+        });
+        list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => { const it = fastItems[+cb.dataset.i]; it.checked = cb.checked; cb.closest('.fast-card').classList.toggle('off', !cb.checked); fastRefreshButton(); }));
+        list.querySelectorAll('select').forEach(sel => sel.addEventListener('change', () => { fastItems[+sel.dataset.i].model = sel.value; }));
+        document.getElementById('fast-panel').style.display = 'block';
+        document.querySelector('#crop-modal .crop-wrapper').style.display = 'none';
+        document.getElementById('crop-footer').style.display = 'none';
+        const n = fastItems.length;
+        document.getElementById('ocr-status').innerText = n > 1 ? `✅ ${n} étiquettes lues par code-barres.` : "✅ Étiquette lue par code-barres.";
+        fastRefreshButton();
+    }
+    function fastRefreshButton() {
+        const n = fastItems.filter(i => i.checked).length, btn = document.getElementById('fast-add');
+        btn.disabled = !n; btn.style.opacity = n ? '1' : '.5';
+        btn.innerText = n > 1 ? `AJOUTER LES ${n} ÉLÉMENTS AU BL` : (n === 1 ? "AJOUTER AU BL" : "AUCUN ÉLÉMENT SÉLECTIONNÉ");
+    }
+    function fastAddSelected() {
+        const picked = fastItems.filter(i => i.checked); if (!picked.length) return;
+        const stock = `Stock du ${document.getElementById('inC').value || "centre"}`;
+        let firstIncomplete = -1;
+        picked.forEach(it => {
+            const known = !!it.model, model = it.model || listDefis[0];
+            if (known && it.bc.gtin && !it.bc.model) learnGtinModel(it.bc.gtin, model); // cette référence sera reconnue seule la prochaine fois
+            basketItems.push({ type: typeOfModel(model), model, sn: it.bc.sn, exp: it.bc.exp || '', stock, reno: "centre", img: it.img, gtin: it.bc.gtin || undefined, bcSn: it.bc.sn });
+            if ((!known || !it.bc.exp) && firstIncomplete < 0) firstIncomplete = basketItems.length - 1;
+        });
+        hideFastPanel();
+        document.getElementById('crop-modal').style.display = 'none';
+        if (cropper) { cropper.destroy(); cropper = null; }
+        labelAnalysisToken++; labelAnalysis = null; labelAnalysisPromise = null; pendingAutoCrop = null;
+        renderBasket();
+        if (firstIncomplete > -1) openManualAddModal(firstIncomplete);
+    }
+    function hideFastPanel() {
+        fastItems = [];
+        document.getElementById('fast-panel').style.display = 'none';
+        document.getElementById('fast-list').innerHTML = '';
+        document.querySelector('#crop-modal .crop-wrapper').style.display = '';
+        document.getElementById('crop-footer').style.display = '';
+    }
+    // Retour au recadrage manuel (une seule étiquette) : on reconstruit le cadre sur la photo, cadrage automatique appliqué
+    function fastToManual() {
+        const res = labelAnalysis; hideFastPanel();
+        const image = document.getElementById('crop-preview');
+        if (cropper) cropper.destroy();
+        cropperIsReady = false;
+        if (res && res.rotatedUrl) image.src = res.rotatedUrl;
+        pendingAutoCrop = res ? res.auto : null;
+        cropper = new Cropper(image, { viewMode: 1, autoCropArea: 0.9, zoomOnTouch: true, ready: function () { cropperIsReady = true; applyAutoCrop(); } });
+        document.getElementById('ocr-status').innerText = "Cadrez l'étiquette voulue (code-barres inclus), puis lancez l'analyse.";
     }
 
     function applyAutoCrop() {
@@ -2623,7 +2782,8 @@ function removeBg(src,sens){
         try { if (labelAnalysisPromise) await labelAnalysisPromise; } catch (e) {}
         let bc = null;
         try { document.getElementById('ocr-status').innerText = "Lecture du code-barres… ⏳"; bc = await decodeLabelBarcode(colorCanvas); } catch (e) { console.error(e); }
-        if (!bc && labelAnalysis && labelAnalysis.bc) bc = labelAnalysis.bc;
+        // (seulement si la photo ne contient qu'une étiquette : sinon on ne sait pas laquelle a été cadrée)
+        if (!bc && labelAnalysis && labelAnalysis.bc && (!labelAnalysis.all || labelAnalysis.all.length <= 1)) bc = labelAnalysis.bc;
         const barcodeComplete = !!(bc && bc.sn && bc.exp && bc.model);
 
         const imgData = ctxFull.getImageData(0, 0, canvasFull.width, canvasFull.height);
