@@ -899,6 +899,7 @@
 
         <div id="fast-panel" style="display:none;">
             <div id="fast-list"></div>
+            <div style="font-size:11px; color:var(--text-muted); text-align:center; margin:0 0 8px;">Touchez une image pour basculer entre la photo et l'étiquette recréée.</div>
             <button class="btn-primary-ios" id="fast-add" style="padding:15px; font-size:15px; margin-top:6px;" onclick="fastAddSelected()">AJOUTER</button>
             <div class="grid-2" style="margin-top:10px;">
                 <button class="btn-mini edit" style="padding:13px; justify-content:center; font-size:13px;" onclick="closeCropModal()">ANNULER</button>
@@ -1076,7 +1077,7 @@
     // ====== LISTES GLOBALEMENT DÉCLARÉES DU MATÉRIEL ET ÉQUIPES ======
     const listDefis = ["Talentia VR 3240", "Talentia VR 3210", "Talentia DR 3540", "Talentia DR 3510", "Talentia CRTD 3844", "Talentia CRTD 3841", "Talentia CRTD 3811"];
     const listPaces = ["Alizéa DR 1600", "Alizéa SR 1300", "ENO SR", "ENO DR"];
-    const listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88"];
+    const listSondes = ["Vega R52", "SonRTip PS 55D", "Vega R58", "Vega M58", "Invicta 1CR58", "Invicta 1CR68", "Navigo ARC78", "Navigo ARC88", "Navigo 2D78", "Navigo 2D88", "Linea S68"];
     const listIngs = ["Antoine LECOCQ", "Baptiste DESARMENIEN", "Valentin GARTENLAUB", "Francois MAINGAULT", "Johann MORIN"];
 
     let dbCloudCentres = [];
@@ -1095,7 +1096,7 @@
     let refsMap = {
         "Vega R52": "TLD041C", "SonRTip PS 55D": "TLD0010", "Vega R58": "TLD042C", "Vega M58": "TLD042M", 
         "Invicta 1CR58": "TLT001C", "Invicta 1CR68": "TLT005C", "Navigo ARC78": "TLT021C", "Navigo ARC88": "TLT022C", 
-        "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT0200",
+        "Navigo 2D78": "TLT019C", "Navigo 2D88": "TLT0200", "Linea S68": "TLD061C-CLIN",
         "Talentia VR 3240": "TDF061C", "Talentia VR 3210": "TDF059C", "Talentia DR 3540": "TDF062C", 
         "Talentia DR 3510": "TDF060C", "Talentia CRTD 3844": "TDF068C", "Talentia CRTD 3841": "TDF067C", "Talentia CRTD 3811": "TDF066C",
         "Alizéa DR 1600": "TPM020C", "Alizéa SR 1300": "TPM021C", "ENO SR": "TPM015C", "ENO DR": "TPM014C"
@@ -2405,7 +2406,11 @@ function removeBg(src,sens){
         "08031527016511": "Invicta 1CR68", "08031527016474": "Invicta 1CR58",
         "08031527016603": "Vega R52", "08031527016610": "Vega R58",
         "08031527020907": "Talentia VR 3240", "08031527020914": "Talentia DR 3540",
-        "08031527018591": "Alizéa DR 1600"
+        "08031527018591": "Alizéa DR 1600",
+        // relevées sur les boîtes (clé de contrôle GS1 vérifiée)
+        "08031527021867": "Vega M58", "08031527019710": "Navigo ARC88", "08031527022208": "Linea S68",
+        "08031527020976": "Talentia CRTD 3844", "08031527020969": "Talentia CRTD 3841", "08031527020891": "Talentia DR 3510",
+        "08031527017181": "ENO DR", "08031527018614": "Alizéa SR 1300"
     };
     function getLearnedGtins() { try { return JSON.parse(localStorage.getItem('gtinModels') || '{}') || {}; } catch (e) { return {}; } }
     function modelFromGtin(gtin) {
@@ -2454,9 +2459,12 @@ function removeBg(src,sens){
 
     // Les numéros de série MicroPort suivent un gabarit fixe : on s'en sert pour corriger l'OCR quand il n'y a
     // pas de code-barres (un « S » à la place d'un 5 dans une case chiffre, un 8 pris pour B...).
-    const SN_MASKS = ['DDDLLDDD',      // boîtiers : 525JQ082
+    // D = chiffre, L = lettre, X = chiffre ou lettre (laissé tel quel)
+    const SN_MASKS = ['DDDLLXXX',      // boîtiers : 525JQ082, 525CR7EA, 544JS06B (fin en hexadécimal)
                       'DDLLDDDDDD',    // Invicta  : 68TR105857
-                      'LLLDDDDDD'];    // Vega     : DRG102215
+                      'DDLDLDDDDD',    // Navigo   : 88S4U02316
+                      'LLLDDDDDD',     // Vega     : DRG102215, DMG004062
+                      'LLLDDDDDDD'];   // Linea    : LIN0001322
     function fixSerialByPattern(sn) {
         if (!sn) return sn;
         const s = String(sn).toUpperCase();
@@ -2468,7 +2476,8 @@ function removeBg(src,sens){
             let out = '', fixes = 0, ok = true;
             for (let i = 0; i < s.length; i++) {
                 const c = s[i], isD = /\d/.test(c), isL = /[A-Z]/.test(c);
-                if (mask[i] === 'D') { if (isD) out += c; else if (toDigit[c]) { out += toDigit[c]; fixes++; } else { ok = false; break; } }
+                if (mask[i] === 'X') { if (isD || /[A-F]/.test(c)) out += c; else if (toDigit[c]) { out += toDigit[c]; fixes++; } else { ok = false; break; } }
+                else if (mask[i] === 'D') { if (isD) out += c; else if (toDigit[c]) { out += toDigit[c]; fixes++; } else { ok = false; break; } }
                 else { if (isL) out += c; else if (toLetter[c]) { out += toLetter[c]; fixes++; } else { ok = false; break; } }
             }
             if (ok && (!best || fixes < best.fixes)) best = { out, fixes };
@@ -2697,6 +2706,17 @@ function removeBg(src,sens){
                 <input type="checkbox" data-i="${i}" ${it.checked ? 'checked' : ''}>`;
             list.appendChild(d);
         });
+        list.querySelectorAll('.fast-card img').forEach((im, i) => im.addEventListener('click', () => {
+            const it = fastItems[i]; if (!it || it.bc.plain) return;        // codes séparés : pas de découpe possible
+            try {
+                const wantRecreate = !it.recreate;
+                const next = wantRecreate
+                    ? LabelScan.drawLabel({ model: it.model, ref: it.bc.ref || refsMap[it.model] || '', sn: it.bc.sn, exp: it.bc.exp, mfg: it.bc.mfg, gtin: it.bc.gtin }).toDataURL('image/jpeg', 0.9)
+                    : binarizeCanvas(extractLabelCanvas(res.base, labelBoxFromBarcode(it.bc), 0.05, it.bc.format !== 'dm' ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85);
+                it.recreate = wantRecreate; it.img = next; im.src = next;
+                im.closest('.fast-card').classList.toggle('band', wantRecreate || it.bc.format !== 'dm');
+            } catch (e) { console.error(e); }
+        }));
         list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => { const it = fastItems[+cb.dataset.i]; it.checked = cb.checked; cb.closest('.fast-card').classList.toggle('off', !cb.checked); fastRefreshButton(); }));
         list.querySelectorAll('select').forEach(sel => sel.addEventListener('change', () => {
             const it = fastItems[+sel.dataset.i]; it.model = sel.value;
@@ -2838,7 +2858,9 @@ function removeBg(src,sens){
         try {
             if (modalScannerActive) processInlineModalOCR(text, savedCleanSnapshot, bc);
             else {
-                if (currentScanScope === "BOITIER") parseBoitierText(text, savedCleanSnapshot, bc);
+                const upText = text.toUpperCase().replace(/[\n\r]/g, " ").replace(/\s+/g, " ");
+                const looksBoitier = currentScanScope === "BOITIER" || (currentScanScope === "BOX" && !!matchModelInText(upText, [...listDefis, ...listPaces]) && !matchModelInText(upText, listSondes));
+                if (looksBoitier) parseBoitierText(text, savedCleanSnapshot, bc);
                 else parseSondeText(text, savedCleanSnapshot, bc);
             }
             document.getElementById('crop-modal').style.display = 'none';
@@ -2940,7 +2962,7 @@ function removeBg(src,sens){
             let vegaMatch = cleanText.match(/\b([A-Z]{3}\d{6})\b/);
             if (vegaMatch) return vegaMatch[1].trim();
         }
-        let mpBoxMatch = cleanText.match(/\b(\d{3}[A-Z]{2}\d{3})\b/);
+        let mpBoxMatch = cleanText.match(/\b(\d{3}[A-Z]{2}[0-9A-F]{3})\b/);
         if (mpBoxMatch) return mpBoxMatch[1].trim();
 
         // 4. Dernier recours pour les formats de série irréguliers (Invicta, Navigo...) qui ne
@@ -2971,8 +2993,12 @@ function removeBg(src,sens){
         let canonicalText = normalizeAmbiguousChars(cleanText);
 
         // 1. Date ISO imprimée en clair à côté du pictogramme sablier (ex: "2028-08-01")
-        const isoDateMatch = canonicalText.match(/\b(\d{4})[-/](\d{2})[-/](\d{2})\b/);
-        if (isoDateMatch) return `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
+        // Les boîtes impriment deux dates (fabrication et péremption), dans un ordre qui varie selon le
+        // modèle : la péremption est toujours la plus tardive des deux.
+        const isoDates = [...canonicalText.matchAll(/\b(20\d{2})[-/](\d{2})[-/](\d{2})\b/g)]
+            .filter(m => +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31)
+            .map(m => `${m[1]}-${m[2]}-${m[3]}`).sort();
+        if (isoDates.length) return isoDates[isoDates.length - 1];
 
         // 2. Repli sur le code GS1/UDI : l'identifiant (17) encode la date de péremption au format AAMMJJ
         // (ex: "(17)280417" = 17/04/2028). C'est la SEULE source d'expiration sur certaines étiquettes

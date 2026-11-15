@@ -12,8 +12,8 @@
 
   var ZXING_URL = 'https://cdn.jsdelivr.net/npm/zxing-wasm@2/dist/iife/reader/index.js';
   var MICROPORT_GTIN = '08031527';                 // préfixe des références MicroPort CRM : les autres marques sont ignorées
-  var RE_REF = /^T[A-Z]{2}\d{3}[A-Z0-9]$/;          // TLD041C, TDF068C, TPM020C, TLT0200…
-  var RE_SN = [/^\d{3}[A-Z]{2}\d{3}$/, /^\d{2}[A-Z]{2}\d{6}$/, /^[A-Z]{3}\d{6}$/]; // 549JH012 · 68TR103045 · DRG120758
+  var RE_REF = /^T[A-Z]{2}\d{3}[A-Z0-9](-CLIN)?$/;          // TLD041C, TDF068C, TPM020C, TLT0200…
+  var RE_SN = [/^\d{3}[A-Z]{2}[0-9A-F]{3}$/, /^\d{2}[A-Z]{2}\d{6}$/, /^\d{2}[A-Z]\d[A-Z]\d{5}$/, /^[A-Z]{3}\d{6,7}$/]; // 549JH012, 525CR7EA · 68TR103045 · 88S4U02316 · DRG120758, LIN0001322
   var RE_DATE = /^(20\d{2})[-\/.]?(\d{2})[-\/.]?(\d{2})$/;
 
   var loading = null;
@@ -75,11 +75,13 @@
   function groupPlain(plain) {
     var sns = plain.filter(function (p) { return p.kind === 'sn'; }), items = [];
     if (!sns.length) return items;
+    sns.forEach(function (s) { var P = s.position; s.len = Math.max(Math.hypot(P[1].x - P[0].x, P[1].y - P[0].y), Math.hypot(P[3].x - P[0].x, P[3].y - P[0].y)); });
     var groups = sns.map(function (s) { return { sn: s, refs: [], dates: [] }; });
     plain.forEach(function (p) {
       if (p.kind === 'sn') return;
       var best = null, bd = Infinity;
       groups.forEach(function (g) { var d = Math.hypot(g.sn.c.x - p.c.x, g.sn.c.y - p.c.y); if (d < bd) { bd = d; best = g; } });
+      if (best && bd > 2.6 * Math.max(best.sn.len, 1)) best = null;   // trop loin du n° de série : autre boîte
       if (best) (p.kind === 'ref' ? best.refs : best.dates).push({ p: p, d: bd });
     });
     groups.forEach(function (g) {
