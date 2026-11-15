@@ -795,7 +795,15 @@
                 <div class="act-hint" id="send-one-hint">Le mail s'ouvre complet (destinataires, objet, texte). Le BL est copié : appui long dans le texte du mail, puis Coller.</div>
             </div>
             <details class="act-more">
-            <summary>Télécharger l'image · autre méthode d'envoi</summary>
+            <summary>Méthode d'envoi · télécharger l'image</summary>
+            <div class="act-group">
+                <div class="act-title">Méthode d'envoi</div>
+                <select id="send-method" onchange="setSendMethod(this.value)" style="height:44px; font-size:14px;">
+                    <option value="outlook">Outlook : tout prérempli, BL intégré au message</option>
+                    <option value="coller">Mail : tout prérempli, BL à coller</option>
+                    <option value="partage">Partage iOS : BL joint, destinataires à saisir</option>
+                </select>
+            </div>
             <div class="act-group">
                 <div class="act-title"><span class="act-num">1</span> Télécharger l'image</div>
                 <div class="act-row">
@@ -3644,28 +3652,71 @@ function removeBg(src,sens){
     function openMailto(isPharmacie, subject, body) {
         window.open(`mailto:${getMailRecipients(!!isPharmacie)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
     }
-    // Envoi en un geste : le mail s'ouvre complet (destinataires, objet, texte — même mise en forme qu'avant) et
-    // l'image du BL est placée dans le presse-papiers : il reste à la coller dans le mail.
-    // (iOS n'offre aucun moyen à une page web d'ouvrir un mail avec destinataires ET pièce jointe.)
+    // ====== ENVOI DU BL ======
+    // Trois méthodes, au choix (mémorisé sur l'appareil) :
+    //  • outlook : ouvre Outlook avec destinataires, objet, texte ET l'image du BL intégrée au message (rien à coller) ;
+    //  • coller  : ouvre le mail complet, l'image est dans le presse-papiers (à coller) ;
+    //  • partage : partage iOS (image jointe + texte ; destinataires et objet à saisir).
+    function getSendMethod() { try { return localStorage.getItem('bl_send_method') || 'outlook'; } catch (e) { return 'outlook'; } }
+    function setSendMethod(v) { try { localStorage.setItem('bl_send_method', v); } catch (e) {} paintSendHint(); }
+    function paintSendHint() {
+        const sel = document.getElementById('send-method'); if (sel) sel.value = getSendMethod();
+        const h = document.getElementById('send-one-hint'); if (!h) return;
+        h.innerText = { outlook: "Outlook s'ouvre avec destinataires, objet, texte et BL intégré : il reste à appuyer sur Envoyer.",
+                        coller: "Le mail s'ouvre complet ; le BL est copié : appui long dans le texte, puis Coller.",
+                        partage: "Partage iOS : le BL est joint, avec le texte. Destinataires et objet à saisir." }[getSendMethod()];
+    }
+    document.addEventListener('DOMContentLoaded', paintSendHint);
+    // Texte du mail -> HTML : les caractères « gras Unicode » redeviennent du vrai gras
+    function mailTextToHtml(text) {
+        const esc = c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] || c);
+        let out = '', bold = false;
+        for (const ch of text) {
+            const cp = ch.codePointAt(0); let plain = null;
+            if (cp >= 0x1D400 && cp <= 0x1D419) plain = String.fromCharCode(65 + cp - 0x1D400);
+            else if (cp >= 0x1D41A && cp <= 0x1D433) plain = String.fromCharCode(97 + cp - 0x1D41A);
+            else if (cp >= 0x1D7CE && cp <= 0x1D7D7) plain = String.fromCharCode(48 + cp - 0x1D7CE);
+            const keep = bold && (ch === ' ' || ch === '/' || ch === '-' || ch === '.');
+            if (plain !== null) { if (!bold) { out += '<b>'; bold = true; } out += plain; }
+            else { if (bold && !keep) { out += '</b>'; bold = false; } out += ch === '\n' ? (bold ? '</b><br>' : '<br>') : esc(ch); if (ch === '\n') bold = false; }
+        }
+        return out + (bold ? '</b>' : '');
+    }
+    async function blImageDataUrl(maxWidth, quality) {
+        const canvas = await renderBlCanvasAsync();
+        const k = Math.min(1, maxWidth / canvas.width), c = document.createElement('canvas');
+        c.width = Math.round(canvas.width * k); c.height = Math.round(canvas.height * k);
+        const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingQuality = 'high'; x.drawImage(canvas, 0, 0, c.width, c.height);
+        return c.toDataURL('image/jpeg', quality);
+    }
     async function sendBlOneTap(isPharmacie) {
-        const pharma = !!isPharmacie, hint = document.getElementById('send-one-hint');
+        const pharma = !!isPharmacie, hint = document.getElementById('send-one-hint'), method = getSendMethod();
         const btn = document.getElementById(pharma ? 'btn-send-one-pharma' : 'btn-send-one'), label = btn.innerText;
         const previousMode = blPharmaMode;
         setPharmaMode(pharma);
         const { subject, body } = buildEmailContent(pharma);
-        const mailUrl = `mailto:${getMailRecipients(pharma)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        const to = getMailRecipients(pharma);
         btn.disabled = true; btn.innerText = "⏳ Préparation…";
         try {
-            if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) throw new Error('presse-papiers image indisponible');
-            // La copie doit être demandée pendant le geste : on passe une promesse, l'image arrive ensuite
-            const png = renderBlCanvasAsync().then(canvas => new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('image vide')), 'image/png')));
-            await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-            hint.innerHTML = "✅ <b>BL copié.</b> Dans le mail : appui long dans le texte, puis <b>Coller</b>.";
-            window.location.href = mailUrl;
+            if (method === 'outlook') {
+                const img = await blImageDataUrl(1100, 0.82);
+                const html = `<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;font-size:15px;line-height:1.45">${mailTextToHtml(body)}</div><br><img src="${img}" alt="Bon de livraison" style="width:100%;max-width:760px;border:1px solid #ccc">`;
+                window.location.href = `ms-outlook://compose?to=${to}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(html)}`;
+            } else if (method === 'partage') {
+                const file = await getBlFileForSharing();
+                if (!file || !(navigator.canShare && navigator.canShare({ files: [file] }))) throw new Error('partage de fichier indisponible');
+                try { await navigator.share({ files: [file], title: subject, text: body }); } catch (err) { if (!(err && err.name === 'AbortError')) throw err; return; }
+            } else {
+                if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) throw new Error('presse-papiers image indisponible');
+                // La copie doit être demandée pendant le geste : on passe une promesse, l'image arrive ensuite
+                const png = renderBlCanvasAsync().then(canvas => new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('image vide')), 'image/png')));
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+                window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            }
             if (document.getElementById('autoSaveToggle').checked) saveCurrentBlToHistory(true);
         } catch (e) {
-            console.error("Envoi en un geste :", e);
-            hint.innerText = "Copie de l'image impossible sur cet appareil : utilisez la méthode en deux étapes ci-dessous.";
+            console.error("Envoi du BL :", e);
+            hint.innerText = "Envoi impossible avec cette méthode (" + ((e && e.message) || e) + "). Changez de méthode ci-dessous.";
         } finally {
             btn.disabled = false; btn.innerText = label;
             setPharmaMode(previousMode); reactivateLivePreview();
