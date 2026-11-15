@@ -860,7 +860,7 @@
                     <button class="btn-mail-ios btn-compact" id="btn-send-one" onclick="sendBlOneTap(false)">📤 BL complet</button>
                     <button class="btn-mail-ios btn-compact btn-pharma" id="btn-send-one-pharma" onclick="sendBlOneTap(true)">🏥 Pharmacie</button>
                 </div>
-                <div class="act-hint" id="send-one-hint">Image, objet et texte partent ensemble : choisissez Mail dans le partage. Les destinataires sont copiés, à coller dans « À ».</div>
+                <div class="act-hint" id="send-one-hint">Le mail s'ouvre complet (destinataires, objet, texte). Le BL est copié : appui long dans le texte du mail, puis Coller.</div>
             </div>
             <details class="act-more">
             <summary>Autre méthode : en deux étapes</summary>
@@ -2548,7 +2548,7 @@ function removeBg(src,sens){
     function labelBoxFromBarcode(bc) {
         const P = bc && bc.position; if (!P) return null;
         const d = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
-        const ang = Math.atan2(P[1].y - P[0].y, P[1].x - P[0].x);
+        const ang = Math.atan2((P[1].y - P[0].y) + (P[2].y - P[3].y), (P[1].x - P[0].x) + (P[2].x - P[3].x));
         const ex = { x: Math.cos(ang), y: Math.sin(ang) }, ey = { x: -Math.sin(ang), y: Math.cos(ang) };
         const mid = { x: (P[0].x + P[1].x + P[2].x + P[3].x) / 4, y: (P[0].y + P[1].y + P[2].y + P[3].y) / 4 };
         let W, H, off;
@@ -2624,7 +2624,8 @@ function removeBg(src,sens){
         if (box) {
             let workCanvas = base, cx = box.cx, cy = box.cy;
             // redressement si l'étiquette est penchée (ou la photo tournée) : on tourne la photo, puis on cadre à l'horizontale
-            if (Math.abs(((box.angle + 180) % 360 + 360) % 360 - 180) > 1.5 && source === 'barcode') {
+            if (source === 'barcode') { try { box.angle += measureSkew(extractLabelCanvas(base, box, 0.05, 0.1)); } catch (e) {} }
+            if (Math.abs(((box.angle + 180) % 360 + 360) % 360 - 180) > 0.4 && source === 'barcode') {
                 const th = -box.angle * Math.PI / 180, cw = base.width, ch = base.height;
                 const nw = Math.ceil(Math.abs(cw * Math.cos(th)) + Math.abs(ch * Math.sin(th))), nh = Math.ceil(Math.abs(cw * Math.sin(th)) + Math.abs(ch * Math.cos(th)));
                 const rc = document.createElement('canvas'); rc.width = nw; rc.height = nh;
@@ -2685,6 +2686,39 @@ function removeBg(src,sens){
         x.translate(c.width / 2, c.height / 2); x.scale(k, k); x.rotate(-box.angle * Math.PI / 180); x.drawImage(base, -box.cx, -box.cy);
         return c;
     }
+    // Redressement fin : mesure l'inclinaison restante du contenu (lignes de texte, barres du code) et renvoie
+    // l'angle en degrés à ajouter pour que l'étiquette soit parfaitement droite. Méthode : pour chaque angle
+    // essayé, on projette les pixels sombres sur les deux axes ; quand l'angle est le bon, les lignes de texte
+    // et les barres s'empilent et les profils sont les plus contrastés.
+    function measureSkew(canvas, range) {
+        try {
+            const W = 420, k = Math.min(1, W / canvas.width), w = Math.max(8, Math.round(canvas.width * k)), h = Math.max(8, Math.round(canvas.height * k));
+            const c = document.createElement('canvas'); c.width = w; c.height = h;
+            const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(canvas, 0, 0, w, h);
+            const px = ctx.getImageData(0, 0, w, h).data, g = new Uint8Array(w * h);
+            for (let i = 0, p = 0; i < px.length; i += 4, p++) g[p] = (px[i] * 299 + px[i + 1] * 587 + px[i + 2] * 114) / 1000;
+            const thr = computeOtsuThreshold(g), xs = [], ys = [];
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (g[y * w + x] <= thr) { xs.push(x - w / 2); ys.push(y - h / 2); }
+            if (xs.length < 200 || xs.length > w * h * 0.7) return 0;
+            const n = xs.length, D = Math.ceil(Math.hypot(w, h)) + 2, rows = new Float64Array(D), cols = new Float64Array(D);
+            const score = deg => {
+                const t = deg * Math.PI / 180, co = Math.cos(t), si = Math.sin(t); rows.fill(0); cols.fill(0);
+                for (let i = 0; i < n; i++) { rows[Math.round(ys[i] * co - xs[i] * si + D / 2)]++; cols[Math.round(xs[i] * co + ys[i] * si + D / 2)]++; }
+                let sr = 0, sc = 0; for (let i = 0; i < D; i++) { sr += rows[i] * rows[i]; sc += cols[i] * cols[i]; }
+                return sr + sc;
+            };
+            const R = range || 7; let best = 0, bs = -1;
+            for (let a = -R; a <= R; a += 0.5) { const v = score(a); if (v > bs) { bs = v; best = a; } }
+            const mid = best; for (let a = mid - 0.4; a <= mid + 0.4; a += 0.1) { const v = score(a); if (v > bs) { bs = v; best = a; } }
+            return Math.abs(best) >= R ? 0 : best;   // en butée : mesure douteuse, on ne touche à rien
+        } catch (e) { console.error(e); return 0; }
+    }
+    // Étiquette découpée ET redressée : inclinaison du code-barres, puis correction fine sur le contenu
+    function extractStraightLabel(base, box, padX, padY) {
+        const rough = extractLabelCanvas(base, box, padX, padY);
+        const delta = measureSkew(rough);
+        return Math.abs(delta) < 0.15 ? rough : extractLabelCanvas(base, { ...box, angle: box.angle + delta }, padX, padY);
+    }
     // Même rendu noir et blanc que le recadrage manuel (image conservée sur le BL)
     function binarizeCanvas(c) {
         const ctx = c.getContext('2d'), img = ctx.getImageData(0, 0, c.width, c.height), d = img.data, g = new Uint8Array(d.length / 4);
@@ -2703,7 +2737,7 @@ function removeBg(src,sens){
             let img = null;
             try {
                 if (recreate) img = LabelScan.drawLabel({ model: bc.model, ref: bc.ref || refsMap[bc.model] || '', sn: bc.sn, exp: bc.exp, mfg: bc.mfg, gtin: bc.gtin }).toDataURL('image/jpeg', 0.9);
-                else { const box = labelBoxFromBarcode(bc); img = binarizeCanvas(extractLabelCanvas(res.base, box, 0.05, band ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85); }
+                else { const box = labelBoxFromBarcode(bc); img = binarizeCanvas(extractStraightLabel(res.base, box, 0.05, band ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85); }
             } catch (e) { console.error(e); }
             const dup = inBasket.has(String(bc.sn).toUpperCase());
             return { bc, img, band: band || recreate, recreate, dup, checked: !dup, model: bc.model || '' };
@@ -2727,7 +2761,7 @@ function removeBg(src,sens){
                 const wantRecreate = !it.recreate;
                 const next = wantRecreate
                     ? LabelScan.drawLabel({ model: it.model, ref: it.bc.ref || refsMap[it.model] || '', sn: it.bc.sn, exp: it.bc.exp, mfg: it.bc.mfg, gtin: it.bc.gtin }).toDataURL('image/jpeg', 0.9)
-                    : binarizeCanvas(extractLabelCanvas(res.base, labelBoxFromBarcode(it.bc), 0.05, it.bc.format !== 'dm' ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85);
+                    : binarizeCanvas(extractStraightLabel(res.base, labelBoxFromBarcode(it.bc), 0.05, it.bc.format !== 'dm' ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85);
                 it.recreate = wantRecreate; it.img = next; im.src = next;
                 im.closest('.fast-card').classList.toggle('band', wantRecreate || it.bc.format !== 'dm');
             } catch (e) { console.error(e); }
@@ -3589,40 +3623,28 @@ function removeBg(src,sens){
     function openMailto(isPharmacie, subject, body) {
         window.open(`mailto:${getMailRecipients(!!isPharmacie)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
     }
-    // Destinataires en clair (pour le presse-papiers) : "a@x.fr, b@y.fr"
-    function getMailRecipientsPlain(isPharmacie) {
-        return getMailRecipients(!!isPharmacie).split(',').filter(Boolean).map(a => decodeURIComponent(a)).join(', ');
-    }
-    // Envoi en un geste : l'image du BL, l'objet et le texte partent ensemble dans le partage iOS (Mail, Outlook…).
-    // Une page web ne peut pas imposer les destinataires au partage : ils sont copiés pour être collés dans « À ».
+    // Envoi en un geste : le mail s'ouvre complet (destinataires, objet, texte — même mise en forme qu'avant) et
+    // l'image du BL est placée dans le presse-papiers : il reste à la coller dans le mail.
+    // (iOS n'offre aucun moyen à une page web d'ouvrir un mail avec destinataires ET pièce jointe.)
     async function sendBlOneTap(isPharmacie) {
         const pharma = !!isPharmacie, hint = document.getElementById('send-one-hint');
         const btn = document.getElementById(pharma ? 'btn-send-one-pharma' : 'btn-send-one'), label = btn.innerText;
         const previousMode = blPharmaMode;
         setPharmaMode(pharma);
         const { subject, body } = buildEmailContent(pharma);
-        const to = getMailRecipientsPlain(pharma);
-        // Copie des destinataires tout de suite, pendant que le geste de l'utilisateur est encore « actif »
-        let copied = false;
-        if (to) { try { await navigator.clipboard.writeText(to); copied = true; } catch (e) { console.warn('Copie des destinataires impossible :', e); } }
+        const mailUrl = `mailto:${getMailRecipients(pharma)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         btn.disabled = true; btn.innerText = "⏳ Préparation…";
         try {
-            const file = await getBlFileForSharing();
-            if (!file) { alert("Impossible de générer le BL, merci de réessayer."); return; }
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                hint.innerText = !to ? "Aucun destinataire enregistré pour ce centre : saisissez-le dans le mail (ou ajoutez-le dans la fiche du centre)."
-                    : (copied ? "Destinataires copiés : appui long dans « À », puis Coller. → " + to : "À saisir dans « À » : " + to);
-                try { await navigator.share({ files: [file], title: subject, text: body }); }
-                catch (err) { if (!(err && err.name === 'AbortError')) throw err; return; }   // partage annulé
-                if (document.getElementById('autoSaveToggle').checked) saveCurrentBlToHistory(true);
-                return;
-            }
-            // Partage de fichiers indisponible sur cet appareil : méthode en deux étapes
-            openMailto(pharma, subject, body);
-            hint.innerText = "Partage de fichier indisponible ici : le mail est ouvert, joignez l'image avec « Télécharger l'image ».";
+            if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) throw new Error('presse-papiers image indisponible');
+            // La copie doit être demandée pendant le geste : on passe une promesse, l'image arrive ensuite
+            const png = renderBlCanvasAsync().then(canvas => new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('image vide')), 'image/png')));
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+            hint.innerHTML = "✅ <b>BL copié.</b> Dans le mail : appui long dans le texte, puis <b>Coller</b>.";
+            window.location.href = mailUrl;
+            if (document.getElementById('autoSaveToggle').checked) saveCurrentBlToHistory(true);
         } catch (e) {
             console.error("Envoi en un geste :", e);
-            hint.innerText = "Envoi impossible de cette façon : utilisez la méthode en deux étapes ci-dessous.";
+            hint.innerText = "Copie de l'image impossible sur cet appareil : utilisez la méthode en deux étapes ci-dessous.";
         } finally {
             btn.disabled = false; btn.innerText = label;
             setPharmaMode(previousMode); reactivateLivePreview();
