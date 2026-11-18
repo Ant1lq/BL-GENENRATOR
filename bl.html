@@ -2548,7 +2548,7 @@ function removeBg(src,sens){
         // relevées sur les boîtes (clé de contrôle GS1 vérifiée)
         "08031527021867": "Vega M58", "08031527019710": "Navigo ARC88", "08031527022208": "Linea S68",
         "08031527020976": "Talentia CRTD 3844", "08031527020969": "Talentia CRTD 3841", "08031527020891": "Talentia DR 3510",
-        "08031527017181": "ENO DR", "08031527018614": "Alizéa SR 1300"
+        "08031527017181": "ENO DR", "08031527018614": "Alizéa SR 1300", "08031527020884": "Talentia VR 3210"
     };
     function getLearnedGtins() { try { return JSON.parse(localStorage.getItem('gtinModels') || '{}') || {}; } catch (e) { return {}; } }
     function modelFromGtin(gtin) {
@@ -2837,6 +2837,66 @@ function removeBg(src,sens){
         } catch (e) { console.error(e); return 0; }
     }
     // Étiquette découpée ET redressée : inclinaison du code-barres, puis correction fine sur le contenu
+    // Étiquette collée sur une BOÎTE : on cherche la zone blanche qui entoure le code-barres (le papier de
+    // l'étiquette, bordé par le carton orange ou le fond). Renvoie null pour une étiquette collée sur une feuille
+    // blanche (zone trop grande) : la géométrie fixe des étiquettes autocollantes s'applique alors.
+    function labelBoxByRegion(base, bc) {
+        try {
+            const P = bc && bc.position; if (!P) return null;
+            const L0 = Math.hypot(P[1].x - P[0].x, P[1].y - P[0].y); if (L0 < 40) return null;
+            const ang = Math.atan2((P[1].y - P[0].y) + (P[2].y - P[3].y), (P[1].x - P[0].x) + (P[2].x - P[3].x));
+            const mid = { x: (P[0].x + P[1].x + P[2].x + P[3].x) / 4, y: (P[0].y + P[1].y + P[2].y + P[3].y) / 4 };
+            // vue redressée (code-barres horizontal), basse définition : le code-barres y mesure 160 px
+            const k = 160 / L0, W = 900, H = 700, cx = W / 2, cy = H / 2;
+            const c = document.createElement('canvas'); c.width = W; c.height = H;
+            const x = c.getContext('2d', { willReadFrequently: true });
+            x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+            x.translate(cx, cy); x.scale(k, k); x.rotate(-ang); x.drawImage(base, -mid.x, -mid.y);
+            const px = x.getImageData(0, 0, W, H).data, N = W * H, lum = new Float32Array(N), sat = new Float32Array(N);
+            for (let i = 0, p = 0; p < N; i += 4, p++) {
+                const r = px[i], g = px[i + 1], b = px[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+                lum[p] = (r * 299 + g * 587 + b * 114) / 1000; sat[p] = mx ? (mx - mn) / mx : 0;
+            }
+            // papier de l'étiquette : luminosité de référence prise autour du code-barres
+            const ref = [];
+            for (let dy = -60; dy <= 60; dy += 4) for (let dx = -90; dx <= 90; dx += 6) { const p = (cy + dy) * W + cx + dx; if (sat[p] < 0.25) ref.push(lum[p]); }
+            if (ref.length < 30) return null;
+            ref.sort((a, b) => a - b); const paper = ref[Math.floor(ref.length * 0.9)];
+            if (paper < 110) return null;
+            const isPaper = p => lum[p] >= paper * 0.74 && sat[p] < 0.28;
+            // remplissage depuis plusieurs points blancs au-dessus et au-dessous du code-barres
+            const seen = new Uint8Array(N), stack = [];
+            for (const dy of [-34, -26, -20, 20, 26, 34, 44]) for (const dx of [-60, -20, 20, 60]) { const p = (cy + dy) * W + cx + dx; if (isPaper(p) && !seen[p]) { seen[p] = 1; stack.push(p); } }
+            if (!stack.length) return null;
+            let n = 0, x0 = W, x1 = 0, y0 = H, y1 = 0;
+            while (stack.length) {
+                const p = stack.pop(), px_ = p % W, py = (p - px_) / W; n++;
+                if (px_ < x0) x0 = px_; if (px_ > x1) x1 = px_; if (py < y0) y0 = py; if (py > y1) y1 = py;
+                if (px_ <= 0 || px_ >= W - 1 || py <= 0 || py >= H - 1) continue;
+                for (const q of [p - 1, p + 1, p - W, p + W]) if (!seen[q] && isPaper(q)) { seen[q] = 1; stack.push(q); }
+            }
+            // Boîtes empilées ou fond clair : la zone remplie peut déborder. On garde la bande continue autour du
+            // code-barres, en s'arrêtant aux lignes (puis colonnes) presque vides : bord d'étiquette, carton, interstice.
+            const rowFill = y => { let c = 0; for (let xx = x0; xx <= x1; xx++) if (seen[y * W + xx]) c++; return c / Math.max(1, x1 - x0 + 1); };
+            let ya = cy, yb = cy;
+            while (ya - 1 > y0 && rowFill(ya - 1) > 0.3) ya--;
+            while (yb + 1 < y1 && rowFill(yb + 1) > 0.3) yb++;
+            const colFill = xx => { let c = 0; for (let y = ya; y <= yb; y++) if (seen[y * W + xx]) c++; return c / Math.max(1, yb - ya + 1); };
+            let xa = cx, xb = cx;
+            while (xa - 1 > x0 && colFill(xa - 1) > 0.25) xa--;
+            while (xb + 1 < x1 && colFill(xb + 1) > 0.25) xb++;
+            // le code-barres lui-même doit rester entier
+            x0 = Math.min(xa, cx - 82); x1 = Math.max(xb, cx + 82); y0 = ya; y1 = yb;
+            n = 0; for (let y = y0; y <= y1; y++) for (let xx = x0; xx <= x1; xx++) if (seen[y * W + xx]) n++;
+            const bw = x1 - x0, bh = y1 - y0;
+            // contrôles : plus large que le code-barres, proportions d'étiquette, pas toute la photo
+            if (bw < 170 || bh < 40 || bw > 820 || bh > 420 || bw / bh < 1.4 || n < bw * bh * 0.4) return null;
+            if (x0 <= 1 && x1 >= W - 2) return null;
+            const ccx = (x0 + x1) / 2 - cx, ccy = (y0 + y1) / 2 - cy;
+            const ca = Math.cos(ang), sa = Math.sin(ang);
+            return { cx: mid.x + (ccx * ca - ccy * sa) / k, cy: mid.y + (ccx * sa + ccy * ca) / k, w: bw / k, h: bh / k, angle: ang * 180 / Math.PI, region: true };
+        } catch (e) { console.error(e); return null; }
+    }
     function extractStraightLabel(base, box, padX, padY) {
         const rough = extractLabelCanvas(base, box, padX, padY);
         const delta = measureSkew(rough);
@@ -2856,10 +2916,14 @@ function removeBg(src,sens){
             const band = bc.format !== 'dm';
             // Boîte (ou codes séparés, ou sonde à code linéaire = forcément une boîte) : étiquette redessinée.
             // Étiquette autocollante : découpe de la photo, selon sa forme connue.
-            const recreate = currentScanScope === 'BOX' || bc.plain || (band && bc.model && listSondes.includes(bc.model));
+            // Code linéaire : on cherche d'abord l'étiquette entière collée sur la boîte (zone blanche autour du code).
+            const boxRegion = (band && !bc.plain) ? labelBoxByRegion(res.base, bc) : null;
+            // Étiquette recréée : codes séparés, ou boîte dont l'étiquette n'a pas pu être délimitée
+            const recreate = bc.plain || (!boxRegion && (currentScanScope === 'BOX' || (band && bc.model && listSondes.includes(bc.model))));
             let img = null;
             try {
                 if (recreate) img = LabelScan.drawLabel({ model: bc.model, ref: bc.ref || refsMap[bc.model] || '', sn: bc.sn, exp: bc.exp, mfg: bc.mfg, gtin: bc.gtin }).toDataURL('image/jpeg', 0.9);
+                else if (boxRegion) img = binarizeCanvas(extractStraightLabel(res.base, boxRegion, 0.015, 0.03)).toDataURL('image/jpeg', 0.88);
                 else { const box = labelBoxFromBarcode(bc); img = binarizeCanvas(extractStraightLabel(res.base, box, 0.05, band ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85); }
             } catch (e) { console.error(e); }
             const dup = inBasket.has(String(bc.sn).toUpperCase());
@@ -2884,7 +2948,9 @@ function removeBg(src,sens){
                 const wantRecreate = !it.recreate;
                 const next = wantRecreate
                     ? LabelScan.drawLabel({ model: it.model, ref: it.bc.ref || refsMap[it.model] || '', sn: it.bc.sn, exp: it.bc.exp, mfg: it.bc.mfg, gtin: it.bc.gtin }).toDataURL('image/jpeg', 0.9)
-                    : binarizeCanvas(extractStraightLabel(res.base, labelBoxFromBarcode(it.bc), 0.05, it.bc.format !== 'dm' ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85);
+                    : (() => { const rg = it.bc.format !== 'dm' ? labelBoxByRegion(res.base, it.bc) : null;
+                        return rg ? binarizeCanvas(extractStraightLabel(res.base, rg, 0.015, 0.03)).toDataURL('image/jpeg', 0.88)
+                                  : binarizeCanvas(extractStraightLabel(res.base, labelBoxFromBarcode(it.bc), 0.05, it.bc.format !== 'dm' ? 0.14 : 0.05)).toDataURL('image/jpeg', 0.85); })();
                 it.recreate = wantRecreate; it.img = next; im.src = next;
                 im.closest('.fast-card').classList.toggle('band', wantRecreate || it.bc.format !== 'dm');
             } catch (e) { console.error(e); }

@@ -584,6 +584,26 @@ html,body{height:100%;overscroll-behavior:none}
 .cm-btn2{flex:1;display:inline-flex;align-items:center;justify-content:center;height:34px;border-radius:10px;border:1.5px solid #cbd5e1;background:#fff;color:#042a72;font-weight:800;font-size:12px;cursor:pointer;text-align:center;padding:0 8px}
 .cm-btn2.danger{color:#ff144b;border-color:#fecaca;height:44px}
 #cm-list{flex:1;min-height:0;overflow:auto;padding:10px 12px calc(env(safe-area-inset-bottom) + 60px);-webkit-overflow-scrolling:touch;background:var(--bg-body,#f4f6fb)}
+.cm-menu{position:absolute;right:10px;top:calc(env(safe-area-inset-top) + 54px);z-index:1500;background:#fff;border:1px solid var(--border-color);border-radius:16px;box-shadow:0 12px 32px rgba(4,42,114,.2);padding:6px;min-width:250px}
+.cm-mi{display:block;width:100%;text-align:left;border:0;background:none;padding:13px 12px;font-size:14px;font-weight:750;color:#042a72;border-radius:10px;cursor:pointer;text-transform:none;letter-spacing:0}
+.cm-mi:active{background:#eef3ff}
+.cm-mi-info{font-size:11.5px;color:var(--text-muted);padding:6px 12px 8px;line-height:1.35}
+.cm-legend b{font-weight:850;margin-left:2px}
+.leaflet-tooltip.cm-lbl{background:rgba(255,255,255,.92);border:0;box-shadow:0 1px 4px rgba(0,0,0,.25);border-radius:8px;padding:2px 6px;font-size:11px;font-weight:800;color:#042a72}
+.leaflet-tooltip.cm-lbl:before{display:none}
+.ls-h{font-size:12px;font-weight:850;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin:14px 4px 8px}
+.ls-h:first-child{margin-top:2px}
+.ls-note{font-size:12px;color:#64748b;margin:-4px 4px 10px;line-height:1.35}
+.li2{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--border-color);border-left:5px solid #94a3b8;border-radius:14px;padding:12px;margin-bottom:8px;cursor:pointer}
+.li2:active{background:#eef3ff}
+.li2 .main{flex:1;min-width:0}
+.li2 .n{font-weight:850;font-size:15px;color:var(--text-main);line-height:1.25}
+.li2 .m{font-size:12.5px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li2 .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.li2 .st{flex:0 0 auto;font-size:11.5px;font-weight:850;border-radius:99px;padding:4px 10px;white-space:nowrap}
+.li2 .lk{flex:0 0 auto;border:1.5px solid #c7d4f5;background:#eef3ff;color:#042a72;border-radius:12px;padding:9px 11px;font-size:12.5px;font-weight:850;cursor:pointer}
+.li2.orph{border-left-color:#f59e0b;background:#fffbf5}
+.li .dummy{display:none}
 .li{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--border-color);border-radius:14px;padding:11px 12px;margin-bottom:8px;cursor:pointer}
 .li:active{background:#eef3ff}
 .li .dot{flex:0 0 12px;height:12px;border-radius:50%}
@@ -608,8 +628,8 @@ html,body{height:100%;overscroll-behavior:none}
  <div class="cm-wrap">
   <header class="cm-head">
     <button class="btn-header-icon" type="button" onclick="location.href='index.html'" aria-label="Accueil">🏠</button>
-    <h1>🗺️ Carte des centres</h1>
-    <button class="btn-header-icon" type="button" onclick="location.href='admin.html'" aria-label="Réglages">👤</button>
+    <h1>Carte des centres</h1>
+    <button class="btn-header-icon" type="button" onclick="CM.menu()" aria-label="Fichier Excel et import">⋯</button>
   </header>
   <div class="cm-bar">
     <div class="cm-row">
@@ -624,12 +644,14 @@ html,body{height:100%;overscroll-behavior:none}
       <button class="chip" data-f="st" data-v="todo">À faire</button>
       <button class="chip" data-f="st" data-v="done">Fait</button>
       <button class="chip" data-f="st" data-v="maj">⚠️ Prog. à MAJ</button>
+      <button class="chip" data-f="st" data-v="nolink">🔗 Sans correspondance</button>
       <select id="cm-vendor" aria-label="Vendeur"><option value="">Tous vendeurs</option></select>
     </div>
-  <div class="cm-row cm-acts">
-      <label class="cm-btn2" for="xl-quick">🔄 Mettre à jour (Excel)</label>
+    <div id="cm-menu" class="cm-menu" style="display:none">
+      <label class="cm-mi" for="xl-quick">🔄 Mettre à jour le fichier Excel</label>
       <input type="file" id="xl-quick" accept=".xlsx,.xlsm" style="display:none">
-      <button class="cm-btn2" type="button" id="cm-import-btn" onclick="CM.openImport()">⬇️ Importer un commercial</button>
+      <button class="cm-mi" type="button" id="cm-import-btn" onclick="CM.menu(false); CM.openImport()">⬇️ Importer les centres d'un commercial</button>
+      <div class="cm-mi-info" id="cm-xlinfo"></div>
     </div>
   </div>
   <div id="map"></div>
@@ -638,10 +660,10 @@ html,body{height:100%;overscroll-behavior:none}
   <div class="cm-count" id="cm-count"></div>
   <button class="cm-loc" type="button" onclick="CM.locate()" aria-label="Ma position">📍</button>
   <div class="cm-legend">
-    <span><i style="background:#16a34a"></i>Fait</span>
-    <span><i style="background:#f59e0b"></i>À faire</span>
-    <span><i style="background:#94a3b8"></i>Inconnu</span>
-    <span><i class="ring"></i>⭐ Implanteur</span>
+    <span><i style="background:#16a34a"></i>Fait <b id="lg-fait"></b></span>
+    <span><i style="background:#f59e0b"></i>À faire <b id="lg-todo"></b></span>
+    <span><i style="background:#94a3b8"></i>Inconnu <b id="lg-unk"></b></span>
+    <span><i class="ring"></i>Implanteur</span>
   </div>
  </div>
 </div>
@@ -671,7 +693,7 @@ html,body{height:100%;overscroll-behavior:none}
 </div>
 
 <div id="link-sheet" class="sheet" style="display:none">
-  <div class="sheet-head"><button class="btn-header-icon" type="button" onclick="CM.closeLink()" aria-label="Fermer">✕</button><h2>Associer à l'inventaire</h2><span style="width:42px"></span></div>
+  <div class="sheet-head"><button class="btn-header-icon" type="button" onclick="CM.closeLink()" aria-label="Fermer">✕</button><h2 id="link-title">Associer</h2><span style="width:42px"></span></div>
   <div class="sheet-body"><div id="link-for" class="imp-i"></div><input type="search" id="link-q" placeholder="🔎 Filtrer…" style="margin-bottom:10px"><div id="link-list"></div></div>
 </div>
 
@@ -777,6 +799,7 @@ function initMap(){
   L.Icon.Default.imagePath='assets/vendor/leaflet/images/';
   CM.layer=L.layerGroup().addTo(CM.map);
   setTimeout(()=>CM.map.invalidateSize(),200);
+  let lastNames=null; CM.map.on('zoomend',()=>{ const on=CM.map.getZoom()>=10; if(on!==lastNames){ lastNames=on; render(false); } });
 }
 
 /* ---------- Données ---------- */
@@ -805,11 +828,33 @@ async function loadCentres(){
   // rapprochement avec l'inventaire
   CM.centres.forEach(c=>{
     let x=null;
+    if(c.code_client==='-'){ c.xl=null; return; }          // marqué « aucune correspondance »
     if(c.code_client) x=CM.xl.centres.get(c.code_client)||null;
-    if(!x && CM.xl.list.length){ const m=bestMatch(c,CM.xl.list); if(m) x=m.item; }
+    c.xlAuto=false;
+    if(!x && CM.xl.list.length){ const m=bestMatch(c,CM.xl.list); if(m){ x=m.item; c.xlAuto=true; } }   // rapprochement deviné par le nom : à confirmer
     c.xl=x;
     if(x && !c.vendeur) c.vendeurXl=x.ve;
   });
+}
+// Entrées du fichier Excel qu'aucun centre ne représente
+function orphans(){
+  const used=new Set(CM.centres.map(c=>c.xl).filter(Boolean));
+  return CM.xl.list.filter(x=>!used.has(x));
+}
+function xlStatus(x){
+  const done=lsGet("done:"+(CM.xl.data&&CM.xl.data.sheet)+":"+x.cc);
+  return (x.st==="FAIT"||done)?"fait":(x.st==="A FAIRE"?"todo":"unk");
+}
+function orphanVisible(x){
+  const f=CM.f;
+  if(f.scope==="imp") return false;
+  const s=xlStatus(x);
+  if(f.st==="todo"&&s!=="todo") return false;
+  if(f.st==="done"&&s!=="fait") return false;
+  if(f.st==="maj"&&!(x.old>0)) return false;
+  if(f.vendor&&x.ve!==f.vendor) return false;
+  if(f.q&&!normText(x.nom+" "+x.lo+" "+x.cc+" "+x.ve).includes(normText(f.q))) return false;
+  return true;
 }
 function verCmp(a,b){ const x=String(a).split(/[.\-]/).map(n=>parseInt(n,10)||0), y=String(b).split(/[.\-]/).map(n=>parseInt(n,10)||0); for(let i=0;i<Math.max(x.length,y.length);i++){ const d=(x[i]||0)-(y[i]||0); if(d) return d; } return 0; }
 function versTxt(x){ if(!x||!x.vers||!x.vers.size) return ''; return [...x.vers.entries()].sort((a,b)=>verCmp(b[0],a[0])).map(([v,n])=>`v${v}${n>1?' ×'+n:''}`).join(' · '); }
@@ -829,6 +874,7 @@ function visible(c){
   if(f.st==="todo" && s!=="todo") return false;
   if(f.st==="done" && s!=="fait") return false;
   if(f.st==="maj" && !(c.xl&&c.xl.old>0)) return false;
+  if(f.st==="nolink" && c.xl) return false;
   if(f.vendor && (c.vendeur||(c.xl&&c.xl.ve))!==f.vendor) return false;
   if(f.q){ const t=normText(c.nom+" "+c.adresse+" "+(c.code_client||"")+" "+(c.vendeur||"")); if(!t.includes(normText(f.q))) return false; }
   return true;
@@ -856,17 +902,21 @@ function popupHtml(c){
 }
 function render(fit){
   CM.layer.clearLayers(); CM.markers.clear();
-  const pts=[]; let n=0, nGeo=0;
+  const pts=[]; let n=0; const cnt={fait:0,todo:0,unk:0};
+  const showNames=CM.map&&CM.map.getZoom()>=10;
   CM.centres.forEach(c=>{
     if(!visible(c)) return; n++;
-    if(c.lat==null||c.lng==null) return; nGeo++;
-    const s=statusOf(c);
-    const m=L.circleMarker([c.lat,c.lng],{radius:c.implanteur?11:7,color:c.implanteur?"#042a72":"#fff",weight:c.implanteur?3.5:1.5,fillColor:STC[s],fillOpacity:.95});
-    m.bindPopup(()=>popupHtml(c),{maxWidth:280});
+    const s=statusOf(c); cnt[s]++;
+    if(c.lat==null||c.lng==null) return;
+    const m=L.circleMarker([c.lat,c.lng],{radius:c.implanteur?12:9,color:c.implanteur?"#042a72":"#fff",weight:c.implanteur?4:2,fillColor:STC[s],fillOpacity:.95});
+    m.bindPopup(()=>popupHtml(c),{maxWidth:290});
+    if(showNames) m.bindTooltip(c.nom,{permanent:true,direction:'right',offset:[10,0],className:'cm-lbl'});
     m.addTo(CM.layer); CM.markers.set(c.id,m); pts.push([c.lat,c.lng]);
   });
+  ['fait','todo','unk'].forEach(k=>{ const e=$('lg-'+k); if(e) e.textContent=cnt[k]; });
   const pend=CM.centres.filter(c=>visible(c)&&c.lat==null).length;
-  $('cm-count').textContent=n+" centre"+(n>1?"s":"")+(pend?` · ${pend} à localiser…`:"");
+  const orph=CM.xl.list.length?orphans().filter(orphanVisible).length:0;
+  $('cm-count').textContent=n+" centre"+(n>1?"s":"")+(pend?` · ${pend} à localiser`:"")+(orph?` · ${orph} entrée${orph>1?'s':''} Excel sans centre`:"");
   if(fit && pts.length && CM.view!=='list') CM.map.fitBounds(pts,{padding:[40,40],maxZoom:12});
   if(CM.view==='list') renderList();
 }
@@ -964,25 +1014,63 @@ CM.toggleImp=async function(id){
 };
 CM.openLink=function(id){
   const c=CM.centres.find(x=>x.id===id); if(!c) return;
-  if(!CM.xl.list.length){ alert("Importez d'abord le fichier Excel d'inventaire (bouton « Importer »)."); return; }
-  CM.map.closePopup(); CM.linkFor=c;
-  $('link-for').textContent="Centre : "+c.nom+" — choisissez la ligne correspondante dans l'inventaire.";
+  if(!CM.xl.list.length){ alert("Importez d'abord le fichier Excel d'inventaire (menu ⋯)."); return; }
+  CM.map&&CM.map.closePopup(); CM.linkMode='centre'; CM.linkFor=c;
+  $('link-title').textContent="Associer au fichier Excel";
+  $('link-for').innerHTML="<b>"+esc(c.nom)+"</b><br>Choisissez l'entrée du fichier Excel qui correspond à ce centre.";
+  $('link-q').value=""; drawLink(); $('link-sheet').style.display='flex';
+};
+// Sens inverse : une entrée Excel sans centre → un centre déjà présent
+CM.openLinkXl=function(cc){
+  const x=CM.xl.centres.get(cc); if(!x) return;
+  CM.linkMode='xl'; CM.linkXl=x; CM.linkAll=false;
+  $('link-title').textContent="Associer à un centre";
+  $('link-for').innerHTML="<b>"+esc(x.nom)+"</b> — "+esc(x.lo)+" ("+esc(x.dp)+")<br>Choisissez le centre qui correspond à cette entrée du fichier Excel.";
   $('link-q').value=""; drawLink(); $('link-sheet').style.display='flex';
 };
 CM.closeLink=()=>{ $('link-sheet').style.display='none'; };
 function drawLink(){
-  const c=CM.linkFor, q=normText($('link-q').value);
+  const q=normText($('link-q').value);
+  if(CM.linkMode==='xl'){
+    const x=CM.linkXl;
+    let l=CM.centres.filter(c=>CM.linkAll||!c.xl||c.xlAuto);
+    if(q) l=l.filter(c=>normText(c.nom+" "+c.adresse).includes(q));
+    // centres du même département d'abord, puis les plus ressemblants
+    l=l.map(c=>({c,sc:(c.dp&&c.dp===x.dp?100:0)+similarity(c,x)})).sort((a,b)=>b.sc-a.sc||a.c.nom.localeCompare(b.c.nom,'fr')).slice(0,80).map(o=>o.c);
+    const nFree=CM.centres.filter(c=>!c.xl).length;
+    $('link-list').innerHTML=(l.map(c=>`<div class="imp-row" style="cursor:pointer" onclick="CM.doLinkXl(${c.id})"><div style="min-width:0"><div class="n">${esc(c.nom)}</div><div class="m">${esc(c.adresse||'')}${c.xl?(c.xlAuto?' · <span style="color:#b45309">rapproché automatiquement de '+esc(c.xl.nom)+'</span>':' · <b style="color:#c2410c">déjà associé à '+esc(c.xl.nom)+'</b>'):''}</div></div></div>`).join('')
+        ||`<div class="imp-i">${nFree?'Aucun centre ne correspond.':'Tous les centres ont déjà une correspondance.'}</div>`)
+      +`<button class="cm-btn2" style="width:100%;height:44px;margin-top:6px" onclick="CM.linkAll=!CM.linkAll; drawLink()">${CM.linkAll?'Seulement les centres sans correspondance':'Afficher aussi les centres déjà associés'}</button>`;
+    return;
+  }
+  const c=CM.linkFor;
   let l=CM.xl.list.filter(x=>(!c.dp||x.dp===c.dp));
   if(q) l=CM.xl.list.filter(x=>normText(x.nom+" "+x.lo+" "+x.cc).includes(q));
-  l=l.slice(0,60);
-  $('link-list').innerHTML=l.map(x=>`<div class="imp-row" style="cursor:pointer" onclick="CM.doLink('${esc(x.cc)}')"><div><div class="n">${esc(x.nom)}</div><div class="m">${esc(x.lo)} (${esc(x.dp)}) · ${esc(x.ve)} · ${x.st||'?'}</div></div></div>`).join('')||'<div class="imp-i">Aucun résultat.</div>';
+  const used=new Set(CM.centres.filter(o=>o!==c).map(o=>o.xl).filter(Boolean));
+  l=l.sort((a,b)=>(used.has(a)-used.has(b))||similarity(c,b)-similarity(c,a)).slice(0,60);
+  $('link-list').innerHTML=(l.map(x=>`<div class="imp-row" style="cursor:pointer" onclick="CM.doLink('${esc(x.cc)}')"><div><div class="n">${esc(x.nom)}</div><div class="m">${esc(x.lo)} (${esc(x.dp)}) · ${esc(x.ve)} · ${x.st||'?'}${used.has(x)?' · <b style="color:#c2410c">déjà associée</b>':''}</div></div></div>`).join('')||'<div class="imp-i">Aucun résultat.</div>')
+    +(c.xlAuto&&c.xl?`<button class="cm-btn2" style="width:100%;height:44px;margin-top:6px" onclick="CM.doLink('${esc(c.xl.cc)}')">✓ Confirmer : ${esc(c.xl.nom)}</button>`:'')
+    +(c.xl||c.code_client!=='-'?`<button class="cm-btn2 danger" style="width:100%;margin-top:6px" onclick="CM.doLink('-')">Ce centre n'est pas dans le fichier Excel</button>`:'');
 }
 $('link-q').addEventListener('input',drawLink);
+CM.doLinkXl=async function(id){
+  const c=CM.centres.find(o=>o.id===id), x=CM.linkXl; if(!c||!x) return;
+  if(c.xl && !c.xlAuto && !confirm(`« ${c.nom} » est déjà associé à « ${c.xl.nom} ».\nLe remplacer par « ${x.nom} » ?`)) return;
+  const { error } = await _supabase.from('centres').update({code_client:x.cc,vendeur:c.vendeur||x.ve}).eq('id',c.id);
+  if(error){ alert("Association impossible."); return; }
+  c.code_client=x.cc; c.xl=x; c.xlAuto=false; if(!c.vendeur) c.vendeur=x.ve; CM.closeLink(); fillVendors(); render(false);
+};
 CM.doLink=async function(cc){
-  const c=CM.linkFor, x=CM.xl.centres.get(cc); if(!c||!x) return;
+  const c=CM.linkFor; if(!c) return;
+  if(cc==='-'){   // aucune correspondance : le centre n'est plus rapproché automatiquement
+    const { error } = await _supabase.from('centres').update({code_client:'-'}).eq('id',c.id);
+    if(error){ alert("Modification impossible."); return; }
+    c.code_client='-'; c.xl=null; c.xlAuto=false; CM.closeLink(); fillVendors(); render(false); return;
+  }
+  const x=CM.xl.centres.get(cc); if(!x) return;
   const { error } = await _supabase.from('centres').update({code_client:cc,vendeur:c.vendeur||x.ve}).eq('id',c.id);
   if(error){ alert("Association impossible."); return; }
-  c.code_client=cc; c.xl=x; CM.closeLink(); fillVendors(); render(false);
+  c.code_client=cc; c.xl=x; c.xlAuto=false; CM.closeLink(); fillVendors(); render(false);
 };
 CM.locate=function(){
   if(!navigator.geolocation){ alert("Géolocalisation indisponible."); return; }
@@ -1040,7 +1128,7 @@ function analyse(){
   if(!v){ $('imp-sum').textContent=''; return; }
   const incl=$('imp-cab').checked;
   const src=CM.xl.list.filter(c=>c.ve===v&&(incl||kindOf(c.nom)!=="D")).sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
-  const byCode=new Map(CM.centres.filter(c=>c.code_client).map(c=>[c.code_client,c]));
+  const byCode=new Map(CM.centres.filter(c=>c.code_client&&c.code_client!=='-').map(c=>[c.code_client,c]));
   const seen=new Set();
   src.forEach(x=>{
     const cand={nom:x.nom,dp:x.dp,commune:x.commune};
@@ -1230,12 +1318,35 @@ CM.setView=function(v){
   render(v==='map');
 };
 function renderList(){
+  const box=$('cm-list'), lab={fait:'Fait',todo:'À faire',unk:'Inconnu'};
+  const hasXl=CM.xl.list.length>0;
+  const orph=hasXl?orphans().filter(orphanVisible).sort((a,b)=>a.nom.localeCompare(b.nom,'fr')):[];
   const l=CM.centres.filter(visible).sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
-  const box=$('cm-list');
-  if(!l.length){ box.innerHTML='<div class="imp-i" style="text-align:center;margin-top:30px">Aucun centre ne correspond aux filtres.</div>'; return; }
-  const lab={fait:'Fait',todo:'À faire',unk:'Inconnu'};
-  box.innerHTML=l.slice(0,300).map(c=>{ const s=statusOf(c), v=c.vendeur||(c.xl&&c.xl.ve)||'';
-    return `<div class="li" onclick="CM.openEdit(${c.id})"><span class="dot ${c.implanteur?'imp':''}" style="background:${STC[s]}"></span><div style="min-width:0"><div class="n">${esc(c.nom)}</div><div class="m">${esc(c.adresse)}</div><div><span class="tg" style="background:${STC[s]}22;color:${STC[s]}">${lab[s]}</span>${c.implanteur?'<span class="tg imp">⭐ Implanteur</span>':''}${c.xl&&c.xl.vers?(c.xl.old>0?`<span class="tg apx">⚠️ ${c.xl.old} prog. à MAJ</span>`:`<span class="tg ok">✓ v${esc(CM.xl.maxVer)}</span>`):''}${c.tampon_url?'<span class="tg ok">🖋️ tampon</span>':''}${c.geo_src==='commune'||c.lat==null?'<span class="tg apx">📍 position approx.</span>':''}${v?`<span class="m">${esc(v)}</span>`:''}</div></div><span class="chev">›</span></div>`; }).join('')+(l.length>300?`<div class="imp-i" style="text-align:center">${l.length-300} autres : affinez la recherche.</div>`:'');
+  const pill=s=>`<span class="st" style="background:${STC[s]}1f;color:${s==='unk'?'#64748b':STC[s]}">${lab[s]}</span>`;
+  let html='';
+  if(orph.length){
+    html+=`<div class="ls-h">Excel sans centre · ${orph.length}</div><div class="ls-note">Entrées du fichier qu'aucun centre ne représente. Associez-les au bon centre pour suivre leur inventaire sur la carte.</div>`;
+    html+=orph.slice(0,150).map(x=>`<div class="li2 orph" style="border-left-color:${STC[xlStatus(x)]}" onclick="CM.openLinkXl('${esc(x.cc)}')">
+        <div class="main"><div class="n">${esc(x.nom)}</div><div class="m">${esc(x.lo)} (${esc(x.dp)}) · ${esc(x.ve||'')}</div>
+        <div class="tags">${pill(xlStatus(x))}<span class="tg">${x.n} ligne${x.n>1?'s':''}</span></div></div>
+        <button class="lk" type="button">🔗 Associer</button></div>`).join('');
+  }
+  if(l.length){
+    if(orph.length) html+=`<div class="ls-h">Centres · ${l.length}</div>`;
+    html+=l.slice(0,300).map(c=>{ const s=statusOf(c), v=c.vendeur||(c.xl&&c.xl.ve)||'';
+      const where=[c.commune?c.commune.charAt(0)+c.commune.slice(1).toLowerCase():'', c.dp?`(${c.dp})`:''].filter(Boolean).join(' ');
+      const tags=[c.implanteur?'<span class="tg imp">⭐ Implanteur</span>':'',
+        c.xlAuto?`<span class="tg apx" onclick="event.stopPropagation(); CM.openLink(${c.id})">🔗 Excel deviné · vérifier</span>`:'',
+        c.xl&&c.xl.vers?(c.xl.old>0?`<span class="tg apx">⚠️ ${c.xl.old} prog. à MAJ</span>`:`<span class="tg ok">✓ prog. à jour</span>`):'',
+        c.lat==null?'<span class="tg apx">📍 non localisé</span>':(c.geo_src==='commune'?'<span class="tg apx">📍 position approx.</span>':'')].join('');
+      const link=hasXl&&!c.xl?`<button class="lk" type="button" onclick="event.stopPropagation(); CM.openLink(${c.id})">🔗 Associer</button>`:'';
+      return `<div class="li2" style="border-left-color:${STC[s]}" onclick="CM.openEdit(${c.id})">
+        <div class="main"><div class="n">${esc(c.nom)}</div><div class="m">${esc(where||c.adresse||'Adresse non renseignée')}${v?' · '+esc(v):''}</div>
+        ${tags?`<div class="tags">${tags}</div>`:''}</div>
+        ${link||pill(s)}</div>`;
+    }).join('');
+  }
+  box.innerHTML=html||'<div class="imp-i" style="text-align:center;margin-top:30px">Aucun centre ne correspond aux filtres.</div>';
 }
 CM.openEdit=function(id){
   const c=CM.centres.find(x=>x.id===id); if(!c) return; CM.editing=c; CM.map&&CM.map.closePopup();
@@ -1247,7 +1358,7 @@ CM.openEdit=function(id){
   paintStamp(c);
   $('ed-nom').value=c.nom; $('ed-nom').readOnly=!!c.implanteur; $('ed-nom-hint').style.display=c.implanteur?'block':'none';
   $('ed-adr').value=c.adresse||''; $('ed-vendeur').value=c.vendeur||(c.xl&&c.xl.ve)||''; $('ed-mailbl').value=c.mail_bl||''; $('ed-mailph').value=c.mail_pharmacie||'';
-  $('ed-imp').checked=!!c.implanteur; $('ed-code').textContent=c.code_client?('Code client : '+c.code_client):'';
+  $('ed-imp').checked=!!c.implanteur; $('ed-code').textContent=(c.code_client&&c.code_client!=='-')?('Code client : '+c.code_client):'';
   $('ed-del').style.display=c.implanteur?'none':'block'; $('ed-showmap').style.display=c.lat!=null?'block':'none';
   $('ed-status').textContent=''; $('ed-sugg').style.display='none'; $('edit-sheet').style.display='flex';
 };
@@ -1316,6 +1427,15 @@ $('ed-del').addEventListener('click',async()=>{
   CM.centres=CM.centres.filter(x=>x.id!==c.id); CM.closeEdit(); fillVendors(); render(false);
 });
 
+/* ================= Menu ⋯ ================= */
+CM.menu=function(open){
+  const m=$('cm-menu'), show=open===undefined?m.style.display==='none':open;
+  m.style.display=show?'block':'none';
+  if(show){ const d=CM.xl.data; $('cm-xlinfo').textContent=d?('Fichier actuel : '+(d.sheet||'feuille')+' · '+CM.xl.list.length+' établissements'):"Aucun fichier Excel : les statuts d'inventaire sont inconnus."; }
+};
+document.addEventListener('click',e=>{ const m=$('cm-menu'); if(m.style.display!=='none' && !m.contains(e.target) && !e.target.closest('[aria-label="Fichier Excel et import"]')) m.style.display='none'; });
+$('xl-quick').addEventListener('change',()=>CM.menu(false));
+
 /* ================= Filtres & démarrage ================= */
 document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll(`.chip[data-f="${b.dataset.f}"]`).forEach(x=>x.classList.toggle('on',x===b));
@@ -1329,7 +1449,7 @@ async function start(){
   try{ await loadXl(); await loadCentres(); }
   catch(e){ console.error(e); $('cm-count').textContent="⚠️ Chargement impossible"; return; }
   fillVendors(); render(true); geocodeMissing();
-  if(!CM.xl.list.length) $('cm-count').textContent+=" · pas d'Excel : statuts inconnus";
+  if(!CM.xl.list.length) $('cm-count').textContent+=" · pas d'Excel (menu ⋯)";
 }
 /* Fond de carte : uniquement avec du réseau (les zones déjà consultées restent disponibles hors ligne) */
 function netState(){ const off=!navigator.onLine; const b=$('net-note'); if(b) b.style.display=off?'block':'none'; if(!off) geocodeMissing(); }
