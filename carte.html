@@ -1345,6 +1345,7 @@ function renderList(){
       const link=hasXl&&!c.xl?`<button class="lk" type="button" onclick="event.stopPropagation(); CM.openLink(${c.id})">🔗 Associer</button>`:'';
       return `<div class="li2" style="border-left-color:${STC[s]}" onclick="CM.openEdit(${c.id})">
         <div class="main"><div class="n">${esc(c.nom)}</div><div class="m">${esc(where||c.adresse||'Adresse non renseignée')}${v?' · '+esc(v):''}</div>
+        ${c.xl&&!c.xlAuto&&normText(c.xl.nom)!==normText(c.nom)?`<div class="m">Excel : ${esc(c.xl.nom)}</div>`:''}
         ${tags?`<div class="tags">${tags}</div>`:''}</div>
         ${link||pill(s)}</div>`;
     }).join('');

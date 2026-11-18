@@ -616,6 +616,7 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 .result>*:not(.rn){flex:1}
 
 .mailprev{margin-top:10px;font-size:12px;color:#475569}.mailprev summary{font-weight:800;cursor:pointer}.mp-s{font-weight:800;margin:6px 0;color:#042a72}.mp-b{white-space:pre-wrap;word-break:break-word;font-family:inherit;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0;font-size:11.5px}
+.aliasBtn{display:inline-block;margin-top:8px;border:1.5px solid #c7d4f5;background:#eef3ff;color:#042a72;border-radius:10px;padding:7px 11px;font-size:12.5px;font-weight:850;cursor:pointer}
 .noteBtn{margin-left:auto;border:none;background:transparent;font-size:16px;padding:0 4px;opacity:.55;cursor:pointer}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -804,6 +805,15 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 .zapLine{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .zapLine.ok{color:#86efac}.zapLine.inconnu{color:#fca5a5}
 </style>
+<div id="alias" style="display:none;position:fixed;inset:0;z-index:9000;background:var(--bg-body,#f4f6fb);flex-direction:column">
+  <div style="display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:#fff;border-bottom:1px solid #e2e8f0">
+    <button type="button" class="secondary" style="min-height:40px;padding:6px 14px" onclick="document.getElementById('alias').style.display='none'">✕</button>
+    <b style="flex:1;color:#042a72;font-size:16px">Centre des BL correspondant</b>
+  </div>
+  <div style="padding:12px 14px 0"><input type="search" id="aliasQ" placeholder="🔎 Rechercher un centre…" oninput="drawAlias()"></div>
+  <div style="padding:6px 14px 0;font-size:12.5px;color:#64748b">Le nom des BL s'affichera à la place du nom du fichier Excel. ⭐ = centres des BL.</div>
+  <div id="aliasList" style="flex:1;overflow:auto;padding:10px 14px calc(env(safe-area-inset-bottom) + 14px)"></div>
+</div>
 <script src="assets/local-db.js"></script>
 <script src="assets/scan.js"></script>
 <script src="assets/vendor/pdf.min.js"></script>
@@ -1099,9 +1109,10 @@ function renderCentres(){
   let list=[...P.centres.values()];
   if(P.vendor) list=list.filter(c=>c.ve===P.vendor);
   else if(q.length<2){ box.append(h("div",{class:"hint"},"Choisissez un vendeur, ou tapez au moins 2 lettres pour chercher dans tous les centres.")); return; }
-  if(q) list=list.filter(c=>normText(c.et+" "+c.lo+" "+c.cc).includes(q));
+  if(q) list=list.filter(c=>{ const a=aliasOf(c.cc); return normText(c.et+" "+c.lo+" "+c.cc+" "+(a?a.nom:"")).includes(q); });
   if(P.st==="todo") list=list.filter(c=>c.st==="A FAIRE");
-  list.sort((a,b)=>a.et.localeCompare(b.et,"fr"));
+  const nameOf=c=>{ const a=aliasOf(c.cc); return a?a.nom:c.et; };
+  list.sort((a,b)=>nameOf(a).localeCompare(nameOf(b),"fr"));
   if(!list.length){ box.append(h("div",{class:"hint"},"Aucun centre trouvé.")); return; }
   const total=list.length;
   list.slice(0,80).forEach(c=>{
@@ -1111,8 +1122,10 @@ function renderCentres(){
     const done=lsGet("done:"+P.data.sheet+":"+c.cc);
     if(done) badges.append(h("span",{class:"badge exp"},"PDF généré le "+done));
     const who=(!P.vendor && c.ve && c.ve!=="-") ? " · "+c.ve : "";
+    const al=aliasOf(c.cc);
     box.append(h("button",{class:"citem",type:"button",onclick:()=>startProg(c)},
-      h("span",{class:"cn"},c.et),
+      h("span",{class:"cn"},al?al.nom:c.et),
+      al&&normText(al.nom)!==normText(c.et)?h("span",{class:"cm2",style:"font-weight:700"},"Excel : "+c.et):null,
       h("span",{class:"cm2"},c.lo+" ("+c.dp+") · "+c.items.length+" ligne"+(c.items.length>1?"s":"")+who),
       badges));
   });
@@ -1129,8 +1142,7 @@ function startProg(c){
   });
   S.filter="all";
   loadDraft();
-  $("fname").textContent=c.et;
-  S.hint=c.et; $("fdepot").textContent=[(c.ve&&c.ve!=="-"?c.ve:""),c.lo+" ("+c.dp+")",S.rows.length+" ligne"+(S.rows.length>1?"s":"")].filter(Boolean).join(" · ");
+  S.progCentre=c; paintProgHead();
   enterWork();
 }
 
@@ -1256,6 +1268,42 @@ function renderAll(){
   refresh(); applyFilter();
 }
 
+/* ---------- Nom d'usage : le centre des BL qui correspond à l'entrée Excel ---------- */
+function aliasOf(cc){ return cc ? (sbRows.find(r=>r.code_client===cc)||null) : null; }
+function paintProgHead(){
+  const c=S.progCentre; if(!c) return;
+  const al=aliasOf(c.cc);
+  $("fname").textContent=al?al.nom:c.et;
+  S.hint=al?al.nom:c.et;
+  $("fdepot").replaceChildren(
+    document.createTextNode([(c.ve&&c.ve!=="-"?c.ve:""),c.lo+" ("+c.dp+")",S.rows.length+" ligne"+(S.rows.length>1?"s":"")].filter(Boolean).join(" · ")),
+    al&&normText(al.nom)!==normText(c.et)?h("div",{style:"font-size:12px;margin-top:2px"},"Excel : "+c.et):"",
+    h("button",{type:"button",class:"aliasBtn",onclick:openAlias},al?"🔗 Centre des BL : changer":"🔗 Associer à un centre des BL"));
+}
+async function openAlias(){
+  $("alias").style.display="flex"; $("aliasQ").value=""; $("aliasList").replaceChildren(h("div",{class:"hint"},"Chargement…"));
+  await sbLoadList();   // liste des centres à jour (un centre a pu être créé entre-temps)
+  drawAlias();
+}
+function drawAlias(){
+  const c=S.progCentre, q=normText($("aliasQ").value), kc=keyName(c.et), box=$("aliasList"); box.replaceChildren();
+  let l=sbRows.filter(r=>!q||normText(r.nom+" "+(r.adresse||"")).includes(q));
+  const score=r=>(r.implanteur?1000:0)+(r.code_client===c.cc?2000:0)+(c.lo&&normText(r.adresse).includes(normText(c.lo))?200:0)+(new RegExp("\\b"+c.dp+"\\d{3}\\b").test(String(r.adresse||""))?100:0)+(keyName(r.nom)&&(kc.includes(keyName(r.nom))||keyName(r.nom).includes(kc))?50:0);
+  l=l.sort((a,b)=>score(b)-score(a)||a.nom.localeCompare(b.nom,"fr")).slice(0,80);
+  l.forEach(r=>box.append(h("button",{type:"button",class:"citem",onclick:()=>setAlias(r)},
+    h("span",{class:"cn"},(r.implanteur?"⭐ ":"")+r.nom+(r.code_client===c.cc?"  ✓":"")),
+    h("span",{class:"cm2"},(r.adresse||"")+(r.code_client&&r.code_client!==c.cc&&r.code_client!=="-"?" · déjà associé à une autre entrée":"")))));
+  if(!l.length) box.append(h("div",{class:"hint"},"Aucun centre trouvé."));
+  if(aliasOf(c.cc)) box.append(h("button",{type:"button",class:"secondary",style:"width:100%;margin-top:8px",onclick:()=>setAlias(null)},"Retirer l'association"));
+}
+async function setAlias(r){
+  const cc=S.progCentre.cc;
+  try{
+    for(const o of sbRows.filter(x=>x.code_client===cc && (!r||x.id!==r.id))){ await _supabase.from(SB_TABLE).update({code_client:null}).eq("id",o.id); o.code_client=null; }
+    if(r){ const {error}=await _supabase.from(SB_TABLE).update({code_client:cc}).eq("id",r.id); if(error) throw error; r.code_client=cc; }
+    $("alias").style.display="none"; paintProgHead(); suggestStamp(); renderCentres();
+  }catch(e){ console.error(e); alert("Association impossible."); }
+}
 function enterWork(){
   SC.seen.clear(); $("scanRes").classList.add("hidden");
   $("status").textContent=""; $("status").className="status";
@@ -1601,13 +1649,14 @@ let sbRows=[];
 async function sbLoadList(){
   $("sbBox").classList.remove("hidden");
   try{
-    const {data,error}=await _supabase.from(SB_TABLE).select("id,nom,adresse,tampon_url").order("nom",{ascending:true});
+    const {data,error}=await _supabase.from(SB_TABLE).select("id,nom,adresse,tampon_url,code_client,implanteur").order("nom",{ascending:true});
     if(error) throw error;
     sbRows=data||[];
     const sel=$("sbSel"); sel.replaceChildren(h("option",{value:""},sbRows.length?"Choisir un tampon…":"Aucun tampon dans la base"));
     sbRows.forEach(row=>sel.append(h("option",{value:String(row.id)},String(row.nom))));
     const saved=lsGet("sbStampId"); if(saved && sbRows.some(x=>String(x.id)===saved)) sel.value=saved;
     $("sbNote").textContent="";
+    if(P.data) renderCentres();
   }catch(err){
     console.error(err);
     $("sbSel").replaceChildren(h("option",{value:""},"Liste indisponible"));
@@ -1641,7 +1690,7 @@ $("sbSel").addEventListener("change",e=>{
 function suggestStamp(){
   const box=$("sbSuggest"); box.classList.add("hidden"); box.replaceChildren();
   const k=keyName(S.hint); if(k.length<4 || !sbRows.length) return;
-  let best=null,score=0;
+  let best=(S.mode==="prog"&&S.progCentre)?aliasOf(S.progCentre.cc):null,score=best?999:0;
   sbRows.forEach(r=>{ const n=keyName(r.nom); if(n.length<3) return;
     if(k.includes(n)||n.includes(k)){ const s=Math.min(n.length,k.length); if(s>score){score=s;best=r;} } });
   if(!best) return;
