@@ -524,6 +524,7 @@ section{margin-bottom:8px}
 .datapanel .dt{font-weight:850;color:var(--blue-mp)}
 .datapanel .dm{color:var(--muted);font-size:12px}
 .field{margin-bottom:14px}
+#vSel.on{background:var(--blue-mp,#042a72);border-color:var(--blue-mp,#042a72);color:#fff;font-weight:850;font-size:16px}
 .lbl{display:block;font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:6px}
 .clist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .citem{width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-left:5px solid var(--accent);border-radius:14px;padding:12px 14px;cursor:pointer;display:grid;gap:4px}
@@ -1065,7 +1066,7 @@ function setProgData(d){
   const sel=$("vSel"); sel.replaceChildren(h("option",{value:""},"Choisir un vendeur…"));
   P.vendors.forEach(([v,n])=>sel.append(h("option",{value:v},(v&&v!=="-"?v:"(sans vendeur)")+" — "+n+" centre"+(n>1?"s":""))));
   if(P.vendor && !vc.has(P.vendor)) P.vendor="";
-  sel.value=P.vendor;
+  sel.value=P.vendor; sel.classList.toggle("on",!!P.vendor);
   paintData();
   renderCentres();
 }
@@ -1085,7 +1086,7 @@ function paintData(){
 $("xDrop").addEventListener("click",()=>$("xlsxFile").click());
 $("xUpdate").addEventListener("click",()=>$("xlsxFile").click());
 $("xlsxFile").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importXlsx(f); });
-$("vSel").addEventListener("change",e=>{ P.vendor=e.target.value; lsSet("lastVendor",P.vendor); renderCentres(); });
+$("vSel").addEventListener("change",e=>{ P.vendor=e.target.value; lsSet("lastVendor",P.vendor); $("vSel").classList.toggle("on",!!P.vendor); renderCentres(); });
 $("cSearch").addEventListener("input",e=>{ P.q=e.target.value; renderCentres(); });
 [["all","cf-all"],["todo","cf-todo"]].forEach(([k,id])=>$(id).addEventListener("click",()=>{
   P.st=k; $("cf-all").setAttribute("aria-pressed",String(k==="all")); $("cf-todo").setAttribute("aria-pressed",String(k==="todo")); renderCentres();

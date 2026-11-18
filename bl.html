@@ -471,6 +471,10 @@
         .dock-btn:active { transform: scale(0.97); opacity: .92; }
         .dock-boitier { background: linear-gradient(135deg, var(--palette-deep-blue), var(--palette-royal-blue)); }
         .dock-sonde { background: linear-gradient(135deg, var(--palette-royal-blue), #00c8ff); }
+        select.need-choice { border: 2px solid #f59e0b !important; background: #fffbeb !important; color: #92400e; font-weight: 800; }
+        .centre-need { display: none; font-size: 12.5px; font-weight: 800; color: #b45309; margin-top: 6px; }
+        @keyframes shakeX { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
+        .shake { animation: shakeX .4s ease; }
         .act-more { margin: 0; }
         .act-more > summary { list-style: none; cursor: pointer; font-size: 11.5px; font-weight: 750; color: var(--text-muted); text-align: center; padding: 4px 0 8px; }
         .act-more > summary::-webkit-details-marker { display: none; }
@@ -726,7 +730,8 @@
             <div class="card-title">📋 Informations du BL</div>
             <div class="form-group">
                 <label>Établissement</label>
-                <select id="inC" onchange="loadMedecinsDuCentre()"></select>
+                <select id="inC" onchange="markCentreChoice(); loadMedecinsDuCentre()"></select>
+                <div id="centre-need" class="centre-need">Choisissez l'établissement pour continuer.</div>
             </div>
             <div class="grid-2">
                 <div class="form-group">
@@ -1326,8 +1331,10 @@
             if (errMap) throw errMap;
             
             let linkedCenterNames = (mappings || []).map(m => m.center_name);
-            const cSel = document.getElementById('inC'); 
-            cSel.innerHTML = ""; 
+            const cSel = document.getElementById('inC'), keep = cSel.value;
+            cSel.innerHTML = "";
+            // Aucun centre présélectionné : l'établissement doit être choisi avant de continuer
+            cSel.add(new Option("— Choisir l'établissement —", ""));
 
             let filteredCentres = dbCloudCentres.filter(c => linkedCenterNames.includes(c.nom));
 
@@ -1336,6 +1343,8 @@
             } else {
                 filteredCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
             }
+            cSel.value = [...cSel.options].some(o => o.value === keep) ? keep : "";
+            markCentreChoice();
 
             await loadMedecinsDuCentre();
         } catch (e) {
@@ -1343,7 +1352,9 @@
             const cSel = document.getElementById('inC');
             if(cSel) {
                 cSel.innerHTML = "";
+                cSel.add(new Option("— Choisir l'établissement —", ""));
                 dbCloudCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
+                markCentreChoice();
                 await loadMedecinsDuCentre();
             }
         }
@@ -3543,8 +3554,22 @@ function removeBg(src,sens){
 
     // ====== ONGLETS (étapes du BL) ======
     let currentTab = 'infos';
+    // L'établissement doit être choisi avant tout le reste
+    function markCentreChoice(alert) {
+        const sel = document.getElementById('inC'); if (!sel) return;
+        const missing = !sel.value;
+        sel.classList.toggle('need-choice', missing);
+        const msg = document.getElementById('centre-need');
+        if (msg) msg.style.display = missing ? 'block' : 'none';
+        if (alert && missing) { sel.classList.remove('shake'); void sel.offsetWidth; sel.classList.add('shake'); sel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    }
     function showTab(name) {
         if (!document.getElementById('tab-' + name)) return;
+        if (name !== 'infos' && !document.getElementById('inC').value) {
+            if (currentTab !== 'infos') showTab('infos');
+            markCentreChoice(true);
+            return;
+        }
         currentTab = name;
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
@@ -3946,6 +3971,7 @@ function removeBg(src,sens){
         basketItems = [];
         setPharmaMode(false);
         renderBasket();
+        document.getElementById('inC').value = ''; markCentreChoice(); loadMedecinsDuCentre();
         showTab('infos');
         document.getElementById('history-status').innerText = "";
         const saveBtn = document.getElementById('btn-save-bl');

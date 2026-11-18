@@ -541,7 +541,8 @@ html,body{height:100%;overscroll-behavior:none}
 .chip{flex:0 0 auto;border:1.5px solid #cbd5e1;background:#fff;color:#334155;border-radius:99px;padding:6px 11px;font-size:12px;font-weight:750}
 .chip.on{background:var(--blue-mp);border-color:var(--blue-mp);color:#fff}
 .sep{flex:0 0 1px;height:20px;background:#cbd5e1}
-#cm-vendor{flex:0 0 auto;height:32px;font-size:12px;border-radius:99px;padding:0 8px;max-width:150px}
+#cm-vendor{flex:0 0 auto;height:32px;font-size:12px;border-radius:99px;padding:0 8px;max-width:170px}
+#cm-vendor.on{box-shadow:0 2px 8px rgba(4,42,114,.25);background:var(--blue-mp);border:1.5px solid var(--blue-mp);color:#fff;font-weight:850;font-size:13px}
 #map{flex:1;min-height:0;z-index:1}
 .cm-count{position:absolute;left:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:500;background:rgba(255,255,255,.95);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:800;color:var(--blue-mp);box-shadow:0 2px 10px rgba(0,0,0,.18)}
 .cm-loc{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:500;width:46px;height:46px;border-radius:50%;border:0;background:#fff;font-size:20px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
@@ -637,6 +638,8 @@ html,body{height:100%;overscroll-behavior:none}
       <div class="seg" role="tablist"><button type="button" id="v-map" class="on" onclick="CM.setView('map')">🗺️</button><button type="button" id="v-list" onclick="CM.setView('list')">📋</button></div>
     </div>
     <div class="cm-row cm-chips">
+      <select id="cm-vendor" aria-label="Vendeur"><option value="">Tous vendeurs</option></select>
+      <span class="sep"></span>
       <button class="chip on" data-f="scope" data-v="all">Tous</button>
       <button class="chip" data-f="scope" data-v="imp">⭐ Implanteurs</button>
       <span class="sep"></span>
@@ -645,7 +648,6 @@ html,body{height:100%;overscroll-behavior:none}
       <button class="chip" data-f="st" data-v="done">Fait</button>
       <button class="chip" data-f="st" data-v="maj">⚠️ Prog. à MAJ</button>
       <button class="chip" data-f="st" data-v="nolink">🔗 Sans correspondance</button>
-      <select id="cm-vendor" aria-label="Vendeur"><option value="">Tous vendeurs</option></select>
     </div>
     <div id="cm-menu" class="cm-menu" style="display:none">
       <label class="cm-mi" for="xl-quick">🔄 Mettre à jour le fichier Excel</label>
@@ -788,7 +790,7 @@ function similarity(a,b){
 function bestMatch(a, pool){ let best=null,bs=0; for(const b of pool){ const s=similarity(a,b); if(s>bs){ bs=s; best=b; } } return bs>=4?{item:best,score:bs}:null; }
 
 /* ================= État ================= */
-const CM={ map:null, layer:null, centres:[], xl:{data:null,centres:new Map(),list:[]}, f:{scope:"all",st:"all",vendor:"",q:""}, markers:new Map(), geocoding:false, view:'map' };
+const CM={ map:null, layer:null, centres:[], xl:{data:null,centres:new Map(),list:[]}, f:{scope:"all",st:"all",vendor:lsGet("lastVendor")||"",q:""}, markers:new Map(), geocoding:false, view:'map' };
 const STC={fait:"#16a34a",todo:"#f59e0b",unk:"#94a3b8"};
 
 function initMap(){
@@ -916,15 +918,15 @@ function render(fit){
   ['fait','todo','unk'].forEach(k=>{ const e=$('lg-'+k); if(e) e.textContent=cnt[k]; });
   const pend=CM.centres.filter(c=>visible(c)&&c.lat==null).length;
   const orph=CM.xl.list.length?orphans().filter(orphanVisible).length:0;
-  $('cm-count').textContent=n+" centre"+(n>1?"s":"")+(pend?` · ${pend} à localiser`:"")+(orph?` · ${orph} entrée${orph>1?'s':''} Excel sans centre`:"");
+  $('cm-count').textContent=(CM.f.vendor?"👤 "+CM.f.vendor+" · ":"")+n+" centre"+(n>1?"s":"")+(pend?` · ${pend} à localiser`:"")+(orph?` · ${orph} entrée${orph>1?'s':''} Excel sans centre`:"");
   if(fit && pts.length && CM.view!=='list') CM.map.fitBounds(pts,{padding:[40,40],maxZoom:12});
   if(CM.view==='list') renderList();
 }
 function fillVendors(){
   const sel=$('cm-vendor'), cur=CM.f.vendor; const cnt=new Map();
   CM.centres.forEach(c=>{ const v=c.vendeur||(c.xl&&c.xl.ve); if(v&&v!=="-") cnt.set(v,(cnt.get(v)||0)+1); });
-  sel.innerHTML='<option value="">Tous vendeurs</option>'+[...cnt.entries()].sort((a,b)=>a[0].localeCompare(b[0],'fr')).map(([v,n])=>`<option value="${esc(v)}">${esc(v)} (${n})</option>`).join('');
-  sel.value=cnt.has(cur)?cur:""; CM.f.vendor=sel.value;
+  sel.innerHTML='<option value="">👤 Tous vendeurs</option>'+[...cnt.entries()].sort((a,b)=>a[0].localeCompare(b[0],'fr')).map(([v,n])=>`<option value="${esc(v)}">👤 ${esc(v)} (${n})</option>`).join('');
+  sel.value=cnt.has(cur)?cur:""; CM.f.vendor=sel.value; paintVendor();
 }
 
 /* ---------- Géocodage (navigateur → API publiques ; échec silencieux) ---------- */
@@ -1025,7 +1027,7 @@ CM.openLinkXl=function(cc){
   const x=CM.xl.centres.get(cc); if(!x) return;
   CM.linkMode='xl'; CM.linkXl=x; CM.linkAll=false;
   $('link-title').textContent="Associer à un centre";
-  $('link-for').innerHTML="<b>"+esc(x.nom)+"</b> — "+esc(x.lo)+" ("+esc(x.dp)+")<br>Choisissez le centre qui correspond à cette entrée du fichier Excel.";
+  $('link-for').innerHTML="<b>"+esc(x.nom)+"</b> — "+esc(x.lo)+" ("+esc(x.dp)+")<br>Choisissez le centre qui correspond à cette entrée du fichier Excel. Les ⭐ centres des BL sont en tête.";
   $('link-q').value=""; drawLink(); $('link-sheet').style.display='flex';
 };
 CM.closeLink=()=>{ $('link-sheet').style.display='none'; };
@@ -1036,9 +1038,10 @@ function drawLink(){
     let l=CM.centres.filter(c=>CM.linkAll||!c.xl||c.xlAuto);
     if(q) l=l.filter(c=>normText(c.nom+" "+c.adresse).includes(q));
     // centres du même département d'abord, puis les plus ressemblants
-    l=l.map(c=>({c,sc:(c.dp&&c.dp===x.dp?100:0)+similarity(c,x)})).sort((a,b)=>b.sc-a.sc||a.c.nom.localeCompare(b.c.nom,'fr')).slice(0,80).map(o=>o.c);
+    // centres des BL (implanteurs) d'abord, puis même département, puis les plus ressemblants
+    l=l.map(c=>({c,sc:(c.implanteur?1000:0)+(c.dp&&c.dp===x.dp?100:0)+similarity(c,x)})).sort((a,b)=>b.sc-a.sc||a.c.nom.localeCompare(b.c.nom,'fr')).slice(0,80).map(o=>o.c);
     const nFree=CM.centres.filter(c=>!c.xl).length;
-    $('link-list').innerHTML=(l.map(c=>`<div class="imp-row" style="cursor:pointer" onclick="CM.doLinkXl(${c.id})"><div style="min-width:0"><div class="n">${esc(c.nom)}</div><div class="m">${esc(c.adresse||'')}${c.xl?(c.xlAuto?' · <span style="color:#b45309">rapproché automatiquement de '+esc(c.xl.nom)+'</span>':' · <b style="color:#c2410c">déjà associé à '+esc(c.xl.nom)+'</b>'):''}</div></div></div>`).join('')
+    $('link-list').innerHTML=(l.map(c=>`<div class="imp-row" style="cursor:pointer${c.implanteur?';border-color:#c7d4f5;background:#f5f8ff':''}" onclick="CM.doLinkXl(${c.id})"><div style="min-width:0"><div class="n">${c.implanteur?'⭐ ':''}${esc(c.nom)}${c.implanteur?' <span class="tg imp">centre des BL</span>':''}</div><div class="m">${esc(c.adresse||'')}${c.xl?(c.xlAuto?' · <span style="color:#b45309">rapproché automatiquement de '+esc(c.xl.nom)+'</span>':' · <b style="color:#c2410c">déjà associé à '+esc(c.xl.nom)+'</b>'):''}</div></div></div>`).join('')
         ||`<div class="imp-i">${nFree?'Aucun centre ne correspond.':'Tous les centres ont déjà une correspondance.'}</div>`)
       +`<button class="cm-btn2" style="width:100%;height:44px;margin-top:6px" onclick="CM.linkAll=!CM.linkAll; drawLink()">${CM.linkAll?'Seulement les centres sans correspondance':'Afficher aussi les centres déjà associés'}</button>`;
     return;
@@ -1441,7 +1444,9 @@ document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll(`.chip[data-f="${b.dataset.f}"]`).forEach(x=>x.classList.toggle('on',x===b));
   CM.f[b.dataset.f]=b.dataset.v; render(true);
 }));
-$('cm-vendor').addEventListener('change',e=>{ CM.f.vendor=e.target.value; render(true); });
+// Vendeur : mis en avant quand il est choisi, et mémorisé (le même que dans les dépôts)
+function paintVendor(){ const sel=$('cm-vendor'); sel.classList.toggle('on',!!CM.f.vendor); }
+$('cm-vendor').addEventListener('change',e=>{ CM.f.vendor=e.target.value; try{ localStorage.setItem("lastVendor",CM.f.vendor); }catch(_){} paintVendor(); render(true); });
 let qt; $('cm-q').addEventListener('input',e=>{ clearTimeout(qt); qt=setTimeout(()=>{ CM.f.q=e.target.value.trim(); render(true); },250); });
 
 async function start(){
