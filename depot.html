@@ -1309,7 +1309,7 @@ async function setAlias(r){
   try{
     for(const o of sbRows.filter(x=>x.code_client===cc && (!r||x.id!==r.id))){ await _supabase.from(SB_TABLE).update({code_client:null}).eq("id",o.id); o.code_client=null; }
     if(r){ const {error}=await _supabase.from(SB_TABLE).update({code_client:cc}).eq("id",r.id); if(error) throw error; r.code_client=cc; }
-    $("alias").style.display="none"; paintProgHead(); suggestStamp(); renderCentres();
+    $("alias").style.display="none"; paintProgHead(); suggestStamp(true); renderCentres();
   }catch(e){ console.error(e); alert("Association impossible."); }
 }
 function enterWork(){
@@ -1480,13 +1480,13 @@ function paintStamp(){
     else prev.append(h("span",{class:"empty"},"Saisissez le texte du tampon ci-dessus."));
   }
 }
-$("m-img").addEventListener("click",()=>{ S.stampMode="img"; lsSet("stampMode","img"); paintStamp(); });
-$("m-txt").addEventListener("click",()=>{ S.stampMode="txt"; lsSet("stampMode","txt"); paintStamp(); });
+$("m-img").addEventListener("click",()=>{ S.stampMode="img"; lsSet("stampMode","img"); markStampFor(); paintStamp(); });
+$("m-txt").addEventListener("click",()=>{ S.stampMode="txt"; lsSet("stampMode","txt"); markStampFor(); paintStamp(); });
 $("pickStamp").addEventListener("click",()=>$("stampFile").click());
 $("stampScale").value=S.stampScale;
 $("stampScale").addEventListener("input",e=>{ S.stampScale=parseInt(e.target.value,10); lsSet("stampScale",String(S.stampScale)); paintStamp(); });
 $("stampTxt").value=S.stampTxt;
-$("stampTxt").addEventListener("input",e=>{ S.stampTxt=e.target.value; lsSet("stampTxt",S.stampTxt); paintStamp(); });
+$("stampTxt").addEventListener("input",e=>{ S.stampTxt=e.target.value; lsSet("stampTxt",S.stampTxt); markStampFor(); paintStamp(); });
 
 /* --- Traitement d'image : retrait du fond, rognage, taille standard --- */
 function loadImage(src){ return new Promise((ok,ko)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=()=>ko(new Error("Image illisible")); i.src=src; }); }
@@ -1631,7 +1631,7 @@ async function editFile(file){
 }
 
 function applyStampImage(dataUrl,keepSel,orig,edit){
-  S.stampImg=dataUrl; lsSet("stampImg",dataUrl);
+  S.stampImg=dataUrl; lsSet("stampImg",dataUrl); markStampFor();
   if(orig){ lsSet("stampOrig",orig); lsSet("stampEdit",JSON.stringify(edit||{})); }
   else { try{ localStorage.removeItem("stampOrig"); localStorage.removeItem("stampEdit"); }catch(e){} }
   S.stampMode="img"; lsSet("stampMode","img");
@@ -1700,7 +1700,7 @@ async function sbFetchStampBlob(row){
   if(isUrl(raw)){ try{ const r=await fetch(raw); if(r.ok) return await r.blob(); }catch(e){} }
   throw new Error("image inaccessible");
 }
-let sbRows=[];
+let sbRows=[], sbTried=false;
 async function sbLoadList(){
   $("sbBox").classList.remove("hidden");
   try{
@@ -1717,6 +1717,7 @@ async function sbLoadList(){
     $("sbSel").replaceChildren(h("option",{value:""},"Liste indisponible"));
     $("sbNote").textContent="Impossible de lire la base ("+(err.message||"erreur")+"). Vous pouvez choisir une photo à la place.";
   }
+  sbTried=true;
 }
 async function useRow(row){
   $("sbNote").textContent="Chargement du tampon…";
@@ -1751,16 +1752,40 @@ $("sbSel").addEventListener("change",e=>{
   const row=sbRows.find(x=>String(x.id)===id); if(row) useRow(row);
 });
 /* Propose le tampon dont le nom correspond au centre en cours */
-function suggestStamp(){
+/* Centre de l'inventaire en cours : sert à ne pas reprendre le tampon d'un autre centre */
+function stampKey(){
+  if(S.mode==="prog" && S.ctx) return "p:"+S.ctx.cc;
+  if(S.mode==="crm" && S.hint) return "c:"+keyName(S.hint);
+  return "";
+}
+function markStampFor(){ const k=stampKey(); if(k && current==="work") lsSet("stampFor",k); }
+function setTextStamp(txt){
+  S.stampTxt=txt; $("stampTxt").value=txt; lsSet("stampTxt",txt);
+  S.stampMode="txt"; lsSet("stampMode","txt");
+  $("sbSel").value=""; lsSet("sbStampId",""); paintStamp();
+}
+// À l'ouverture d'un inventaire : tampon du centre s'il existe, sinon tampon texte (nom + adresse).
+// Le tampon choisi ou modifié pour ce centre est conservé tant qu'on reste sur le même centre.
+function suggestStamp(force){
   const box=$("sbSuggest"); box.classList.add("hidden"); box.replaceChildren();
-  const k=keyName(S.hint); if(k.length<4 || !sbRows.length) return;
+  const key=stampKey(); if(!key || !sbTried) return;   // la liste des tampons doit être lue d'abord (relancé ensuite)
+  if(!force && lsGet("stampFor")===key) return;
   let best=(S.mode==="prog"&&S.progCentre)?aliasOf(S.progCentre.cc):null,score=best?999:0;
-  sbRows.forEach(r=>{ const n=keyName(r.nom); if(n.length<3) return;
-    if(k.includes(n)||n.includes(k)){ const s=Math.min(n.length,k.length); if(s>score){score=s;best=r;} } });
-  if(!best) return;
-  box.append(h("span",null,"Tampon trouvé : "+best.nom),
-    h("button",{class:"secondary",type:"button",style:"min-height:38px;padding:6px 12px;font-size:13px",onclick:()=>{ $("sbSel").value=String(best.id); lsSet("sbStampId",String(best.id)); box.classList.add("hidden"); useRow(best); }},"Utiliser"));
-  box.classList.remove("hidden");
+  const k=keyName(S.hint);
+  if(!best && k.length>=4) sbRows.forEach(r=>{ const n=keyName(r.nom); if(n.length<3) return;
+    if(k.includes(n)||n.includes(k)){ const sc=Math.min(n.length,k.length); if(sc>score){score=sc;best=r;} } });
+  lsSet("stampFor",key);
+  if(best && String(best.tampon_url||"").trim()){
+    $("sbSel").value=String(best.id); lsSet("sbStampId",String(best.id)); useRow(best);
+    box.append(h("span",null,"Tampon du centre utilisé : "+best.nom)); box.classList.remove("hidden");
+    return;
+  }
+  let txt;
+  if(best) txt=[best.nom,best.adresse].filter(Boolean).join("\n");
+  else if(S.mode==="prog" && S.progCentre){ const c=S.progCentre; txt=[c.et, [c.dp, String(c.lo||"").replace(/\s*CEDEX.*$/i,"")].filter(Boolean).join(" ")].filter(Boolean).join("\n"); }
+  else txt=S.hint||"";
+  setTextStamp(txt);
+  box.append(h("span",null,"Pas de tampon enregistré pour ce centre : tampon texte utilisé (modifiable).")); box.classList.remove("hidden");
 }
 window.__depotStart=async function(){ await sbLoadList(); if(current==="work") suggestStamp(); };
 
