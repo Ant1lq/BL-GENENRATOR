@@ -586,7 +586,8 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 .signBtns button{flex:1;min-width:90px}
 #edWrap{display:flex;justify-content:center;align-items:center;border:1px solid var(--line);border-radius:16px;padding:8px;margin:6px 0 10px;min-height:70px}
 #edCv{max-width:100%;max-height:15vh}
-#edCropBox{height:32vh;background:#0f172a;border-radius:14px;overflow:hidden;margin-top:10px}#edCropBox img{display:block;max-width:100%}
+.rotRow{display:flex;align-items:center;gap:8px;margin-top:8px}.rotRow button{min-height:40px;padding:4px 14px;font-size:18px}.rotRow input{flex:1;-webkit-appearance:auto;appearance:auto;accent-color:#0a2a8a;background:transparent;height:28px;padding:0;border:0}.rotRow span{min-width:42px;text-align:right;font-size:13px;font-weight:700}
+#edCropBox{height:30vh;background:#0f172a;border-radius:14px;overflow:hidden;margin-top:10px}#edCropBox img{display:block;max-width:100%}
 .edOpts{display:grid;gap:10px;margin-bottom:10px}
 .edOpts label.chk{display:flex;gap:10px;align-items:center;font-weight:750;font-size:14px;text-transform:none;letter-spacing:0;color:var(--text-main)}
 .edOpts input[type=checkbox],.slider input[type=range]{height:auto;padding:0;border:0}
@@ -765,6 +766,7 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 <dialog id="edDlg" aria-label="Préparer le tampon">
   <strong>Préparer le tampon</strong>
   <div id="edCropBox"></div>
+  <div class="rotRow"><button type="button" class="secondary" id="edRotL" aria-label="Quart de tour à gauche">↺</button><input type="range" id="edRot" min="-45" max="45" step="0.5" value="0" aria-label="Redresser"><span id="edRotV">0°</span><button type="button" class="secondary" id="edRotR" aria-label="Quart de tour à droite">↻</button></div>
   <div class="sbNote" style="margin:6px 0 0">Ajustez le cadre autour du tampon (pincez pour zoomer). Résultat :</div>
   <div id="edWrap" class="checker"><canvas id="edCv" width="10" height="10"></canvas></div>
   <div class="edOpts">
@@ -1485,6 +1487,14 @@ $("m-txt").addEventListener("click",()=>{ S.stampMode="txt"; lsSet("stampMode","
 $("pickStamp").addEventListener("click",()=>$("stampFile").click());
 $("stampScale").value=S.stampScale;
 $("stampScale").addEventListener("input",e=>{ S.stampScale=parseInt(e.target.value,10); lsSet("stampScale",String(S.stampScale)); paintStamp(); });
+// taille changée sur un tampon de la liste des centres : elle y est enregistrée aussi (servira aussi aux BL)
+$("stampScale").addEventListener("change",async()=>{
+  const id=lsGet("sbStampId"); if(!id || S.stampMode!=="img") return;
+  const row=sbRows.find(x=>String(x.id)===id); if(!row || !row.tampon_url) return;
+  let ed={}; try{ ed=typeof row.tampon_edit==="string"?JSON.parse(row.tampon_edit):(row.tampon_edit||{}); }catch(e){}
+  ed.scale=S.stampScale; const v=JSON.stringify(ed);
+  try{ const {error}=await _supabase.from(SB_TABLE).update({tampon_edit:v}).eq("id",row.id); if(!error) row.tampon_edit=v; }catch(e){}
+});
 $("stampTxt").value=S.stampTxt;
 $("stampTxt").addEventListener("input",e=>{ S.stampTxt=e.target.value; lsSet("stampTxt",S.stampTxt); markStampFor(); paintStamp(); });
 
@@ -1562,7 +1572,12 @@ function removeBg(src,sens){
 }
 
 /* Éditeur : aperçu sur damier, retrait du fond réglable */
-const ED={full:null,prev:null,resolve:null,raf:0,src:null,cropper:null,t:0};
+const ED={full:null,prev:null,resolve:null,raf:0,src:null,cropper:null,t:0,rotBase:0};
+function edRotUI(total){ ED.rotBase=Math.round((total||0)/90)*90; const f=(total||0)-ED.rotBase; $("edRot").value=f; $("edRotV").textContent=String(Math.round(f*10)/10).replace(".",",")+"°"; }
+function edApplyRot(){
+  const f=parseFloat($("edRot").value)||0; $("edRotV").textContent=String(Math.round(f*10)/10).replace(".",",")+"°";
+  if(ED.cropper){ ED.cropper.rotateTo(ED.rotBase+f); clearTimeout(ED.t); ED.t=setTimeout(edUpdatePrev,150); }
+}
 // Image du cadre choisi (fond blanc), au plus « max » pixels
 function edCropped(max){
   let c=null;
@@ -1589,6 +1604,7 @@ function openEditor(img,opts){
     edRender();
     const dlg=$("edDlg"); if(dlg.showModal) dlg.showModal(); else dlg.setAttribute("open","");
     if(ED.cropper){ try{ ED.cropper.destroy(); }catch(e){} ED.cropper=null; }
+    edRotUI(opts.crop&&opts.crop.rotate||0);
     const box=$("edCropBox"); box.replaceChildren();
     if(typeof Cropper==="undefined") { box.style.display="none"; return; }
     box.style.display="";
@@ -1615,7 +1631,7 @@ $("edOk").addEventListener("click",()=>{
   const btn=$("edOk"); btn.disabled=true;
   setTimeout(()=>{ try{
     const d=ED.cropper?ED.cropper.getData(true):null;
-    edFinish({png:edProcess(edCropped(900)).toDataURL("image/png"), crop:d?{x:d.x,y:d.y,width:d.width,height:d.height}:null, bg:$("edBg").checked, sens:parseInt($("edSens").value,10)});
+    edFinish({png:edProcess(edCropped(900)).toDataURL("image/png"), crop:d?{x:d.x,y:d.y,width:d.width,height:d.height,rotate:d.rotate||0}:null, bg:$("edBg").checked, sens:parseInt($("edSens").value,10)});
   } finally{ btn.disabled=false; } },20);
 });
 // Photo d'origine gardée (réduite, fond blanc) pour pouvoir recadrer / remettre le fond plus tard
@@ -1640,17 +1656,20 @@ function applyStampImage(dataUrl,keepSel,orig,edit){
 }
 async function pickImage(e){
   const f=e.target.files[0]; e.target.value=""; if(!f) return;
-  try{ const out=await editFile(f); if(out){ applyStampImage(out.png,false,out.orig,{crop:out.crop,bg:out.bg,sens:out.sens}); $("stampMsg").textContent=""; } }
+  try{ const out=await editFile(f); if(out){ const ed={crop:out.crop,bg:out.bg,sens:out.sens}; applyStampImage(out.png,false,out.orig,ed); $("stampMsg").textContent=""; saveStampToBase(out.png,out.orig,ed); } }
   catch(err){ $("stampMsg").textContent="Image impossible à utiliser ("+err.message+")."; }
 }
 $("stampFile").addEventListener("change",pickImage);
+$("edRot").addEventListener("input",edApplyRot);
+$("edRotL").addEventListener("click",()=>{ ED.rotBase=(ED.rotBase-90)%360; edApplyRot(); });
+$("edRotR").addEventListener("click",()=>{ ED.rotBase=(ED.rotBase+90)%360; edApplyRot(); });
 // Rouvre le tampon actuel : recadrage, fond retiré ou non, force ; la taille se règle avec le curseur « Taille »
 $("adjStamp").addEventListener("click",async()=>{
   if(!S.stampImg) return;
   try{
     const orig=lsGet("stampOrig"); let ed={}; try{ ed=JSON.parse(lsGet("stampEdit")||"{}")||{}; }catch(e){}
     const out=await openEditor(await loadImage(orig||S.stampImg), orig?ed:{});
-    if(out){ applyStampImage(out.png,true,orig||origJpeg(await loadImage(S.stampImg),1200).url,{crop:out.crop,bg:out.bg,sens:out.sens}); $("stampMsg").textContent=""; }
+    if(out){ const o=orig||origJpeg(await loadImage(S.stampImg),1200).url, e2={crop:out.crop,bg:out.bg,sens:out.sens}; applyStampImage(out.png,true,o,e2); $("stampMsg").textContent=""; saveStampToBase(out.png,o,e2); }
   }catch(err){ $("stampMsg").textContent="Ajustement impossible ("+err.message+")."; }
 });
 $("takeStamp").addEventListener("click",()=>$("camFile").click());
@@ -1689,6 +1708,38 @@ function extractPath(u){ const m=/\/storage\/v1\/object\/(?:sign|public|authenti
 function keyName(s){
   return normText(s).replace(/centre hospitalier universitaire/g,"chu").replace(/centre hospitalier/g,"ch")
     .replace(/\b(depot|inventaire)\b/g,"").replace(/[^a-z0-9]/g,"");
+}
+function stampPath(raw){ raw=String(raw||"").trim(); return raw.startsWith("local://")?raw.replace(/^local:\/\/[^/]+\//,""):(isUrl(raw)?extractPath(raw):raw); }
+// Centre de la liste des centres (BL) correspondant à l'inventaire en cours
+function findStampRow(){
+  let best=(S.mode==="prog"&&S.progCentre)?aliasOf(S.progCentre.cc):null,score=best?999:0;
+  const k=keyName(S.hint);
+  if(!best && k.length>=4) sbRows.forEach(r=>{ const n=keyName(r.nom); if(n.length<3) return;
+    if(k.includes(n)||n.includes(k)){ const sc=Math.min(n.length,k.length); if(sc>score){score=sc;best=r;} } });
+  return best;
+}
+// Tampon pris en photo dans un inventaire : enregistré aussi comme tampon du centre (liste des centres / BL)
+async function saveStampToBase(png,orig,edit){
+  const row=findStampRow(), msg=$("stampMsg");
+  if(!row){ msg.textContent = S.mode==="prog"
+      ? "Tampon utilisé pour cet inventaire. Pour l'enregistrer dans la liste des centres, associez d'abord ce centre (🔗 en haut)."
+      : "Tampon utilisé pour cet inventaire. Aucun centre de la liste ne porte ce nom : ajoutez-le dans la gestion des centres pour y garder le tampon."; return; }
+  try{
+    msg.textContent="Enregistrement du tampon pour « "+row.nom+" »…";
+    const st=Date.now(), base=slug(row.nom).toLowerCase()+"_"+st;
+    const pb=await (await fetch(png)).blob(), ob=await (await fetch(orig)).blob();
+    const pn="tampon_"+base+".png", on="origine_"+base+".jpg";
+    let r=await _supabase.storage.from(SB_BUCKET).upload(pn,pb,{contentType:"image/png"}); if(r.error) throw r.error;
+    r=await _supabase.storage.from(SB_BUCKET).upload(on,ob,{contentType:"image/jpeg"}); const okOrig=!r.error;
+    const pu=_supabase.storage.from(SB_BUCKET).getPublicUrl(pn).data.publicUrl, ou=okOrig?_supabase.storage.from(SB_BUCKET).getPublicUrl(on).data.publicUrl:null;
+    const ev=JSON.stringify({crop:okOrig?edit.crop:null,bg:edit.bg!==false,scale:S.stampScale,sens:edit.sens});
+    const {error}=await _supabase.from(SB_TABLE).update({tampon_url:pu,tampon_src:ou,tampon_edit:ev}).eq("id",row.id); if(error) throw error;
+    const old=[stampPath(row.tampon_url),stampPath(row.tampon_src)].filter(x=>x && x!==pn && x!==on);
+    if(old.length){ try{ await _supabase.storage.from(SB_BUCKET).remove(old); }catch(e){} }
+    row.tampon_url=pu; row.tampon_src=ou; row.tampon_edit=ev;
+    $("sbSel").value=String(row.id); lsSet("sbStampId",String(row.id));
+    msg.textContent="✓ Tampon enregistré pour « "+row.nom+" » dans la liste des centres (servira aussi aux BL).";
+  }catch(e){ console.error(e); msg.textContent="Tampon utilisé, mais pas enregistré dans la liste des centres ("+(e.message||"erreur")+")."; }
 }
 async function sbFetchStampBlob(row){
   const raw=String(row.tampon_url||"").trim(); if(!raw) return null;
