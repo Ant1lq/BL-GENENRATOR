@@ -10,26 +10,12 @@
 (function () {
   'use strict';
 
-  var ZXING_URL = 'https://cdn.jsdelivr.net/npm/zxing-wasm@2/dist/iife/reader/index.js';
   var MICROPORT_GTIN = '08031527';                 // préfixe des références MicroPort CRM : les autres marques sont ignorées
   var RE_REF = /^T[A-Z]{2}\d{3}[A-Z0-9](-CLIN)?$/;          // TLD041C, TDF068C, TPM020C, TLT0200…
   var RE_SN = [/^\d{3}[A-Z]{2}[0-9A-F]{3}$/, /^\d{2}[A-Z]{2}\d{6}$/, /^\d{2}[A-Z]\d[A-Z]\d{5}$/, /^[A-Z]{3}\d{6,7}$/]; // 549JH012, 525CR7EA · 68TR103045 · 88S4U02316 · DRG120758, LIN0001322
   var RE_DATE = /^(20\d{2})[-\/.]?(\d{2})[-\/.]?(\d{2})$/;
 
-  var loading = null;
-  function loadZXing() {
-    if (window.ZXingWASM && window.ZXingWASM.readBarcodes) return Promise.resolve(window.ZXingWASM);
-    if (loading) return loading;
-    loading = new Promise(function (resolve) {
-      var done = function () { resolve((window.ZXingWASM && window.ZXingWASM.readBarcodes) ? window.ZXingWASM : null); };
-      var s = document.createElement('script');
-      s.src = ZXING_URL; s.crossOrigin = 'anonymous'; s.onload = done;
-      s.onerror = function () { loading = null; resolve(null); };
-      document.head.appendChild(s);
-      setTimeout(done, 20000);
-    });
-    return loading;
-  }
+  function loadZXing() { return window.LocalDB && window.LocalDB.loadZXing ? window.LocalDB.loadZXing() : Promise.resolve(null); }
 
   function isoFromYYMMDD(e) {
     if (!e || !/^\d{6}$/.test(e)) return '';

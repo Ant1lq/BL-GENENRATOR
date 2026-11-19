@@ -1,6 +1,6 @@
 /* MicroPort Cardioflow — service worker : l'appli complète est copiée sur l'appareil
    à la première ouverture, puis fonctionne sans réseau. Changer VERSION à chaque mise à jour. */
-const VERSION = 'v2.4.0';
+const VERSION = 'v2.4.1';
 const APP = 'mp-app-' + VERSION, CDN = 'mp-cdn-v1', TILES = 'mp-tiles-v1';
 const MAX_TILES = 2500;
 
@@ -13,7 +13,8 @@ const CORE = [
   'assets/vendor/leaflet/leaflet.min.js', 'assets/vendor/leaflet/leaflet.min.css',
   'assets/vendor/leaflet/images/marker-icon.png', 'assets/vendor/leaflet/images/marker-icon-2x.png', 'assets/vendor/leaflet/images/marker-shadow.png',
   'assets/vendor/leaflet/images/layers.png', 'assets/vendor/leaflet/images/layers-2x.png',
-  'assets/vendor/tesseract/tesseract.min.js', 'assets/vendor/tesseract/worker.min.js'
+  'assets/vendor/tesseract/tesseract.min.js', 'assets/vendor/tesseract/worker.min.js',
+  'assets/vendor/zxing/reader.js', 'assets/vendor/zxing/zxing_reader.wasm'
 ];
 // Volumineux (lecture OCR de secours) : copiés à part, pour ne jamais bloquer l'installation
 const HEAVY = [
@@ -21,7 +22,7 @@ const HEAVY = [
   'assets/vendor/tesseract/eng.traineddata.gz'
 ];
 // Lecteur de codes-barres (seule dépendance externe, conservée ensuite sur l'appareil)
-const ZXING = 'https://cdn.jsdelivr.net/npm/zxing-wasm@2/dist/iife/reader/index.js';
+const ZXING = 'https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/iife/reader/index.js'; // secours seulement
 
 // Secours : si une bibliothèque n'est pas présente dans le dépôt, elle est prise une fois sur son
 // CDN d'origine puis conservée sur l'appareil sous son adresse locale (même fonctionnement hors ligne).
@@ -71,7 +72,6 @@ self.addEventListener('install', event => {
     const vital = ['index.html', 'bl.html', 'depot.html', 'carte.html', 'admin.html', 'assets/local-db.js', 'assets/scan.js'];
     CORE.forEach((u, i) => { if (vital.includes(u) && !(got[i] && got[i].ok)) throw new Error('Fichier indispensable manquant : ' + u); });
     await Promise.all(HEAVY.map(u => obtain(u, cache, true).catch(() => null)));
-    try { const r = await fetch(ZXING, { mode: 'cors', credentials: 'omit' }); if (r.ok) await (await caches.open(CDN)).put(ZXING, r); } catch (e) {}
     await self.skipWaiting();
   })());
 });

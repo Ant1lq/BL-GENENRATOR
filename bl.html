@@ -2935,21 +2935,7 @@ function removeBg(src,sens){
     // OCR : tout est embarqué dans l'appli (aucun téléchargement au moment du scan)
     const OCR_BASE = new URL('assets/vendor/tesseract/', location.href).href;
     const OCR_LOCAL = { workerPath: OCR_BASE + 'worker.min.js', corePath: OCR_BASE.replace(/\/$/, ''), langPath: OCR_BASE.replace(/\/$/, ''), workerBlobURL: false };
-    const ZXING_URL = 'https://cdn.jsdelivr.net/npm/zxing-wasm@2/dist/iife/reader/index.js';
-    let zxingLoading = null;
-    function loadZXing() {
-        if (window.ZXingWASM && window.ZXingWASM.readBarcodes) return Promise.resolve(window.ZXingWASM);
-        if (zxingLoading) return zxingLoading;
-        zxingLoading = new Promise((resolve) => {
-            const done = () => resolve((window.ZXingWASM && window.ZXingWASM.readBarcodes) ? window.ZXingWASM : null);
-            const s = document.createElement('script');
-            s.src = ZXING_URL; s.crossOrigin = 'anonymous'; s.onload = done;
-            s.onerror = () => { zxingLoading = null; resolve(null); };
-            document.head.appendChild(s);
-            setTimeout(done, 20000);
-        });
-        return zxingLoading;
-    }
+    function loadZXing() { return LocalDB.loadZXing(); }   // lecteur inclus dans l'appli (assets/vendor/zxing)
     window.addEventListener('load', () => { setTimeout(() => { LocalDB.warmBarcode(); }, 1500); }); // préchargement en arrière-plan (et mise en cache pour le hors-ligne)
 
     // Référence produit (GTIN du code GS1) -> modèle. Table de départ + correspondances apprises quand

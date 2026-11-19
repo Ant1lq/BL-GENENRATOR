@@ -402,28 +402,37 @@
   persist();
 })();
 
-/* Lecteur de codes-barres (zxing-wasm) : seul composant téléchargé, une fois, lors d'un lancement
-   avec du réseau ; le service worker le conserve ensuite sur l'appareil pour le hors-ligne. */
+/* Lecteur de codes-barres (zxing-wasm 2.2.4) : inclus dans l'appli (assets/vendor/zxing), aucun site
+   extérieur nécessaire. Secours : jsDelivr si le fichier local manquait. */
 (function () {
-  var URL_ZX = 'https://cdn.jsdelivr.net/npm/zxing-wasm@2/dist/iife/reader/index.js', loading = null;
+  var LOCAL_JS = new URL('assets/vendor/zxing/reader.js', location.href).href;
+  var LOCAL_WASM = new URL('assets/vendor/zxing/zxing_reader.wasm', location.href).href;
+  var CDN_JS = 'https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/iife/reader/index.js';
+  var scriptP = null, loading = null;
+  function ok() { return !!(window.ZXingWASM && window.ZXingWASM.readBarcodes); }
+  function addScript(src) { return new Promise(function (res) { var s = document.createElement('script'); s.src = src; s.onload = function () { res(ok()); }; s.onerror = function () { s.remove(); res(false); }; document.head.appendChild(s); }); }
+  // Charge le lecteur (une seule fois) ; le moteur .wasm est pris dans l'appli
+  window.LocalDB.loadZXing = function () {
+    if (ok() && window.ZXingWASM.__local != null) return Promise.resolve(window.ZXingWASM);
+    if (scriptP) return scriptP;
+    scriptP = (async function () {
+      var local = ok() ? true : await addScript(LOCAL_JS);
+      if (!local && !ok()) { if (!(await addScript(CDN_JS))) { scriptP = null; return null; } window.ZXingWASM.__local = false; return window.ZXingWASM; }
+      var Z = window.ZXingWASM;
+      var ov = { locateFile: function (path, prefix) { return /\.wasm$/.test(path) ? LOCAL_WASM : prefix + path; } };
+      try { if (Z.setZXingModuleOverrides) Z.setZXingModuleOverrides(ov); else if (Z.prepareZXingModule) Z.prepareZXingModule({ overrides: ov, fireImmediately: false }); } catch (e) { console.warn('zxing', e); }
+      Z.__local = true; return Z;
+    })();
+    return scriptP;
+  };
   window.LocalDB.barcodeReady = function () { try { return localStorage.getItem('mp_zxing_ready') === '1'; } catch (e) { return false; } };
   window.LocalDB.warmBarcode = function () {
     if (loading) return loading;
-    loading = new Promise(function (resolve) {
-      function warm() {
-        var Z = window.ZXingWASM;
-        if (!(Z && Z.readBarcodes)) { loading = null; return resolve(false); }
-        try {
-          Promise.resolve(Z.readBarcodes(new ImageData(8, 8), { formats: ['DataMatrix'] }))
-            .then(function () { try { localStorage.setItem('mp_zxing_ready', '1'); } catch (e) {} resolve(true); })
-            .catch(function () { loading = null; resolve(false); });
-        } catch (e) { loading = null; resolve(false); }
-      }
-      if (window.ZXingWASM && window.ZXingWASM.readBarcodes) return warm();
-      var s = document.createElement('script');
-      s.src = URL_ZX; s.crossOrigin = 'anonymous'; s.onload = warm;
-      s.onerror = function () { loading = null; resolve(false); };
-      document.head.appendChild(s);
+    loading = window.LocalDB.loadZXing().then(function (Z) {
+      if (!Z) { loading = null; return false; }
+      return Promise.resolve(Z.readBarcodes(new ImageData(8, 8), { formats: ['DataMatrix'] }))
+        .then(function () { try { localStorage.setItem('mp_zxing_ready', '1'); } catch (e) {} return true; })
+        .catch(function () { loading = null; return false; });
     });
     return loading;
   };
