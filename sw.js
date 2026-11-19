@@ -1,6 +1,6 @@
 /* MicroPort Cardioflow — service worker : l'appli complète est copiée sur l'appareil
    à la première ouverture, puis fonctionne sans réseau. Changer VERSION à chaque mise à jour. */
-const VERSION = 'v2.4.1';
+const VERSION = 'v2.4.2';
 const APP = 'mp-app-' + VERSION, CDN = 'mp-cdn-v1', TILES = 'mp-tiles-v1';
 const MAX_TILES = 2500;
 

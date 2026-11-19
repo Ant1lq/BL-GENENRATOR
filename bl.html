@@ -1200,6 +1200,16 @@
     </div>
 </div>
 
+<div id="hub-merge-modal" class="ios-modal">
+    <div class="ios-modal-content" style="max-height:88vh; display:flex; flex-direction:column;">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">🔀 Réunir avec…</h3>
+        <p id="hub-merge-help" style="font-size:12px; color:var(--text-muted); margin:0 0 8px; line-height:1.35;"></p>
+        <input type="text" id="hub-merge-q" placeholder="🔎 Rechercher un centre…" oninput="hubDrawMerge()" style="margin-bottom:8px;">
+        <div id="hub-merge-list" style="flex:1; overflow-y:auto; min-height:0; -webkit-overflow-scrolling:touch;"></div>
+        <button class="btn-mini edit" style="padding:13px; justify-content:center; margin-top:8px;" onclick="document.getElementById('hub-merge-modal').style.display='none'">Annuler</button>
+    </div>
+</div>
+
 <div id="history-modal" class="ios-modal">
     <div class="ios-modal-content">
         <h3 style="margin-top:0; color:var(--blue-mp); font-size:17px; font-weight:bold; text-align:center; margin-bottom:14px;">🕘 Historique des BL</h3>
@@ -2001,6 +2011,74 @@
             renderCenterDetail(); renderCentersList();
         } catch (e) { console.error(e); status.innerText = "❌ Association impossible."; }
     }
+    // ---- Réunir deux fiches du même établissement (doublon / nom d'usage) ----
+    function openHubMerge() {
+        const c = dbCloudCentres.find(x => x.nom === currentCenterDetail); if (!c) return;
+        document.getElementById('hub-merge-help').innerText = `Choisissez l'autre fiche du même établissement. Elle sera regroupée dans « ${c.nom} », puis supprimée.`;
+        document.getElementById('hub-merge-q').value = '';
+        document.getElementById('hub-merge-modal').style.display = 'flex';
+        hubDrawMerge();
+    }
+    function hubDrawMerge() {
+        const c = dbCloudCentres.find(x => x.nom === currentCenterDetail); if (!c || !window.CXL) return;
+        const q = CXL.normText(document.getElementById('hub-merge-q').value || ''), box = document.getElementById('hub-merge-list');
+        const me = { nom: c.nom, dp: CXL.deptOfAddress(c.adresse), commune: CXL.communeOfAddress(c.adresse) };
+        const xlName = o => { const x = o.code_client && HUB.xl ? HUB.xl.centres.get(o.code_client) : null; return x ? x.nom : ''; };
+        const l = dbCloudCentres.filter(o => o.id !== c.id && (!q || CXL.normText(o.nom + ' ' + (o.adresse || '') + ' ' + (o.code_client || '') + ' ' + xlName(o)).includes(q)))
+            .map(o => ({ o, s: CXL.similarity(me, { nom: o.nom, dp: CXL.deptOfAddress(o.adresse), commune: CXL.communeOfAddress(o.adresse) }) + (me.dp && me.dp === CXL.deptOfAddress(o.adresse) ? 1 : 0) }))
+            .sort((a, b) => b.s - a.s || a.o.nom.localeCompare(b.o.nom, 'fr')).slice(0, 80);
+        box.innerHTML = l.map(({ o }) => `<button class="hub-pick" onclick="hubMerge(${o.id})"><div class="n">${hubEsc(o.nom)}${o.implanteur !== false ? ' ✅' : ''}</div><div class="m">${hubEsc(o.adresse || 'Adresse non renseignée')}${o.code_client && o.code_client !== '-' ? ' · Excel ' + hubEsc(o.code_client) + (xlName(o) ? ' (' + hubEsc(xlName(o)) + ')' : '') : ''}${o.tampon_url ? ' · 🖋️ tampon' : ''}</div></button>`).join('') || "<p class='cm-empty'>Aucun centre trouvé.</p>";
+    }
+    async function hubMerge(otherId) {
+        const k = dbCloudCentres.find(x => x.nom === currentCenterDetail), o = dbCloudCentres.find(x => x.id === otherId);
+        if (!k || !o) return;
+        if (!confirm(`Réunir « ${o.nom} » dans « ${k.nom} » ?\n\n« ${k.nom} » garde son nom. Lien Excel, tampon (s'il en manque un), médecins, destinataires, secteur et inventaires de « ${o.nom} » y sont regroupés, puis la fiche « ${o.nom} » est supprimée.`)) return;
+        const status = document.getElementById('admin-global-status');
+        const blank = v => v == null || v === '' || v === '-';
+        const provisional = a => blank(a) || /\(\d{2,3}\)\s*$/.test(String(a)) || /adresse à compléter/i.test(String(a));
+        try {
+            status.innerText = 'Regroupement… ⏳';
+            const upd = {};
+            if (blank(k.code_client) && !blank(o.code_client)) upd.code_client = o.code_client;
+            ['vendeur', 'mail_bl', 'mail_pharmacie'].forEach(f => { if (blank(k[f]) && !blank(o[f])) upd[f] = o[f]; });
+            if (provisional(k.adresse) && !provisional(o.adresse)) { upd.adresse = o.adresse; upd.lat = o.lat != null ? o.lat : null; upd.lng = o.lng != null ? o.lng : null; upd.geo_src = o.geo_src || null; }
+            let movedStamp = false;
+            if (!k.tampon_url && o.tampon_url) { upd.tampon_url = o.tampon_url; upd.tampon_src = o.tampon_src || null; upd.tampon_edit = o.tampon_edit || null; movedStamp = true; }
+            if (k.implanteur === false && o.implanteur !== false) upd.implanteur = true;
+            // le code client ne doit rester que sur une fiche
+            if (upd.code_client) await _supabase.from('centres').update({ code_client: null }).eq('id', o.id);
+            if (Object.keys(upd).length) { const { error } = await _supabase.from('centres').update(upd).eq('id', k.id); if (error) throw error; }
+            // médecins (sans doublon de nom)
+            const { data: mk } = await _supabase.from('medecins').select('id, nom').eq('centre_nom', k.nom);
+            const { data: mo } = await _supabase.from('medecins').select('id, nom, tampon_url, tampon_src').eq('centre_nom', o.nom);
+            const have = new Set((mk || []).map(m => CXL.nName(m.nom)));
+            for (const m of (mo || [])) {
+                if (have.has(CXL.nName(m.nom))) { await _supabase.from('medecins').delete().eq('id', m.id); if (m.tampon_url) await deleteTamponFile(m.tampon_url); if (m.tampon_src) await deleteTamponFile(m.tampon_src); }
+                else await _supabase.from('medecins').update({ centre_nom: k.nom }).eq('id', m.id);
+            }
+            // secteur
+            const { data: ek } = await _supabase.from('engineer_centers').select('id, engineer_name').eq('center_name', k.nom);
+            const { data: eo } = await _supabase.from('engineer_centers').select('id, engineer_name').eq('center_name', o.nom);
+            const engs = new Set((ek || []).map(e => e.engineer_name));
+            for (const e of (eo || [])) { if (engs.has(e.engineer_name)) await _supabase.from('engineer_centers').delete().eq('id', e.id); else await _supabase.from('engineer_centers').update({ center_name: k.nom }).eq('id', e.id); }
+            // destinataires propres au compte
+            const { data: lk } = await _supabase.from('centre_mails_compte').select('id').eq('centre_id', k.id);
+            if ((lk || []).length) await _supabase.from('centre_mails_compte').delete().eq('centre_id', o.id);
+            else await _supabase.from('centre_mails_compte').update({ centre_id: k.id, centre_nom: k.nom }).eq('centre_id', o.id);
+            // inventaires et BL
+            await _supabase.from('inventaires').update({ centre_id: k.id, centre_nom: k.nom }).eq('centre_id', o.id);
+            await _supabase.from('inventaires').update({ centre_id: k.id, centre_nom: k.nom }).eq('centre_nom', o.nom);
+            await _supabase.from('bons_livraison').update({ centre: k.nom }).eq('centre', o.nom);
+            // fiche réunie supprimée (son tampon aussi s'il n'a pas été repris)
+            const { error: de } = await _supabase.from('centres').delete().eq('id', o.id); if (de) throw de;
+            if (!movedStamp) { if (o.tampon_url) await deleteTamponFile(o.tampon_url); if (o.tampon_src) await deleteTamponFile(o.tampon_src); }
+            document.getElementById('hub-merge-modal').style.display = 'none';
+            await synchroniserDonneesDepuisCloud(); await refreshCentersList();
+            currentCenterDetail = k.nom; await renderCenterDetail();
+            status.innerText = `✅ « ${o.nom} » réuni dans « ${k.nom} ».`;
+        } catch (e) { console.error(e); status.innerText = '❌ Regroupement impossible : ' + (e.message || e); }
+    }
+
     // ---- Import de centres depuis l'Excel ----
     const HUBI = { rows: [] };
     function openHubImport() {
@@ -2197,6 +2275,12 @@
                     ${centreData.tampon_url ? `<button class="btn-mini sign" onclick="adjustStamp()">✂️ Ajuster</button><button class="btn-mini edit" onclick="removeCenterStamp()">Retirer</button>` : ''}
                 </div>
                 <p class="cd-tip">Tampon à plat, en pleine lumière, sur papier blanc. « Ajuster » : recadrer, garder ou retirer le fond, changer la taille sur le BL.</p>
+            </section>
+
+            <section class="cd-card">
+                <h4>🔀 Doublon ou nom d'usage</h4>
+                <p class="cd-tip" style="margin:0 0 10px;">Même établissement sous un autre nom (ex. « GCS HPON » = « Pôle Santé Oreliance ») : réunissez les deux fiches. Ce centre garde son nom ; lien Excel, tampon manquant, médecins, destinataires, secteur et inventaires de l'autre fiche y sont regroupés.</p>
+                <div class="cd-btnrow"><button class="btn-mini sign" onclick="openHubMerge()">🔀 Réunir avec un autre centre</button></div>
             </section>
 
             <button class="cd-delete" onclick="deleteCenterEntirely()">Supprimer ce centre</button>`;
