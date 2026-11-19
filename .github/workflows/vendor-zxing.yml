@@ -18,7 +18,7 @@ jobs:
           node-version: 20
       - name: Télécharger zxing-wasm (version 2 figée)
         run: |
-          V=$(npm view zxing-wasm@2 version | tail -1)
+          V=$(npm view 'zxing-wasm@2' version --json | tr -d '[]" \n' | tr ',' '\n' | sort -V | tail -1)
           echo "Version : $V"
           npm pack "zxing-wasm@$V" --silent
           tar xzf zxing-wasm-*.tgz
@@ -30,7 +30,8 @@ jobs:
           cp package/LICENSE assets/vendor/zxing/LICENSE 2>/dev/null || true
           echo "$V" > assets/vendor/zxing/VERSION
           ls -la assets/vendor/zxing
-          grep -o 'prepareZXingModule\|setZXingModuleOverrides\|locateFile' assets/vendor/zxing/reader.js | sort | uniq -c
+          find package/dist -name '*.wasm'
+          grep -o 'prepareZXingModule\|setZXingModuleOverrides\|locateFile' assets/vendor/zxing/reader.js | sort | uniq -c || true
           rm -rf package zxing-wasm-*.tgz
       - name: Enregistrer dans le dépôt
         run: |
