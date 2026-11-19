@@ -703,7 +703,7 @@ html,body{height:100%;overscroll-behavior:none}
   <div class="sheet-head"><button class="btn-header-icon" type="button" onclick="CM.closeEdit()" aria-label="Fermer">✕</button><h2 id="ed-title">Centre</h2><span style="width:42px"></span></div>
   <div class="sheet-body">
     <div class="imp-card"><span id="ed-badges"></span><div class="imp-i" id="ed-info"></div></div>
-    <div class="form-group"><label>Nom</label><input type="text" id="ed-nom"><div class="imp-i" id="ed-nom-hint" style="display:none">Centre implanteur : pour le renommer, utilisez « Centres &amp; tampons » (le nom relie médecins, secteurs et BL).</div></div>
+    <div class="form-group"><label>Nom</label><input type="text" id="ed-nom"><div class="imp-i" id="ed-nom-hint" style="display:none">Centre implanteur : pour le renommer, utilisez « Gestion de mes centres » (le nom relie médecins, secteurs et BL).</div></div>
     <div class="form-group" style="position:relative"><label>Adresse postale</label><input type="text" id="ed-adr" autocomplete="off"><div class="sugg-box" id="ed-sugg"></div><button type="button" class="cm-btn2" id="ed-find" style="width:100%;margin-top:6px">🔎 Chercher l'adresse de cet établissement</button></div>
     <div class="form-group"><label>Vendeur</label><input type="text" id="ed-vendeur"></div>
     <div class="form-group"><label>Mail BL</label><input type="text" id="ed-mailbl" inputmode="email" autocapitalize="off"></div>
@@ -1197,7 +1197,7 @@ CM.runImport=async function(){
     const approx=payload.filter(p=>p.geo_src==="commune"||!p.geo_src).length;
     await loadCentres(); fillVendors(); CM.f.vendor=rows[0].x.ve; $('cm-vendor').value=CM.f.vendor; render(true);
     CM.importing=false; $('imp-sheet').style.display='none'; $('imp-bar-in').parentElement.style.display='none'; bar.style.width='0';
-    alert(`${payload.length} centre${payload.length>1?'s':''} importé${payload.length>1?'s':''}`+(toLink.length?`, ${toLink.length} associé${toLink.length>1?'s':''} à un centre existant`:'')+(approx?`.\n${approx} placé${approx>1?'s':''} approximativement au centre de la commune : complétez l'adresse depuis « Centres & tampons » (ou ⭐ Passer implanteur puis modifier la fiche).`:'.')+`\nIls n'apparaissent pas dans les BL tant que vous ne les passez pas « implanteur ».`);
+    alert(`${payload.length} centre${payload.length>1?'s':''} importé${payload.length>1?'s':''}`+(toLink.length?`, ${toLink.length} associé${toLink.length>1?'s':''} à un centre existant`:'')+(approx?`.\n${approx} placé${approx>1?'s':''} approximativement au centre de la commune : complétez l'adresse depuis « Gestion de mes centres » (ou ⭐ Passer implanteur puis modifier la fiche).`:'.')+`\nIls n'apparaissent pas dans les BL tant que vous ne les passez pas « implanteur ».`);
   }catch(e){
     console.error(e); CM.importing=false; $('imp-go').disabled=false; st.style.color='#ff144b'; st.textContent="❌ Import interrompu : "+(e.message||e);
   }

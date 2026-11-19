@@ -744,7 +744,7 @@
             <h1>Bon de livraison</h1>
             <div style="display:flex; gap:6px;">
                 <button class="btn-header-icon" onclick="openHistoryModal()" aria-label="Historique des BL">🕘</button>
-                <button class="btn-header-icon" onclick="openAdminModal()" aria-label="Centres et tampons">🏥</button>
+                <button class="btn-header-icon" onclick="openAdminModal()" aria-label="Gestion de mes centres">🏥</button>
             </div>
         </header>
 
@@ -1107,7 +1107,7 @@
 <div id="admin-modal" class="ios-modal">
     <div class="ios-modal-content" id="admin-modal-content">
         <div class="cm-top" style="flex-shrink:0;">
-            <h3 id="centers-title">Centres</h3>
+            <h3 id="centers-title">Gestion de mes centres</h3>
             <button class="cm-close" onclick="closeAdminModal()" aria-label="Fermer">✕</button>
         </div>
         <div id="admin-global-status" style="font-size:12.5px; font-weight:800; text-align:center; color:var(--palette-royal-blue); min-height:0; flex-shrink:0;"></div>
@@ -1897,7 +1897,7 @@
         currentCenterDetail = null;
         document.getElementById('center-detail-view').style.display = 'none';
         document.getElementById('centers-list-view').style.display = 'block';
-        document.getElementById('centers-title').innerText = 'Centres';
+        document.getElementById('centers-title').innerText = 'Gestion de mes centres';
         refreshCentersList();
     }
 
@@ -2157,7 +2157,7 @@
         document.getElementById('centers-title').innerText = centreData.nom;
         detail.innerHTML = `
             <div class="cd-headrow">
-                <button class="btn-mini edit" onclick="closeCenterDetail()">‹ Centres</button>
+                <button class="btn-mini edit" onclick="closeCenterDetail()">‹ Mes centres</button>
                 <button class="btn-mini cd-starbtn ${inSector ? 'on' : ''}" id="cd-star" onclick="toggleSector(currentCenterDetail)">${inSector ? '⭐ Dans mon secteur' : '☆ Ajouter à mon secteur'}</button>
             </div>
             <button class="btn-mini cd-impbtn ${centreData.implanteur !== false ? 'on' : ''}" onclick="toggleImplanteur()">${centreData.implanteur !== false ? '✅ Implanteur : proposé dans les BL' : '◻️ Pas implanteur : absent des BL (toucher pour l\'ajouter)'}</button>
