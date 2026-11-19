@@ -615,6 +615,7 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 .result .rn{flex-basis:100%;font-weight:750;color:var(--ok);overflow-wrap:anywhere;font-size:13px}
 .result>*:not(.rn){flex:1}
 
+.result .inv-send,.result .inv-method,.result .inv-hint{flex:1 1 100%;width:100%;max-width:none}.result .inv-method{height:44px;font-size:14px;border-radius:10px;border:1px solid #cbd5e1;padding:0 10px;background:#fff}.result .inv-hint{font-size:12px;color:#475569;line-height:1.35}
 .mailprev{margin-top:10px;font-size:12px;color:#475569}.mailprev summary{font-weight:800;cursor:pointer}.mp-s{font-weight:800;margin:6px 0;color:#042a72}.mp-b{white-space:pre-wrap;word-break:break-word;font-family:inherit;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0;font-size:11.5px}
 .aliasBtn{display:inline-block;margin-top:8px;border:1.5px solid #c7d4f5;background:#eef3ff;color:#042a72;border-radius:10px;padding:7px 11px;font-size:12.5px;font-weight:850;cursor:pointer}
 .noteBtn{margin-left:auto;border:none;background:transparent;font-size:16px;padding:0 4px;opacity:.55;cursor:pointer}
@@ -1936,24 +1937,64 @@ function buildInventoryMail(){
 }
 
 window.__buildInventoryMail=buildInventoryMail;
+// Méthode d'envoi : même choix que pour les BL ; tant qu'aucun choix n'est fait ici, on reprend celui des BL
+const INV_METHODS={
+  photos:{label:"Enregistrer le PDF, puis mail tout rempli",hint:"1. Enregistrez le PDF (« Enregistrer dans Fichiers »). 2. Le mail s'ouvre tout rempli : ajoutez le PDF en pièce jointe."},
+  partage:{label:"Partage : PDF joint, destinataires à coller",hint:"Le PDF est joint avec le texte. Les destinataires sont copiés : à coller dans « À »."},
+  outlook:{label:"Outlook : tout prérempli, PDF à joindre",hint:"1. Enregistrez le PDF. 2. Outlook s'ouvre avec destinataires, objet et texte : joignez le PDF depuis Fichiers."},
+  coller:{label:"Appli mail par défaut : tout prérempli, PDF à joindre",hint:"1. Enregistrez le PDF. 2. L'appli mail par défaut s'ouvre complète : joignez le PDF depuis Fichiers."}
+};
+function getInvMethod(){ try{ const v=localStorage.getItem("inv_send_method")||localStorage.getItem("bl_send_method2")||"photos"; return INV_METHODS[v]?v:"photos"; }catch(e){ return "photos"; } }
+function setInvMethod(v){ try{ localStorage.setItem("inv_send_method",v); }catch(e){} }
+function paintInvHint(el){ if(el) el.textContent=INV_METHODS[getInvMethod()].hint; }
+async function saveInvFile(file){
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file]}); return true; }
+    catch(err){ if(err && err.name==="AbortError") return false; throw err; }
+  }
+  const url=URL.createObjectURL(file), a=document.createElement("a");
+  a.href=url; a.download=file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),30000);
+  return true;
+}
+async function sendInventory(file,mail){
+  const method=getInvMethod();
+  const to=INVENTORY_TO.join(",");
+  const q="subject="+encodeURIComponent(mail.subject)+"&body="+encodeURIComponent(mail.body);
+  try{
+    if(method==="partage"){
+      let copied=false;
+      try{ await navigator.clipboard.writeText(INVENTORY_TO.join("; ")); copied=true; }catch(e){}
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        try{ await navigator.share({files:[file],title:mail.subject,text:mail.subject+"\n\n"+mail.body}); }
+        catch(err){ if(err && err.name==="AbortError") return; throw err; }
+        setStatus(copied?"Destinataires copiés : appui long dans « À », puis Coller.":"Destinataires : "+INVENTORY_TO.join(", "),"ok");
+      } else {
+        setStatus("Partage de fichier indisponible ici : mail tout rempli à la place.","");
+        if(await saveInvFile(file)) window.location.href="mailto:"+to+"?"+q;
+      }
+      return;
+    }
+    if(!(await saveInvFile(file))) return;   // annulé : on n'ouvre pas le mail
+    // navigation directe : iOS bloquerait une nouvelle fenêtre après le partage
+    window.location.href = method==="outlook" ? "ms-outlook://compose?to="+to+"&"+q : "mailto:"+to+"?"+q;
+  }catch(err){ setStatus("Envoi impossible : "+(err&&err.message?err.message:"erreur"),"bad"); }
+}
+window.__inv={getInvMethod,setInvMethod,sendInventory,showResult:(b,f)=>showResult(b,f)};
 function showResult(bytes,filename){
   clearResult();
   const blob=new Blob([bytes],{type:"application/pdf"});
   const box=$("result"); box.classList.remove("hidden");
   box.append(h("div",{class:"rn"},filename));
   S.resultUrl=URL.createObjectURL(blob);
-  box.append(h("a",{class:"primary",href:S.resultUrl,download:filename,rel:"noopener"},"⬇️ Télécharger le PDF"));
   const mail=buildInventoryMail();
-  try{
-    const file=new File([blob],filename,{type:"application/pdf"});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      box.append(h("button",{class:"secondary",type:"button",onclick:async()=>{
-        try{ await navigator.share({files:[file],title:mail.subject,text:mail.body}); }
-        catch(err){ if(!err || err.name!=="AbortError") setStatus("Partage impossible : "+(err&&err.message?err.message:"erreur"),"bad"); }
-      }},"📤 Partager le PDF (objet et texte pré-remplis)"));
-    }
-  }catch(e){}
-  box.append(h("button",{class:"secondary",type:"button",onclick:()=>{ window.open("mailto:"+INVENTORY_TO.join(",")+"?subject="+encodeURIComponent(mail.subject)+"&body="+encodeURIComponent(mail.body),"_blank"); }},"✉️ Écrire le mail à Aymeric et Johann (joindre le PDF téléchargé)"));
+  const file=new File([blob],filename,{type:"application/pdf"});
+  const sel=h("select",{class:"inv-method","aria-label":"Méthode d'envoi",onchange:e=>{ setInvMethod(e.target.value); paintInvHint(hint); }},
+    ...Object.entries(INV_METHODS).map(([k,v])=>h("option",{value:k},v.label)));
+  sel.value=getInvMethod();
+  const hint=h("div",{class:"inv-hint"});
+  box.append(h("button",{class:"primary inv-send",type:"button",onclick:()=>sendInventory(file,mail)},"✉️ Envoyer l'inventaire"), sel, hint);
+  paintInvHint(hint);
+  box.append(h("a",{class:"secondary",href:S.resultUrl,download:filename,rel:"noopener"},"⬇️ Télécharger le PDF"));
   const det=h("details",{class:"mailprev"},h("summary",null,"Aperçu du mail"),h("div",{class:"mp-s"},"À : "+INVENTORY_TO.join(", ")),h("div",{class:"mp-s"},mail.subject),h("pre",{class:"mp-b"},mail.body));
   box.append(det);
   box.scrollIntoView({behavior:"smooth",block:"nearest"});
