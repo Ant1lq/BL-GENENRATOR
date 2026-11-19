@@ -584,11 +584,13 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 #signCv{display:block;width:100%;height:auto;background:#fff;border:2px dashed #cbd5e1;border-radius:16px;touch-action:none;margin:10px 0}
 .signBtns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .signBtns button{flex:1;min-width:90px}
-#edWrap{display:flex;justify-content:center;align-items:center;border:1px solid var(--line);border-radius:16px;padding:10px;margin:10px 0;min-height:120px}
-#edCv{max-width:100%;max-height:42vh}
+#edWrap{display:flex;justify-content:center;align-items:center;border:1px solid var(--line);border-radius:16px;padding:8px;margin:6px 0 10px;min-height:70px}
+#edCv{max-width:100%;max-height:15vh}
+#edCropBox{height:32vh;background:#0f172a;border-radius:14px;overflow:hidden;margin-top:10px}#edCropBox img{display:block;max-width:100%}
 .edOpts{display:grid;gap:10px;margin-bottom:10px}
 .edOpts label.chk{display:flex;gap:10px;align-items:center;font-weight:750;font-size:14px;text-transform:none;letter-spacing:0;color:var(--text-main)}
 .edOpts input[type=checkbox],.slider input[type=range]{height:auto;padding:0;border:0}
+.slider input[type=range]{-webkit-appearance:auto;appearance:auto;accent-color:#0a2a8a;background:transparent;width:100%}
 .slider input[type=range]{width:100%;min-width:0}
 .edOpts input[type=checkbox]{width:22px;height:22px}
 .tabs{display:inline-flex;border:1.5px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:10px}
@@ -623,6 +625,8 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <link rel="icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="assets/vendor/cropper.min.css">
+<script src="assets/vendor/cropper.min.js"></script>
 </head>
 <body>
 <div id="app-content">
@@ -730,6 +734,7 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
             <button class="secondary" id="takeStamp" type="button">Prendre une photo</button>
             <button class="secondary" id="pickStamp" type="button">Importer une photo</button>
             <button class="secondary" id="signStamp" type="button">Signer</button>
+            <button class="secondary hidden" id="adjStamp" type="button">✂️ Ajuster</button>
           </div>
           <input type="file" id="camFile" accept="image/*" capture="environment" class="hidden">
           <input type="file" id="stampFile" accept="image/png,image/jpeg" class="hidden">
@@ -759,6 +764,8 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 </div>
 <dialog id="edDlg" aria-label="Préparer le tampon">
   <strong>Préparer le tampon</strong>
+  <div id="edCropBox"></div>
+  <div class="sbNote" style="margin:6px 0 0">Ajustez le cadre autour du tampon (pincez pour zoomer). Résultat :</div>
   <div id="edWrap" class="checker"><canvas id="edCv" width="10" height="10"></canvas></div>
   <div class="edOpts">
     <label class="chk"><input type="checkbox" id="edBg" checked> Retirer le fond blanc</label>
@@ -1464,6 +1471,7 @@ function paintStamp(){
   $("stampImgBox").classList.toggle("hidden",!imgMode);
   $("stampTxtBox").classList.toggle("hidden",imgMode);
   const prev=$("stampPrev"); prev.replaceChildren();
+  $("adjStamp").classList.toggle("hidden",!S.stampImg);
   if(imgMode){
     if(S.stampImg){ const im=h("img",{alt:"Aperçu du tampon",src:S.stampImg}); im.style.maxWidth=Math.round(STAMP_BOX_W*S.stampScale/100*1.4)+"px"; im.style.maxHeight=Math.round(STAMP_BOX_H*S.stampScale/100*1.4)+"px"; prev.append(im); }
     else prev.append(h("span",{class:"empty"},"Aucun tampon ni signature : le PDF portera seulement la date."));
@@ -1554,7 +1562,14 @@ function removeBg(src,sens){
 }
 
 /* Éditeur : aperçu sur damier, retrait du fond réglable */
-const ED={full:null,prev:null,resolve:null,raf:0};
+const ED={full:null,prev:null,resolve:null,raf:0,src:null,cropper:null,t:0};
+// Image du cadre choisi (fond blanc), au plus « max » pixels
+function edCropped(max){
+  let c=null;
+  try{ if(ED.cropper) c=ED.cropper.getCroppedCanvas({maxWidth:max,maxHeight:max,fillColor:"#fff",imageSmoothingQuality:"high"}); }catch(e){}
+  return (c && c.width>2 && c.height>2) ? c : toCanvas(ED.src,max);
+}
+function edUpdatePrev(){ ED.prev=edCropped(480); edSchedule(); }
 function edProcess(base){
   let c=base;
   if($("edBg").checked) c=removeBg(base,parseInt($("edSens").value,10));
@@ -1565,40 +1580,79 @@ function edRender(){
   cv.width=out.width; cv.height=out.height; cv.getContext("2d").clearRect(0,0,cv.width,cv.height); cv.getContext("2d").drawImage(out,0,0);
 }
 function edSchedule(){ cancelAnimationFrame(ED.raf); ED.raf=requestAnimationFrame(edRender); }
-function openEditor(img){
+// opts : { crop, bg, sens } pour rouvrir un tampon avec ses réglages
+function openEditor(img,opts){
+  opts=opts||{};
   return new Promise(resolve=>{
-    ED.full=toCanvas(img,900); ED.prev=toCanvas(img,480); ED.resolve=resolve;
-    $("edBg").checked=true; $("edSens").value=50; $("edSens").disabled=false;
+    ED.src=img; ED.prev=toCanvas(img,480); ED.resolve=resolve;
+    $("edBg").checked=opts.bg!==false; $("edSens").value=opts.sens!=null?opts.sens:50; $("edSens").disabled=!$("edBg").checked;
     edRender();
     const dlg=$("edDlg"); if(dlg.showModal) dlg.showModal(); else dlg.setAttribute("open","");
+    if(ED.cropper){ try{ ED.cropper.destroy(); }catch(e){} ED.cropper=null; }
+    const box=$("edCropBox"); box.replaceChildren();
+    if(typeof Cropper==="undefined") { box.style.display="none"; return; }
+    box.style.display="";
+    const im=document.createElement("img"); im.alt="";
+    im.onload=()=>{
+      ED.cropper=new Cropper(im,{viewMode:1,autoCropArea:0.92,background:false,zoomOnTouch:true,
+        ready(){ if(opts.crop){ try{ this.cropper.setData(opts.crop); }catch(e){} } edUpdatePrev(); },
+        cropend(){ edUpdatePrev(); },
+        zoom(){ clearTimeout(ED.t); ED.t=setTimeout(edUpdatePrev,200); }});
+    };
+    box.append(im); im.src=img.src;
   });
 }
-function edFinish(val){ const r=ED.resolve; ED.resolve=null; if($("edDlg").open) $("edDlg").close(); if(r) r(val); }
+function edFinish(val){
+  const r=ED.resolve; ED.resolve=null; if($("edDlg").open) $("edDlg").close();
+  if(ED.cropper){ try{ ED.cropper.destroy(); }catch(e){} ED.cropper=null; }
+  if(r) r(val);
+}
 $("edBg").addEventListener("change",()=>{ $("edSens").disabled=!$("edBg").checked; edSchedule(); });
 $("edSens").addEventListener("input",edSchedule);
 $("edCancel").addEventListener("click",()=>edFinish(null));
 $("edDlg").addEventListener("close",()=>{ if(ED.resolve) edFinish(null); });
 $("edOk").addEventListener("click",()=>{
   const btn=$("edOk"); btn.disabled=true;
-  setTimeout(()=>{ try{ edFinish(edProcess(ED.full).toDataURL("image/png")); } finally{ btn.disabled=false; } },20);
+  setTimeout(()=>{ try{
+    const d=ED.cropper?ED.cropper.getData(true):null;
+    edFinish({png:edProcess(edCropped(900)).toDataURL("image/png"), crop:d?{x:d.x,y:d.y,width:d.width,height:d.height}:null, bg:$("edBg").checked, sens:parseInt($("edSens").value,10)});
+  } finally{ btn.disabled=false; } },20);
 });
+// Photo d'origine gardée (réduite, fond blanc) pour pouvoir recadrer / remettre le fond plus tard
+function origJpeg(img,max){
+  const c=toCanvas(img,max), o=document.createElement("canvas"); o.width=c.width; o.height=c.height;
+  const x=o.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,o.width,o.height); x.drawImage(c,0,0);
+  return {url:o.toDataURL("image/jpeg",0.85), k:o.width/(img.naturalWidth||img.width)};
+}
 async function editFile(file){
-  const img=await loadImage(await readDataUrl(file));
-  return await openEditor(img);   // dataURL PNG détouré/rogné, ou null si annulé
+  const orig=origJpeg(await loadImage(await readDataUrl(file)),1200).url;
+  const out=await openEditor(await loadImage(orig));   // null si annulé
+  return out ? Object.assign(out,{orig}) : null;
 }
 
-function applyStampImage(dataUrl,keepSel){
+function applyStampImage(dataUrl,keepSel,orig,edit){
   S.stampImg=dataUrl; lsSet("stampImg",dataUrl);
+  if(orig){ lsSet("stampOrig",orig); lsSet("stampEdit",JSON.stringify(edit||{})); }
+  else { try{ localStorage.removeItem("stampOrig"); localStorage.removeItem("stampEdit"); }catch(e){} }
   S.stampMode="img"; lsSet("stampMode","img");
   if(!keepSel){ $("sbSel").value=""; lsSet("sbStampId",""); }
   paintStamp();
 }
 async function pickImage(e){
   const f=e.target.files[0]; e.target.value=""; if(!f) return;
-  try{ const out=await editFile(f); if(out){ applyStampImage(out); $("stampMsg").textContent=""; } }
+  try{ const out=await editFile(f); if(out){ applyStampImage(out.png,false,out.orig,{crop:out.crop,bg:out.bg,sens:out.sens}); $("stampMsg").textContent=""; } }
   catch(err){ $("stampMsg").textContent="Image impossible à utiliser ("+err.message+")."; }
 }
 $("stampFile").addEventListener("change",pickImage);
+// Rouvre le tampon actuel : recadrage, fond retiré ou non, force ; la taille se règle avec le curseur « Taille »
+$("adjStamp").addEventListener("click",async()=>{
+  if(!S.stampImg) return;
+  try{
+    const orig=lsGet("stampOrig"); let ed={}; try{ ed=JSON.parse(lsGet("stampEdit")||"{}")||{}; }catch(e){}
+    const out=await openEditor(await loadImage(orig||S.stampImg), orig?ed:{});
+    if(out){ applyStampImage(out.png,true,orig||origJpeg(await loadImage(S.stampImg),1200).url,{crop:out.crop,bg:out.bg,sens:out.sens}); $("stampMsg").textContent=""; }
+  }catch(err){ $("stampMsg").textContent="Ajustement impossible ("+err.message+")."; }
+});
 $("takeStamp").addEventListener("click",()=>$("camFile").click());
 $("camFile").addEventListener("change",pickImage);
 
@@ -1650,7 +1704,7 @@ let sbRows=[];
 async function sbLoadList(){
   $("sbBox").classList.remove("hidden");
   try{
-    const {data,error}=await _supabase.from(SB_TABLE).select("id,nom,adresse,tampon_url,code_client,implanteur").order("nom",{ascending:true});
+    const {data,error}=await _supabase.from(SB_TABLE).select("id,nom,adresse,tampon_url,tampon_src,tampon_edit,code_client,implanteur").order("nom",{ascending:true});
     if(error) throw error;
     sbRows=data||[];
     const sel=$("sbSel"); sel.replaceChildren(h("option",{value:""},sbRows.length?"Choisir un tampon…":"Aucun tampon dans la base"));
@@ -1676,7 +1730,16 @@ async function useRow(row){
       return;
     }
     const img=await loadImage(await blobToDataUrl(blob));
-    applyStampImage(trimCanvas(toCanvas(img,900)).toDataURL("image/png"),true);
+    let ed={}; try{ ed=typeof row.tampon_edit==="string"?JSON.parse(row.tampon_edit):(row.tampon_edit||{}); }catch(e){}
+    let orig=null, edit=null;
+    if(row.tampon_src){ try{
+      const sb=await sbFetchStampBlob({tampon_url:row.tampon_src});
+      if(sb){ const si=await loadImage(await blobToDataUrl(sb)), o=origJpeg(si,1200); orig=o.url;
+        const c=ed.crop; edit={bg:ed.bg!==false,sens:50,crop:c?{x:Math.round(c.x*o.k),y:Math.round(c.y*o.k),width:Math.round(c.width*o.k),height:Math.round(c.height*o.k)}:null}; }
+    }catch(e){} }
+    const sc=parseInt(ed.scale,10);
+    if(sc){ S.stampScale=Math.max(60,Math.min(140,Math.round(sc/5)*5)); lsSet("stampScale",String(S.stampScale)); $("stampScale").value=S.stampScale; }
+    applyStampImage(trimCanvas(toCanvas(img,900)).toDataURL("image/png"),true,orig,edit);
     $("sbNote").textContent="";
   }catch(err){
     console.error(err);

@@ -974,7 +974,7 @@
 
 <div id="crop-modal" class="ios-modal">
     <div class="ios-modal-content">
-        <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
+        <h3 id="crop-title" style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">TRAITEMENT SMART ÉTIQUETTE</h3>
 
         <div id="fast-panel" style="display:none;">
             <div id="fast-list"></div>
@@ -992,6 +992,11 @@
                 <input type="checkbox" id="crop-removebg" checked style="width:22px; height:22px; flex-shrink:0;"> Retirer le fond blanc
             </label>
             <div style="font-size:11px; color:var(--text-muted); margin-top:4px; line-height:1.3;">Décochez pour garder l'image telle quelle (par exemple une image déjà détourée ou un fond coloré).</div>
+            <div id="crop-tscale-wrap" style="display:none; margin-top:12px;">
+                <label for="crop-tscale" style="display:flex; justify-content:space-between; text-transform:none; font-size:14px; letter-spacing:0; color:var(--text-main); font-weight:750; margin:0 0 4px;">Taille sur le BL <span id="crop-tscale-val">100 %</span></label>
+                <input type="range" id="crop-tscale" min="60" max="150" step="5" value="100" oninput="paintTamponScale()" style="width:100%; height:28px; padding:0; border:0; background:transparent; -webkit-appearance:auto; appearance:auto; accent-color:#0a2a8a;">
+                <div id="crop-tscale-note" style="font-size:11px; color:var(--text-muted); margin-top:2px; line-height:1.3;"></div>
+            </div>
         </div>
         <div class="grid-2 modal-footer" id="crop-footer">
             <button class="btn-mini edit" style="padding:14px; justify-content:center; font-size:14px;" onclick="closeCropModal()">ANNULER</button>
@@ -1258,7 +1263,7 @@
 
     async function synchroniserDonneesDepuisCloud() {
         try {
-            let { data: centres, error: errC } = await _supabase.from('centres').select('id, nom, adresse, tampon_url, mail_bl, mail_pharmacie, implanteur').order('nom', { ascending: true });
+            let { data: centres, error: errC } = await _supabase.from('centres').select('id, nom, adresse, tampon_url, tampon_src, tampon_edit, mail_bl, mail_pharmacie, implanteur').order('nom', { ascending: true });
             if (errC) { // colonne « implanteur » absente : ancienne structure
                 ({ data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url, mail_bl, mail_pharmacie').order('nom', { ascending: true }));
             }
@@ -1361,7 +1366,7 @@
     }
 
     // Tampons propres à certains médecins (prioritaires sur le tampon du centre) : { nom du médecin: url }
-    let doctorStampMap = {};
+    let doctorStampMap = {}, doctorStampScale = {};
     let currentStampDoctor = null; // {id, nom, old} quand le recadrage en cours concerne un médecin
 
     async function loadMedecinsDuCentre() {
@@ -1376,14 +1381,14 @@
         try {
             let { data: medecins, error: errM } = await _supabase
                 .from('medecins')
-                .select('nom, tampon_url')
+                .select('nom, tampon_url, tampon_edit')
                 .eq('centre_nom', centreChoisi)
                 .order('nom', { ascending: true });
             
             if (errM) throw errM;
             if (medecins && medecins.length > 0) {
                 doctorStampMap = {};
-                medecins.forEach(m => { if (m.tampon_url) doctorStampMap[m.nom] = m.tampon_url; dSel.add(new Option(m.nom + (m.tampon_url ? ' 🖋️' : ''), m.nom)); });
+                medecins.forEach(m => { if (m.tampon_url) { doctorStampMap[m.nom] = m.tampon_url; doctorStampScale[m.nom] = tamponScaleOf(m.tampon_edit); } dSel.add(new Option(m.nom + (m.tampon_url ? ' 🖋️' : ''), m.nom)); });
             } else {
                 dSel.add(new Option("Aucun médecin", ""));
             }
@@ -1822,7 +1827,7 @@
                             <button class="btn-mini sign" onclick="triggerDoctorStamp(${m.id}, 'import')">🖼️ Image</button>
                         </div>
                         <div class="cd-btnrow">
-                            ${m.tampon_url ? `<button class="btn-mini edit" onclick="removeDoctorStamp(${m.id})">Retirer le tampon</button>` : ''}
+                            ${m.tampon_url ? `<button class="btn-mini sign" onclick="adjustStamp(${m.id})">✂️ Ajuster</button><button class="btn-mini edit" onclick="removeDoctorStamp(${m.id})">Retirer le tampon</button>` : ''}
                             <button class="btn-mini delete" onclick="deleteDoctor(${m.id})">🗑️ Retirer le médecin</button>
                         </div>
                     </div>
@@ -1881,9 +1886,9 @@
                 <div class="cd-btnrow" style="margin-top:10px;">
                     <button class="btn-mini sign" onclick="triggerCenterDetailStampPhoto()">📷 Photo</button>
                     <button class="btn-mini sign" onclick="triggerCenterDetailStampImport()">🖼️ Image</button>
-                    ${centreData.tampon_url ? `<button class="btn-mini edit" onclick="removeCenterStamp()">Retirer</button>` : ''}
+                    ${centreData.tampon_url ? `<button class="btn-mini sign" onclick="adjustStamp()">✂️ Ajuster</button><button class="btn-mini edit" onclick="removeCenterStamp()">Retirer</button>` : ''}
                 </div>
-                <p class="cd-tip">Tampon à plat, en pleine lumière, sur papier blanc. Le fond se retire au recadrage.</p>
+                <p class="cd-tip">Tampon à plat, en pleine lumière, sur papier blanc. « Ajuster » : recadrer, garder ou retirer le fond, changer la taille sur le BL.</p>
             </section>
 
             <button class="cd-delete" onclick="deleteCenterEntirely()">Supprimer ce centre</button>`;
@@ -1981,6 +1986,7 @@
             if (error) throw error;
             if (!data || data.length === 0) throw new Error("droits d'accès insuffisants côté base.");
             if (data[0] && data[0].tampon_url) await deleteTamponFile(data[0].tampon_url);
+            if (data[0] && data[0].tampon_src) await deleteTamponFile(data[0].tampon_src);
             status.innerText = "✅ Médecin retiré.";
             await renderCenterDetail();
         } catch (e) {
@@ -1992,8 +1998,8 @@
     async function triggerDoctorStamp(id, mode) {
         if (!currentCenterDetail) return;
         try {
-            const { data } = await _supabase.from('medecins').select('id, nom, tampon_url').eq('id', id).single();
-            currentStampDoctor = { id: id, nom: data ? data.nom : '', old: data ? data.tampon_url : null };
+            const { data } = await _supabase.from('medecins').select('id, nom, tampon_url, tampon_src').eq('id', id).single();
+            currentStampDoctor = { id: id, nom: data ? data.nom : '', old: data ? data.tampon_url : null, oldSrc: data ? data.tampon_src : null };
         } catch (e) { currentStampDoctor = { id: id, nom: '', old: null }; }
         cropPurpose = 'tampon';
         document.getElementById('ocr-status').innerText = "Cadrez le tampon.";
@@ -2005,10 +2011,11 @@
         if (!confirm("Retirer le tampon de ce médecin ? Le tampon du centre sera alors utilisé.")) return;
         const status = document.getElementById('admin-global-status');
         try {
-            const { data: cur } = await _supabase.from('medecins').select('tampon_url').eq('id', id).single();
-            const { error } = await _supabase.from('medecins').update({ tampon_url: null }).eq('id', id);
+            const { data: cur } = await _supabase.from('medecins').select('tampon_url, tampon_src').eq('id', id).single();
+            const { error } = await _supabase.from('medecins').update({ tampon_url: null, tampon_src: null, tampon_edit: null }).eq('id', id);
             if (error) throw error;
             if (cur && cur.tampon_url) await deleteTamponFile(cur.tampon_url);
+            if (cur && cur.tampon_src) await deleteTamponFile(cur.tampon_src);
             status.innerText = "✅ Tampon du médecin retiré.";
             await renderCenterDetail();
             if (document.getElementById('inC').value === currentCenterDetail) await loadMedecinsDuCentre();
@@ -2091,10 +2098,11 @@
         if (!confirm("Retirer le tampon officiel de ce centre ?")) return;
         const status = document.getElementById('admin-global-status');
         try {
-            const oldTamponUrl = (dbCloudCentres.find(c => c.nom === currentCenterDetail) || {}).tampon_url;
-            const { error } = await _supabase.from('centres').update({ tampon_url: null }).eq('nom', currentCenterDetail);
+            const cur = dbCloudCentres.find(c => c.nom === currentCenterDetail) || {};
+            const { error } = await _supabase.from('centres').update({ tampon_url: null, tampon_src: null, tampon_edit: null }).eq('nom', currentCenterDetail);
             if (error) throw error;
-            await deleteTamponFile(oldTamponUrl);
+            await deleteTamponFile(cur.tampon_url);
+            if (cur.tampon_src) await deleteTamponFile(cur.tampon_src);
             status.innerText = "✅ Tampon retiré.";
             await synchroniserDonneesDepuisCloud();
             await renderCenterDetail();
@@ -2112,12 +2120,13 @@
         const status = document.getElementById('admin-global-status');
         status.innerText = "Suppression... ⏳";
         try {
-            const oldTamponUrl = (dbCloudCentres.find(c => c.nom === nom) || {}).tampon_url;
+            const oldRow = dbCloudCentres.find(c => c.nom === nom) || {}, oldTamponUrl = oldRow.tampon_url;
             await _supabase.from('medecins').delete().eq('centre_nom', nom);
             await _supabase.from('engineer_centers').delete().eq('center_name', nom);
             const { error } = await _supabase.from('centres').delete().eq('nom', nom);
             if (error) throw error;
             await deleteTamponFile(oldTamponUrl);
+            if (oldRow.tampon_src) await deleteTamponFile(oldRow.tampon_src);
 
             status.innerText = "✅ Centre supprimé.";
             closeCenterDetail();
@@ -2127,6 +2136,54 @@
             console.error(e);
             status.innerText = `❌ Échec de la suppression : ${e.message || "droits d'accès insuffisants côté base"}`;
         }
+    }
+
+    // ---- Réglages d'un tampon (photo d'origine, cadrage, fond, taille) : modifiables après coup ----
+    let tamponEdit = null;          // { src: réf. de la photo d'origine, crop, bg, scale } quand on ajuste un tampon existant
+    let tamponOrigDataUrl = null;   // photo d'origine du tampon en cours de recadrage
+    function parseTamponEdit(v) { if (!v) return {}; if (typeof v === 'object') return v; try { return JSON.parse(v) || {}; } catch (e) { return {}; } }
+    function tamponScaleOf(v) { const n = parseInt(parseTamponEdit(v).scale, 10); return n >= 50 && n <= 200 ? n : 100; }
+    function paintTamponScale(init) {
+        const wrap = document.getElementById('crop-tscale-wrap'); if (!wrap) return;
+        const on = cropPurpose === 'tampon'; wrap.style.display = on ? 'block' : 'none'; if (!on) return;
+        const r = document.getElementById('crop-tscale');
+        if (init) {
+            r.value = tamponEdit && tamponEdit.scale ? tamponEdit.scale : 100;
+            document.getElementById('crop-removebg').checked = !(tamponEdit && tamponEdit.bg === false);
+            document.getElementById('crop-tscale-note').innerText = (tamponEdit && !tamponEdit.src)
+                ? "Tampon enregistré avant cette version : photo d'origine indisponible, le fond déjà retiré ne peut pas être remis."
+                : "100 % = taille habituelle dans le cadre « Tampon & Signature Centre ».";
+        }
+        document.getElementById('crop-tscale-val').innerText = r.value + ' %';
+    }
+    function refToDataUrlAny(ref) {
+        if (window.LocalDB && LocalDB.isLocalRef(ref)) return LocalDB.refToDataUrl(ref);
+        return getDisplayableTamponUrl(ref).then(u => u ? fetch(u).then(r => r.blob()).then(b => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); })) : null);
+    }
+    async function adjustStamp(doctorId) {
+        if (!currentCenterDetail) return;
+        const status = document.getElementById('admin-global-status');
+        try {
+            let row;
+            if (doctorId != null) {
+                const { data } = await _supabase.from('medecins').select('id, nom, tampon_url, tampon_src, tampon_edit').eq('id', doctorId).single();
+                row = data || {}; currentStampDoctor = { id: doctorId, nom: row.nom || '', old: row.tampon_url || null, oldSrc: row.tampon_src || null };
+            } else {
+                const { data } = await _supabase.from('centres').select('nom, tampon_url, tampon_src, tampon_edit').eq('nom', currentCenterDetail);
+                row = (data && data[0]) || {}; currentStampDoctor = null;
+            }
+            if (!row.tampon_url) return;
+            const ed = parseTamponEdit(row.tampon_edit);
+            const src = row.tampon_src ? await refToDataUrlAny(row.tampon_src) : null;
+            const img = src || await refToDataUrlAny(row.tampon_url);
+            if (!img) throw new Error('image introuvable');
+            tamponEdit = { src: src ? row.tampon_src : null, crop: src ? ed.crop : null, bg: src ? ed.bg !== false : true, scale: tamponScaleOf(row.tampon_edit) };
+            tamponOrigDataUrl = src ? null : img;   // ancien tampon : l'image actuelle devient la référence
+            cropPurpose = 'tampon';
+            pendingAutoCrop = tamponEdit.crop || null;
+            openCropWith(img);
+            document.getElementById('ocr-status').innerText = "Ajustez le cadre, le fond et la taille du tampon.";
+        } catch (e) { console.error(e); status.innerText = "❌ Impossible d'ouvrir le tampon : " + (e.message || e); }
     }
 
     // ---- Retrait du fond blanc des tampons photographiés (commun avec la page Dépôts) ----
@@ -2210,6 +2267,10 @@ function removeBg(src,sens){
             const doctorTarget = currentStampDoctor;
             const oldTamponUrl = doctorTarget ? doctorTarget.old : (dbCloudCentres.find(c => c.nom === centreCible) || {}).tampon_url;
             const wantRemoveBg = document.getElementById('crop-removebg').checked;
+            const scale = parseInt(document.getElementById('crop-tscale').value, 10) || 100;
+            const cd = cropper ? cropper.getData(true) : null;
+            const crop = cd ? { x: cd.x, y: cd.y, width: cd.width, height: cd.height } : null;
+            const oldSrc = doctorTarget ? doctorTarget.oldSrc : (dbCloudCentres.find(c => c.nom === centreCible) || {}).tampon_src;
             const base = tamponToCanvasMax(canvasFull, 1000);
             // Image déjà détourée (transparence présente) : on la garde telle quelle, sans y toucher.
             // (Les pixels transparents sont "noirs" pour le calcul : les traiter ou les enregistrer en JPEG donnait un tampon noir.)
@@ -2238,16 +2299,34 @@ function removeBg(src,sens){
             if (uploadError) throw new Error(uploadError.message || "erreur de stockage");
 
             const { data: urlData } = _supabase.storage.from('tampons').getPublicUrl(cleanFileName);
+            // Photo d'origine conservée (pour recadrer / remettre le fond plus tard)
+            let srcRef = tamponEdit && tamponEdit.src ? tamponEdit.src : null, newSrc = false;
+            if (!srcRef && tamponOrigDataUrl) {
+                const oc = tamponToCanvasMax(await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('photo illisible')); im.src = tamponOrigDataUrl; }), 1800);
+                const of = document.createElement('canvas'); of.width = oc.width; of.height = oc.height;
+                const ox = of.getContext('2d'); ox.fillStyle = '#fff'; ox.fillRect(0, 0, of.width, of.height); ox.drawImage(oc, 0, 0);
+                // cadrage exprimé dans l'image d'origine réduite
+                const k = oc.width / (cropper ? (cropper.getImageData().naturalWidth || oc.width) : oc.width);
+                if (crop && k !== 1) { crop.x = Math.round(crop.x * k); crop.y = Math.round(crop.y * k); crop.width = Math.round(crop.width * k); crop.height = Math.round(crop.height * k); }
+                const ob = await new Promise(res => of.toBlob(res, 'image/jpeg', 0.88));
+                const srcName = cleanFileName.replace(/^tampon_/, 'origine_').replace(/\.(png|jpg)$/, '.jpg');
+                const { error: se } = await _supabase.storage.from('tampons').upload(srcName, ob, { contentType: 'image/jpeg' });
+                if (!se) { srcRef = _supabase.storage.from('tampons').getPublicUrl(srcName).data.publicUrl; newSrc = true; }
+            }
+            const editJson = JSON.stringify({ crop: srcRef ? crop : null, bg: wantRemoveBg, scale });
+            const patch = { tampon_url: urlData.publicUrl, tampon_src: srcRef, tampon_edit: editJson };
             const { error: updateError } = doctorTarget
-                ? await _supabase.from('medecins').update({ tampon_url: urlData.publicUrl }).eq('id', doctorTarget.id)
-                : await _supabase.from('centres').update({ tampon_url: urlData.publicUrl }).eq('nom', centreCible);
+                ? await _supabase.from('medecins').update(patch).eq('id', doctorTarget.id)
+                : await _supabase.from('centres').update(patch).eq('nom', centreCible);
             if (updateError) throw new Error(updateError.message || "erreur d'enregistrement en base");
 
             // On ne supprime l'ancien fichier qu'une fois le nouveau bien enregistré, pour ne jamais
             // se retrouver sans tampon du tout si une étape précédente avait échoué.
             await deleteTamponFile(oldTamponUrl);
+            if (newSrc && oldSrc && oldSrc !== srcRef) await deleteTamponFile(oldSrc);
+            tamponEdit = null; tamponOrigDataUrl = null;
 
-            status.innerText = doctorTarget ? "🎉 Tampon relié au médecin avec succès !" : "🎉 Tampon relié au centre avec succès !";
+            status.innerText = doctorTarget ? "🎉 Tampon du médecin enregistré !" : "🎉 Tampon du centre enregistré !";
             await synchroniserDonneesDepuisCloud();
             closeCropModal();
             await renderCenterDetail();
@@ -2398,11 +2477,24 @@ function removeBg(src,sens){
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
+                if (cropPurpose === 'tampon') { tamponEdit = null; tamponOrigDataUrl = e.target.result; pendingAutoCrop = null; }
+                openCropWith(e.target.result);
+            };
+            reader.readAsDataURL(input.files[0]);
+            input.value = ""; // permet de reprendre la même photo (même nom de fichier) sans que l'input ignore le changement
+        }
+    }
+
+    function openCropWith(srcDataUrl) {
+        const e = { target: { result: srcDataUrl } };
+        {
+            {
                 if (modalScannerActive) document.getElementById('manual-modal').style.display = 'none';
                 const modal = document.getElementById('crop-modal');
                 const image = document.getElementById('crop-preview');
                 if (cropPurpose === 'tampon') document.getElementById('admin-modal').style.display = 'none'; // réaffiché après le recadrage
                 image.src = e.target.result; modal.style.display = 'flex';
+                document.getElementById('crop-title').innerText = cropPurpose === 'tampon' ? 'TAMPON' : (cropPurpose === 'sig' ? 'SIGNATURE' : 'TRAITEMENT SMART ÉTIQUETTE');
                 document.getElementById('crop-removebg-wrap').style.display = (cropPurpose === 'tampon' || cropPurpose === 'sig') ? 'block' : 'none';
                 document.getElementById('btn-validate-crop').innerText = (cropPurpose === 'tampon') ? 'VALIDER LE TAMPON ✅' : (cropPurpose === 'sig' ? 'VALIDER LA SIGNATURE ✅' : 'ANALYSER 🔍');
                 if (cropper) cropper.destroy();
@@ -2428,9 +2520,8 @@ function removeBg(src,sens){
                     }
                 });
                 if (cropPurpose === 'label') startLabelAnalysis(e.target.result);
-            };
-            reader.readAsDataURL(input.files[0]);
-            input.value = ""; // permet de reprendre la même photo (même nom de fichier) sans que l'input ignore le changement
+                paintTamponScale(true);
+            }
         }
     }
 
@@ -2459,6 +2550,7 @@ function removeBg(src,sens){
         if (cropPurpose === 'tampon') document.getElementById('admin-modal').style.display = 'flex';
         cropPurpose = 'label';
         currentStampDoctor = null;
+        tamponEdit = null; tamponOrigDataUrl = null;
     }
 
     // Rotation à 2 doigts (torsion) directement sur la photo, en complément du pincement pour zoomer
@@ -3647,6 +3739,8 @@ function removeBg(src,sens){
         if (sigSource['centre'] === 'none') {
             const sigCentreImg = document.getElementById('v-sig-centre');
             const effectiveStamp = doctorStampMap[doc] || centreData.tampon_url; // tampon du médecin s'il en a un, sinon celui du centre
+            const stampScale = doctorStampMap[doc] ? (doctorStampScale[doc] || 100) : tamponScaleOf(centreData.tampon_edit);
+            sigCentreImg.style.maxHeight = Math.round(65 * stampScale / 100) + 'px';
             if (effectiveStamp) {
                 sigCentreImg.dataset.rawTamponUrl = effectiveStamp;
                 getDisplayableTamponUrl(effectiveStamp).then(url => {
@@ -3660,7 +3754,7 @@ function removeBg(src,sens){
                 sigCentreImg.removeAttribute('src');
                 delete sigCentreImg.dataset.rawTamponUrl;
             }
-        }
+        } else document.getElementById('v-sig-centre').style.maxHeight = '';
 
         const tableBody = document.getElementById('v-main-table').getElementsByTagName('tbody')[0];
         tableBody.innerHTML = "";
