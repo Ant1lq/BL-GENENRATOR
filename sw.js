@@ -1,13 +1,13 @@
 /* MicroPort Cardioflow — service worker : l'appli complète est copiée sur l'appareil
    à la première ouverture, puis fonctionne sans réseau. Changer VERSION à chaque mise à jour. */
-const VERSION = 'v2.3.2';
+const VERSION = 'v2.4.0';
 const APP = 'mp-app-' + VERSION, CDN = 'mp-cdn-v1', TILES = 'mp-tiles-v1';
 const MAX_TILES = 2500;
 
 // Indispensable au fonctionnement
 const CORE = [
   './', 'index.html', 'bl.html', 'depot.html', 'carte.html', 'admin.html', 'manifest.webmanifest',
-  'assets/local-db.js', 'assets/scan.js', 'assets/centres-xl.js', 'assets/logo-microport.png', 'assets/icon-180.png', 'assets/icon-192.png', 'assets/icon-512.png',
+  'assets/local-db.js', 'assets/scan.js', 'assets/centres-xl.js', 'assets/sync.js', 'assets/logo-microport.png', 'assets/icon-180.png', 'assets/icon-192.png', 'assets/icon-512.png',
   'assets/vendor/html2canvas.min.js', 'assets/vendor/cropper.min.js', 'assets/vendor/cropper.min.css',
   'assets/vendor/xlsx.full.min.js', 'assets/vendor/pdf.min.js', 'assets/vendor/pdf.worker.min.js', 'assets/vendor/pdf-lib.min.js',
   'assets/vendor/leaflet/leaflet.min.js', 'assets/vendor/leaflet/leaflet.min.css',

@@ -355,6 +355,22 @@
     if (dead.length) { var tx = db.transaction('files', 'readwrite'); dead.forEach(function (k) { tx.objectStore('files').delete(k); forgetUrl(k); }); await txDone(tx); }
     return dead.length;
   }
+  /* ---------- Accès bas niveau pour le partage / la synchronisation entre téléphones ---------- */
+  async function fileKeys() { var db = await openDb(); return reqP(db.transaction('files').objectStore('files').getAllKeys()); }
+  async function fileRec(k) { var db = await openDb(); return reqP(db.transaction('files').objectStore('files').get(k)); }
+  async function fileRecPut(k, rec) { var db = await openDb(), tx = db.transaction('files', 'readwrite'); tx.objectStore('files').put(rec, k); await txDone(tx); forgetUrl(k); }
+  async function rowPut(table, row) { var db = await openDb(), tx = db.transaction(table, 'readwrite'), r = await reqP(tx.objectStore(table).put(row)); await txDone(tx); return r; }
+  async function rowAdd(table, row) {
+    var def = TABLES[table], o = clone(row);
+    if (def.uuid && !o[def.key]) o[def.key] = uuid();
+    if (def.auto) delete o[def.key];
+    var db = await openDb(), tx = db.transaction(table, 'readwrite'), k = await reqP(tx.objectStore(table).add(o)); await txDone(tx);
+    o[def.key] = k; return o;
+  }
+  async function invGet(k) { try { var d = await openInv(), v = await reqP(d.transaction('kv').objectStore('kv').get(k)); d.close(); return v; } catch (e) { return undefined; } }
+  async function invPut(k, v) { try { var d = await openInv(), tx = d.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); await txDone(tx); d.close(); return true; } catch (e) { return false; } }
+  function deviceId() { var v = lsGet('mp_device_id'); if (!v) { v = uuid(); lsSet('mp_device_id', v); } return v; }
+
   // Demande à iOS de ne pas effacer les données de l'appli quand l'espace manque
   function persist() { try { if (navigator.storage && navigator.storage.persist) return navigator.storage.persist(); } catch (e) {} return Promise.resolve(false); }
 
@@ -364,7 +380,9 @@
     filePut: filePut, fileGet: fileGet, fileUrl: fileUrl, fileRemove: fileRemove,
     isLocalRef: isLocalRef, resolveUrl: resolveUrl, refToDataUrl: refToDataUrl, blobToDataUrl: blobToDataUrl,
     me: me, setMe: setMe, exportBackup: exportBackup, importBackup: importBackup,
-    stats: stats, wipe: wipe, cleanOrphanPhotos: cleanOrphanPhotos, persist: persist
+    stats: stats, wipe: wipe, cleanOrphanPhotos: cleanOrphanPhotos, persist: persist,
+    raw: { fileKeys: fileKeys, fileRec: fileRec, fileRecPut: fileRecPut, rowPut: rowPut, rowAdd: rowAdd, invGet: invGet, invPut: invPut,
+      bufToB64: bufToB64, b64ToBuf: b64ToBuf, deviceId: deviceId, tableKey: function (t) { return TABLES[t] && TABLES[t].key; } }
   };
 
   /* ------------------------------ Mode hors ligne (service worker) ------------------------------ */

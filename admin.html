@@ -574,6 +574,26 @@ details.fold>.in{padding:0 18px 18px}
    </div>
   </details>
 
+  <div class="card-title" id="partage" style="margin:24px 4px 10px">📲 Partager l'application</div>
+  <div class="app-card stack">
+    <p class="help">Envoyez l'appli à un collègue avec vos centres, médecins, tampons, destinataires, inventaires et l'Excel des dépôts. Votre profil, votre signature et vos BL ne sont pas partagés.</p>
+    <button class="btn-primary-ios" id="sh-make" onclick="prepPkg('share')">📲 PARTAGER L'APPLI ET MES CENTRES</button>
+    <button class="btn-primary-ios" id="sh-send" style="display:none;background:#15803d" onclick="sendPkg('share')">📤 ENVOYER</button>
+    <button class="btn-secondary-ios" style="padding:13px" onclick="shareLink()">🔗 Partager seulement le lien</button>
+    <div class="msg" id="sh-msg"></div>
+  </div>
+
+  <div class="card-title" id="synchro" style="margin:24px 4px 10px">🔄 Synchroniser deux téléphones</div>
+  <div class="app-card stack">
+    <p class="help"><b>1.</b> Sur chaque téléphone, touchez « Envoyer mes données » et envoyez le fichier à l'autre (AirDrop, mail…).<br><b>2.</b> Sur chaque téléphone, touchez « Recevoir des données » et choisissez le fichier reçu.<br>Les données sont fusionnées : rien n'est supprimé, le tampon le plus récent est gardé, les centres sont reconnus par leur code client ou leur nom.</p>
+    <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;line-height:1.3"><input type="checkbox" id="sy-photos" style="width:20px;height:20px;flex-shrink:0"> Inclure les photos des BL (fichier plus lourd)</label>
+    <button class="btn-primary-ios" id="sy-make" onclick="prepPkg('sync')">📤 ENVOYER MES DONNÉES</button>
+    <button class="btn-primary-ios" id="sy-send" style="display:none;background:#15803d" onclick="sendPkg('sync')">📤 ENVOYER LE FICHIER</button>
+    <button class="btn-secondary-ios" style="padding:13px" onclick="document.getElementById('sy-file').click()">📥 Recevoir des données</button>
+    <input type="file" id="sy-file" accept=".json,application/json" style="display:none">
+    <div class="msg" id="sy-msg"></div>
+  </div>
+
   <div class="card-title" id="sauvegarde" style="margin:24px 4px 10px">💾 Sauvegarde</div>
   <div class="app-card stack">
     <p class="help">Toutes vos données sont enregistrées sur cet iPhone uniquement. Une sauvegarde est un fichier que vous rangez où vous voulez (Fichiers, iCloud Drive, e-mail…) et qui permet de tout retrouver sur un autre appareil.</p>
@@ -657,6 +677,7 @@ details.fold>.in{padding:0 18px 18px}
 
 <input type="file" id="file-sig" accept="image/*" style="display:none">
 <script src="assets/local-db.js"></script>
+<script src="assets/sync.js"></script>
 <script>
 const _supabase = supabase.createClient(); // base locale (assets/local-db.js)
 const $=id=>document.getElementById(id);
@@ -971,6 +992,7 @@ $('bk-file').addEventListener('change',async e=>{
     say(msg,'Lecture du fichier…');
     const data=JSON.parse(await f.text());
     if(!data || data.app!=='mp-cardioflow' || !data.tables) throw new Error("ce fichier n'est pas une sauvegarde de l'application");
+    if(data.kind==='share'||data.kind==='sync'){ await receivePkg(f,msg); return; }
     const t=data.tables, quand=data.date?new Date(data.date).toLocaleDateString('fr-FR'):'date inconnue';
     const resume=(t.centres||[]).length+' centres, '+(t.medecins||[]).length+' médecins, '+(t.bons_livraison||[]).length+' BL, '+(data.files||[]).length+' images';
     if(!confirm('Sauvegarde du '+quand+' :\n'+resume+'\n\nRestaurer cette sauvegarde ?\nLes données actuelles de cet iPhone seront REMPLACÉES.')){ say(msg,''); return; }
@@ -979,6 +1001,51 @@ $('bk-file').addEventListener('change',async e=>{
     Object.keys(thumbCache).forEach(k=>delete thumbCache[k]); BASE=null;
     say(msg,'✅ Sauvegarde restaurée : '+resume+'.','ok'); await loadList(); await paintStorage();
   }catch(err){ console.error(err); say(msg,'❌ Restauration impossible : '+(err.message||err),'bad'); }
+});
+
+/* ================= Partage & synchronisation ================= */
+const PKG={};
+async function prepPkg(kind){
+  const pre=kind==='share'?'sh':'sy', msg=$(pre+'-msg'); $(pre+'-send').style.display='none'; PKG[kind]=null;
+  $(pre+'-make').disabled=true; say(msg,'Préparation du fichier…');
+  try{
+    const r=await AppSync.buildPackage(kind,{photos:kind==='sync'&&$('sy-photos').checked}); PKG[kind]=r.file;
+    const c=r.counts;
+    $(pre+'-send').textContent='📤 ENVOYER ('+fmtSize(r.file.size)+')'; $(pre+'-send').style.display='block';
+    say(msg,'Prêt : '+c.centres+' centres, '+c.tampons+' tampons, '+c.medecins+' médecins, '+c.inventaires+' inventaires'+(kind==='sync'?', '+c.bl+' BL':'')+'. Touchez « Envoyer ».','ok');
+  }catch(e){ console.error(e); say(msg,'❌ Préparation impossible : '+(e.message||e),'bad'); }
+  $(pre+'-make').disabled=false;
+}
+async function sendPkg(kind){
+  const pre=kind==='share'?'sh':'sy', msg=$(pre+'-msg'), file=PKG[kind]; if(!file) return;
+  const text = kind==='share'
+    ? "Voici l'appli MicroPort Cardioflow avec mes centres et tampons.\n1. Ouvre ce lien dans Safari sur ton iPhone : "+AppSync.APP_URL+"\n2. Partager › « Sur l'écran d'accueil ».\n3. Dans l'appli : Réglages › Synchroniser deux téléphones › « Recevoir des données », puis choisis le fichier joint."
+    : "Données Cardioflow à recevoir sur l'autre téléphone : Réglages › Synchroniser deux téléphones › « Recevoir des données ».";
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],title:'MicroPort Cardioflow',text}); say(msg,'✅ Fichier envoyé.','ok'); return; }
+    catch(e){ if(e && e.name==='AbortError'){ say(msg,'Envoi annulé.'); return; } console.error(e); }
+  }
+  const url=URL.createObjectURL(file), a=document.createElement('a'); a.href=url; a.download=file.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000); say(msg,'Fichier enregistré : envoyez-le à l\'autre téléphone.','ok');
+}
+async function shareLink(){
+  const msg=$('sh-msg'), text="L'appli MicroPort Cardioflow (BL, dépôts, centres) : ouvre ce lien dans Safari puis Partager › « Sur l'écran d'accueil ».";
+  try{ if(navigator.share){ await navigator.share({title:'MicroPort Cardioflow',text,url:AppSync.APP_URL}); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
+  try{ await navigator.clipboard.writeText(AppSync.APP_URL); say(msg,'Lien copié : '+AppSync.APP_URL,'ok'); }catch(e){ say(msg,AppSync.APP_URL,'ok'); }
+}
+async function receivePkg(f,msg){
+  say(msg,'Lecture du fichier…');
+  const data=JSON.parse(await f.text());
+  if(!data || data.app!=='mp-cardioflow' || !data.tables) throw new Error("ce fichier ne vient pas de l'application");
+  say(msg,'Fusion des données…');
+  const s=await AppSync.mergePackage(data);
+  Object.keys(thumbCache).forEach(k=>delete thumbCache[k]); BASE=null;
+  say(msg,'✅ Données'+(data.from?' de '+data.from:'')+' reçues : '+AppSync.summary(s)+'.','ok');
+  try{ await loadList(); }catch(e){} try{ await paintStorage(); }catch(e){}
+}
+$('sy-file').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return; const msg=$('sy-msg');
+  try{ await receivePkg(f,msg); }catch(err){ console.error(err); say(msg,'❌ Réception impossible : '+(err.message||err),'bad'); }
 });
 
 /* ================= Stockage & hors ligne ================= */
