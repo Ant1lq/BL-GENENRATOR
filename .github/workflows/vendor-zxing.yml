@@ -1,0 +1,40 @@
+# Copie le lecteur de codes-barres (zxing-wasm) dans le dépôt, pour que l'appli ne dépende
+# d'aucun site extérieur. Se lance quand ce fichier change, ou à la main (onglet Actions).
+name: Lecteur de codes-barres local
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vendor-zxing.yml']
+permissions:
+  contents: write
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Télécharger zxing-wasm (version 2 figée)
+        run: |
+          V=$(npm view zxing-wasm@2 version | tail -1)
+          echo "Version : $V"
+          npm pack "zxing-wasm@$V" --silent
+          tar xzf zxing-wasm-*.tgz
+          mkdir -p assets/vendor/zxing
+          cp package/dist/iife/reader/index.js assets/vendor/zxing/reader.js
+          W=$(find package/dist -name 'zxing_reader.wasm' | head -1)
+          test -n "$W"
+          cp "$W" assets/vendor/zxing/zxing_reader.wasm
+          cp package/LICENSE assets/vendor/zxing/LICENSE 2>/dev/null || true
+          echo "$V" > assets/vendor/zxing/VERSION
+          ls -la assets/vendor/zxing
+          grep -o 'prepareZXingModule\|setZXingModuleOverrides\|locateFile' assets/vendor/zxing/reader.js | sort | uniq -c
+          rm -rf package zxing-wasm-*.tgz
+      - name: Enregistrer dans le dépôt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add assets/vendor/zxing
+          git diff --cached --quiet && echo "Déjà à jour" || (git commit -m "Lecteur de codes-barres zxing-wasm $(cat assets/vendor/zxing/VERSION) inclus dans l'appli" && git push)
