@@ -631,6 +631,8 @@
         .cd-headrow { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
         .cd-starbtn { background: #fff; border-color: #dbe3ec; color: #475569; }
         .cd-starbtn.on { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+        .cd-impbtn { width: 100%; justify-content: center; padding: 11px; font-size: 13px; margin: -4px 0 12px; background: #fff; border-color: #dbe3ec; color: #475569; }
+        .cd-impbtn.on { background: #ecfdf5; border-color: #a7f3d0; color: #15803d; }
         .cd-card { background: #fff; border: 1.5px solid var(--border-color); border-radius: 18px; padding: 14px; margin-bottom: 12px; }
         .cd-card h4 { margin: 0 0 12px; font-size: 14.5px; font-weight: 850; color: var(--blue-mp); display: flex; align-items: center; gap: 8px; }
         .cd-count { margin-left: auto; background: #eef2f7; color: #475569; border-radius: 99px; padding: 1px 9px; font-size: 12px; }
@@ -1120,6 +1122,7 @@
                     </div>
                     <div class="cm-filters">
                         <button id="cf-all" class="cm-chip on" onclick="setCentersFilter('all')">Tous</button>
+                        <button id="cf-imp" class="cm-chip" onclick="setCentersFilter('imp')">✅ Implanteurs</button>
                         <button id="cf-sector" class="cm-chip" onclick="setCentersFilter('sector')">⭐ Mon secteur</button>
                         <button id="cf-todo" class="cm-chip" onclick="setCentersFilter('todo')">À compléter</button>
                         <button id="cf-inv" class="cm-chip" onclick="setCentersFilter('inv')">📋 À inventorier</button>
@@ -1171,7 +1174,7 @@
         <label class="btn-mini edit" style="justify-content:center; padding:11px; font-size:13px; margin-bottom:10px; cursor:pointer;">📄 <span id="hub-xl-btn">Charger le fichier Excel</span><input type="file" id="hub-xl-file" accept=".xlsx,.xls,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none;" onchange="hubLoadExcel(this)"></label>
         <div id="hub-imp-opts" style="display:none;">
             <div class="form-group" style="margin-bottom:8px;"><label>Vendeur (secteur)</label><select id="hub-vendor" onchange="hubAnalyse()"></select></div>
-            <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-size:13px; color:var(--text-main); font-weight:700; margin:0 0 6px;"><input type="checkbox" id="hub-sector" checked style="width:20px;height:20px;"> Ajouter à mon secteur (proposés aux BL)</label>
+            <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-size:13px; color:var(--text-main); font-weight:700; margin:0 0 6px;"><input type="checkbox" id="hub-sector" style="width:20px;height:20px;"> Marquer comme implanteurs (proposés dans les BL)</label>
             <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-size:13px; color:var(--text-main); font-weight:700; margin:0 0 6px;"><input type="checkbox" id="hub-cab" onchange="hubAnalyse()" style="width:20px;height:20px;"> Inclure les cabinets de médecins</label>
             <div id="hub-imp-sum" style="font-size:12px; color:var(--text-muted); margin:4px 0;"></div>
         </div>
@@ -1331,8 +1334,8 @@
                 ({ data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url, mail_bl, mail_pharmacie').order('nom', { ascending: true }));
             }
             if (errC) throw errC;
-            // Tous les centres sont gérés ici (y compris ceux importés depuis l'Excel) ; le BL propose ceux du secteur,
-            // ou à défaut les centres implanteurs.
+            // Tous les centres sont gérés ici (y compris ceux importés depuis l'Excel) ; le BL ne propose que
+            // les centres implanteurs (ceux de mon secteur parmi eux, s'il y en a).
             dbCloudCentres = centres || [];
             // Listes de destinataires propres au compte connecté (priment sur celles de la fiche centre, pour ce compte uniquement)
             await loadMyMailLists();
@@ -1405,7 +1408,8 @@
             // Aucun centre présélectionné : l'établissement doit être choisi avant de continuer
             cSel.add(new Option("— Choisir l'établissement —", ""));
 
-            let filteredCentres = dbCloudCentres.filter(c => linkedCenterNames.includes(c.nom));
+            const implanteurs = dbCloudCentres.filter(c => c.implanteur !== false);
+            let filteredCentres = implanteurs.filter(c => linkedCenterNames.includes(c.nom));
 
             if (filteredCentres.length === 0) {
                 dbCloudCentres.filter(c => c.implanteur !== false).forEach(c => cSel.add(new Option(c.nom, c.nom)));
@@ -1614,7 +1618,7 @@
     }
     function setCentersFilter(f) {
         centersFilter = f;
-        ['all', 'sector', 'todo', 'inv', 'maj'].forEach(k => document.getElementById('cf-' + k).classList.toggle('on', k === f));
+        ['all', 'imp', 'sector', 'todo', 'inv', 'maj'].forEach(k => document.getElementById('cf-' + k).classList.toggle('on', k === f));
         renderCentersList();
     }
     function centerMailCount(c) {
@@ -1624,6 +1628,7 @@
     function hubTags(c) {
         const i = hubInfo(c), t = [];
         const tag = (cls, txt) => `<span class="cm-tag ${cls}">${txt}</span>`;
+        if (c.implanteur !== false) t.push(tag('ok', '✅ BL'));
         if (i.x) {
             if (i.st === 'todo') t.push(tag('ko', '📋 Inventaire à faire'));
             else if (i.st === 'fait') t.push(tag('ok', '📋 Inventaire fait' + (i.prog[0] ? ' ' + hubDate(i.prog[0].date) : '')));
@@ -1660,7 +1665,9 @@
         listDiv.innerHTML = "";
         let filtered = dbCloudCentres.filter(c => !search || norm(c.nom + ' ' + (c.adresse || '') + ' ' + (c.code_client || '')).includes(search));
         if (centersFilter === 'sector') filtered = filtered.filter(c => sectorNames.has(c.nom));
+        if (centersFilter === 'imp') filtered = filtered.filter(c => c.implanteur !== false);
         if (centersFilter === 'todo') filtered = filtered.filter(centerMissing);
+        document.getElementById('cf-imp').innerText = `✅ Implanteurs (${dbCloudCentres.filter(c => c.implanteur !== false).length})`;
         const isInv = c => hubInfo(c).st === 'todo', isMaj = c => hubInfo(c).old > 0;
         if (centersFilter === 'inv') filtered = filtered.filter(isInv);
         if (centersFilter === 'maj') filtered = filtered.filter(isMaj);
@@ -1899,6 +1906,15 @@
         imgEl.parentElement.innerHTML = `<p style="font-size:11px; color:var(--palette-vibrant-red); font-weight:700; margin:4px 0;">⚠️ Image introuvable à cette adresse :</p><p style="font-size:9.5px; color:#94a3b8; word-break:break-all; margin:0;">${url}</p>`;
     }
 
+    async function toggleImplanteur() {
+        const c = dbCloudCentres.find(x => x.nom === currentCenterDetail); if (!c) return;
+        const v = c.implanteur === false;
+        try {
+            const { error } = await _supabase.from('centres').update({ implanteur: v }).eq('id', c.id); if (error) throw error;
+            c.implanteur = v; renderCenterDetail(); renderCentersList(); updateDynamicStocksAndFilter();
+            document.getElementById('admin-global-status').innerText = v ? "✅ Centre proposé dans les BL." : "Centre retiré des BL.";
+        } catch (e) { console.error(e); document.getElementById('admin-global-status').innerText = "❌ Modification impossible."; }
+    }
     function hubInvBlock(title, list, type, c) {
         const r = list[0];
         const counts = x => [x.ok != null ? `${x.ok} conforme${x.ok > 1 ? 's' : ''}` : '', x.ecarts ? `${x.ecarts} écart${x.ecarts > 1 ? 's' : ''}` : '', x.vides ? `${x.vides} sans valeur` : '', x.lignes ? `${x.lignes} lignes` : ''].filter(Boolean).join(' · ');
@@ -2076,14 +2092,13 @@
                 await _supabase.from('centres').update(upd).eq('id', m.id);
             }
             let nSec = 0;
-            if (toSector && ing) {
-                const names2 = payload.map(p => p.nom).concat(toLink.map(r => r.match.nom)).filter(n => !sectorNames.has(n));
-                if (names2.length) { const { error } = await _supabase.from('engineer_centers').insert(names2.map(n => ({ engineer_name: ing, center_name: n }))); if (!error) nSec = names2.length; }
+            if (toSector) {   // nouveaux centres marqués implanteurs (les centres existants gardent leur réglage)
+                for (const p of payload) { const { error } = await _supabase.from('centres').update({ implanteur: true }).eq('nom', p.nom); if (!error) nSec++; }
             }
             await synchroniserDonneesDepuisCloud();
             await refreshCentersList();
             const approx = payload.filter(p => !p.geo_src || p.geo_src === 'commune').length;
-            st.innerText = `✅ ${payload.length} centre${payload.length > 1 ? 's' : ''} ajouté${payload.length > 1 ? 's' : ''}` + (toLink.length ? `, ${toLink.length} associé${toLink.length > 1 ? 's' : ''}` : '') + (nSec ? ` · ${nSec} dans votre secteur` : '') + (approx ? `. ${approx} adresse${approx > 1 ? 's' : ''} à compléter (fiche du centre).` : '.');
+            st.innerText = `✅ ${payload.length} centre${payload.length > 1 ? 's' : ''} ajouté${payload.length > 1 ? 's' : ''}` + (toLink.length ? `, ${toLink.length} associé${toLink.length > 1 ? 's' : ''}` : '') + (nSec ? ` · ${nSec} marqué${nSec > 1 ? 's' : ''} implanteur${nSec > 1 ? 's' : ''}` : '') + (approx ? `. ${approx} adresse${approx > 1 ? 's' : ''} à compléter (fiche du centre).` : '.');
             HUBI.busy = false; hubAnalyse();
         } catch (e) { console.error(e); HUBI.busy = false; hubUpdGo(); st.innerText = '❌ Import interrompu : ' + (e.message || e); }
     }
@@ -2145,6 +2160,7 @@
                 <button class="btn-mini edit" onclick="closeCenterDetail()">‹ Centres</button>
                 <button class="btn-mini cd-starbtn ${inSector ? 'on' : ''}" id="cd-star" onclick="toggleSector(currentCenterDetail)">${inSector ? '⭐ Dans mon secteur' : '☆ Ajouter à mon secteur'}</button>
             </div>
+            <button class="btn-mini cd-impbtn ${centreData.implanteur !== false ? 'on' : ''}" onclick="toggleImplanteur()">${centreData.implanteur !== false ? '✅ Implanteur : proposé dans les BL' : '◻️ Pas implanteur : absent des BL (toucher pour l\'ajouter)'}</button>
 
             <section class="cd-card">
                 <h4>🏥 Coordonnées</h4>
