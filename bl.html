@@ -19,6 +19,7 @@
     <script src="assets/vendor/tesseract/tesseract.min.js"></script>
     <script src="assets/local-db.js"></script>
     <script src="assets/scan.js"></script>
+    <script src="assets/centres-xl.js"></script>
 
     <style>
         :root { 
@@ -606,6 +607,26 @@
         .cm-tag { font-size: 11px; font-weight: 800; border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
         .cm-tag.ok { background: #ecfdf5; color: #15803d; }
         .cm-tag.ko { background: #fff7ed; color: #b45309; }
+        .cm-tag.nt { background: #eef2ff; color: #3730a3; }
+        .cm-tag.rd { background: #fef2f2; color: #b91c1c; }
+        .cm-xl { flex: 0 0 50px; height: 50px; border-radius: 14px; border: 1.5px solid #dbe3ec; background: #fff; color: var(--blue-mp); font-size: 20px; cursor: pointer; }
+        .hub-line { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 7px 0; border-bottom: 1px solid #eef2f7; }
+        .hub-line:last-of-type { border-bottom: none; }
+        .hub-line b { color: var(--text-main); font-weight: 800; text-align: right; }
+        .hub-line span { color: var(--text-muted); }
+        .hub-inv { background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; margin-top: 10px; }
+        .hub-inv .t { font-size: 13px; font-weight: 850; color: var(--text-main); }
+        .hub-inv .m { font-size: 12px; color: var(--text-muted); margin: 3px 0 8px; }
+        .hub-old { font-size: 12px; margin-top: 8px; }
+        .hub-old summary { cursor: pointer; color: var(--blue-mp); font-weight: 750; }
+        .hub-old a { display: block; padding: 6px 0; color: var(--text-main); text-decoration: none; border-bottom: 1px solid #eef2f7; }
+        .hub-pick { display: block; width: 100%; text-align: left; background: #fff; border: 1.5px solid var(--border-color); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+        .hub-pick .n { font-size: 14px; font-weight: 800; color: var(--text-main); }
+        .hub-pick .m { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .hub-imp { display: flex; gap: 10px; align-items: flex-start; padding: 10px 2px; border-bottom: 1px solid #eef2f7; }
+        .hub-imp input { width: 22px; height: 22px; flex: 0 0 22px; margin-top: 2px; }
+        .hub-imp .n { font-size: 14px; font-weight: 800; color: var(--text-main); }
+        .hub-imp .m { font-size: 12px; color: var(--text-muted); margin: 2px 0 4px; }
         .cm-chev { color: #94a3b8; font-size: 20px; flex: 0 0 auto; }
         .cd-headrow { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
         .cd-starbtn { background: #fff; border-color: #dbe3ec; color: #475569; }
@@ -1094,12 +1115,15 @@
                 <div id="centers-list-view">
                     <div class="cm-searchrow">
                         <input type="text" id="centers-search" placeholder="🔎 Rechercher un centre…" oninput="renderCentersList()">
+                        <button class="cm-xl" onclick="openHubImport()" aria-label="Importer des centres depuis l'Excel">📥</button>
                         <button class="cm-add" onclick="openNewCenterModal()" aria-label="Créer un centre">＋</button>
                     </div>
                     <div class="cm-filters">
                         <button id="cf-all" class="cm-chip on" onclick="setCentersFilter('all')">Tous</button>
                         <button id="cf-sector" class="cm-chip" onclick="setCentersFilter('sector')">⭐ Mon secteur</button>
                         <button id="cf-todo" class="cm-chip" onclick="setCentersFilter('todo')">À compléter</button>
+                        <button id="cf-inv" class="cm-chip" onclick="setCentersFilter('inv')">📋 À inventorier</button>
+                        <button id="cf-maj" class="cm-chip" onclick="setCentersFilter('maj')">⬆️ MAJ prog</button>
                     </div>
                     <div id="centers-hint" class="cm-hint"></div>
                     <div id="centers-list"></div>
@@ -1137,6 +1161,39 @@
             <button class="btn-primary-ios" id="btn-create-center" style="padding:14px; font-size:14px;" onclick="submitNouveauCentre()">CRÉER ✅</button>
         </div>
         <p style="font-size:10.5px; color:var(--text-muted); text-align:center; margin-top:10px; margin-bottom:0;">Vous pourrez ajouter les médecins et le tampon juste après, sur la fiche du centre.</p>
+    </div>
+</div>
+
+<div id="hub-import-modal" class="ios-modal">
+    <div class="ios-modal-content" style="max-height:92vh; display:flex; flex-direction:column;">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">📥 Centres de l'Excel</h3>
+        <div id="hub-xl-info" style="font-size:12.5px; color:var(--text-muted); line-height:1.35; margin-bottom:8px;"></div>
+        <label class="btn-mini edit" style="justify-content:center; padding:11px; font-size:13px; margin-bottom:10px; cursor:pointer;">📄 <span id="hub-xl-btn">Charger le fichier Excel</span><input type="file" id="hub-xl-file" accept=".xlsx,.xls,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none;" onchange="hubLoadExcel(this)"></label>
+        <div id="hub-imp-opts" style="display:none;">
+            <div class="form-group" style="margin-bottom:8px;"><label>Vendeur (secteur)</label><select id="hub-vendor" onchange="hubAnalyse()"></select></div>
+            <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-size:13px; color:var(--text-main); font-weight:700; margin:0 0 6px;"><input type="checkbox" id="hub-sector" checked style="width:20px;height:20px;"> Ajouter à mon secteur (proposés aux BL)</label>
+            <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-size:13px; color:var(--text-main); font-weight:700; margin:0 0 6px;"><input type="checkbox" id="hub-cab" onchange="hubAnalyse()" style="width:20px;height:20px;"> Inclure les cabinets de médecins</label>
+            <div id="hub-imp-sum" style="font-size:12px; color:var(--text-muted); margin:4px 0;"></div>
+        </div>
+        <div id="hub-imp-list" style="flex:1; overflow-y:auto; min-height:0; -webkit-overflow-scrolling:touch;"></div>
+        <div id="hub-imp-status" style="font-size:12px; font-weight:800; text-align:center; color:var(--palette-royal-blue); min-height:16px; margin:6px 0;"></div>
+        <div class="grid-2 modal-footer" style="margin-top:4px;">
+            <button class="btn-mini edit" style="padding:13px; justify-content:center;" onclick="closeHubImport()">Fermer</button>
+            <button class="btn-primary-ios" id="hub-imp-go" style="padding:13px; font-size:14px;" disabled onclick="hubRunImport()">Importer</button>
+        </div>
+    </div>
+</div>
+
+<div id="hub-link-modal" class="ios-modal">
+    <div class="ios-modal-content" style="max-height:88vh; display:flex; flex-direction:column;">
+        <h3 style="margin-top:0; color:var(--blue-mp); font-size:16px; text-align:center; font-weight:bold;">🔗 Entrée de l'Excel</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px; line-height:1.35;">Choisissez la ligne de l'Excel qui correspond à ce centre : inventaire prog, statut et tampon seront partagés.</p>
+        <input type="text" id="hub-link-q" placeholder="🔎 Rechercher dans l'Excel…" oninput="hubDrawLink()" style="margin-bottom:8px;">
+        <div id="hub-link-list" style="flex:1; overflow-y:auto; min-height:0; -webkit-overflow-scrolling:touch;"></div>
+        <div class="grid-2 modal-footer" style="margin-top:8px;">
+            <button class="btn-mini edit" style="padding:13px; justify-content:center;" onclick="document.getElementById('hub-link-modal').style.display='none'">Annuler</button>
+            <button class="btn-mini edit" style="padding:13px; justify-content:center;" onclick="hubSetLink('-')">Aucune correspondance</button>
+        </div>
     </div>
 </div>
 
@@ -1269,13 +1326,14 @@
 
     async function synchroniserDonneesDepuisCloud() {
         try {
-            let { data: centres, error: errC } = await _supabase.from('centres').select('id, nom, adresse, tampon_url, tampon_src, tampon_edit, mail_bl, mail_pharmacie, implanteur').order('nom', { ascending: true });
+            let { data: centres, error: errC } = await _supabase.from('centres').select('id, nom, adresse, tampon_url, tampon_src, tampon_edit, mail_bl, mail_pharmacie, implanteur, code_client, vendeur').order('nom', { ascending: true });
             if (errC) { // colonne « implanteur » absente : ancienne structure
                 ({ data: centres, error: errC } = await _supabase.from('centres').select('nom, adresse, tampon_url, mail_bl, mail_pharmacie').order('nom', { ascending: true }));
             }
             if (errC) throw errC;
-            // Seuls les centres implanteurs servent aux BL (les centres importés depuis l'inventaire restent sur la carte)
-            dbCloudCentres = (centres || []).filter(c => c.implanteur !== false);
+            // Tous les centres sont gérés ici (y compris ceux importés depuis l'Excel) ; le BL propose ceux du secteur,
+            // ou à défaut les centres implanteurs.
+            dbCloudCentres = centres || [];
             // Listes de destinataires propres au compte connecté (priment sur celles de la fiche centre, pour ce compte uniquement)
             await loadMyMailLists();
 
@@ -1350,7 +1408,7 @@
             let filteredCentres = dbCloudCentres.filter(c => linkedCenterNames.includes(c.nom));
 
             if (filteredCentres.length === 0) {
-                dbCloudCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
+                dbCloudCentres.filter(c => c.implanteur !== false).forEach(c => cSel.add(new Option(c.nom, c.nom)));
             } else {
                 filteredCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
             }
@@ -1364,7 +1422,7 @@
             if(cSel) {
                 cSel.innerHTML = "";
                 cSel.add(new Option("— Choisir l'établissement —", ""));
-                dbCloudCentres.forEach(c => cSel.add(new Option(c.nom, c.nom)));
+                dbCloudCentres.filter(c => c.implanteur !== false).forEach(c => cSel.add(new Option(c.nom, c.nom)));
                 markCentreChoice();
                 await loadMedecinsDuCentre();
             }
@@ -1537,15 +1595,44 @@
             doctorCounts = {}; (meds.data || []).forEach(m => { doctorCounts[m.centre_nom] = (doctorCounts[m.centre_nom] || 0) + 1; });
         } catch (e) { console.error(e); }
     }
-    async function refreshCentersList() { await loadCentersExtras(); renderCentersList(); }
+    async function refreshCentersList() { await Promise.all([loadCentersExtras(), loadHub()]); renderCentersList(); }
+
+    // ====== Excel des dépôts + historique des inventaires (communs avec Dépôts et Carte) ======
+    const HUB = { xl: null, inv: [] };
+    async function loadHub() {
+        if (!window.CXL) return;
+        try { const [xl, inv] = await Promise.all([CXL.loadXl(), CXL.listInv()]); HUB.xl = xl; HUB.inv = inv; } catch (e) { console.error(e); }
+    }
+    const hubEsc = v => String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const hubDate = iso => { try { return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch (e) { return ''; } };
+    function hubInfo(c) {
+        const m = (window.CXL && HUB.xl) ? CXL.xlOf(c, HUB.xl) : null;
+        const x = m && m.x ? m.x : null;
+        const prog = window.CXL ? CXL.invFor(c, HUB.inv, 'prog') : [], crm = window.CXL ? CXL.invFor(c, HUB.inv, 'crm') : [];
+        const st = x ? CXL.progStatus(x, HUB.xl, prog[0]) : 'unk';
+        return { m, x, auto: !!(m && m.auto), missing: !!(m && m.missing), prog, crm, st, old: x ? (x.old || 0) : 0 };
+    }
     function setCentersFilter(f) {
         centersFilter = f;
-        ['all', 'sector', 'todo'].forEach(k => document.getElementById('cf-' + k).classList.toggle('on', k === f));
+        ['all', 'sector', 'todo', 'inv', 'maj'].forEach(k => document.getElementById('cf-' + k).classList.toggle('on', k === f));
         renderCentersList();
     }
     function centerMailCount(c) {
         const ov = mailOverrides[c.id], raw = ((ov && ov.mail_bl != null) ? ov.mail_bl : c.mail_bl) || '';
         return raw.split(/[;,\s]+/).filter(a => a.includes('@')).length;
+    }
+    function hubTags(c) {
+        const i = hubInfo(c), t = [];
+        const tag = (cls, txt) => `<span class="cm-tag ${cls}">${txt}</span>`;
+        if (i.x) {
+            if (i.st === 'todo') t.push(tag('ko', '📋 Inventaire à faire'));
+            else if (i.st === 'fait') t.push(tag('ok', '📋 Inventaire fait' + (i.prog[0] ? ' ' + hubDate(i.prog[0].date) : '')));
+            else t.push(tag('nt', '📋 Excel'));
+            if (i.old > 0) t.push(tag('rd', `⬆️ ${i.old} MAJ prog`));
+            if (i.auto) t.push(tag('nt', 'Excel à confirmer'));
+        } else if (i.missing) t.push(tag('ko', 'Absent du dernier Excel'));
+        if (i.crm[0]) t.push(tag('nt', '🦴 Prothèse ' + hubDate(i.crm[0].date)));
+        return t.join('');
     }
     function centerMissing(c) { return !doctorCounts[c.nom] || !c.tampon_url || !centerMailCount(c); }
     async function toggleSector(nom, ev) {
@@ -1571,9 +1658,16 @@
         const norm = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
         const search = norm(searchEl && searchEl.value ? searchEl.value.trim() : '');
         listDiv.innerHTML = "";
-        let filtered = dbCloudCentres.filter(c => !search || norm(c.nom + ' ' + (c.adresse || '')).includes(search));
+        let filtered = dbCloudCentres.filter(c => !search || norm(c.nom + ' ' + (c.adresse || '') + ' ' + (c.code_client || '')).includes(search));
         if (centersFilter === 'sector') filtered = filtered.filter(c => sectorNames.has(c.nom));
         if (centersFilter === 'todo') filtered = filtered.filter(centerMissing);
+        const isInv = c => hubInfo(c).st === 'todo', isMaj = c => hubInfo(c).old > 0;
+        if (centersFilter === 'inv') filtered = filtered.filter(isInv);
+        if (centersFilter === 'maj') filtered = filtered.filter(isMaj);
+        const hasXl = !!(HUB.xl && HUB.xl.list.length);
+        ['inv', 'maj'].forEach(k => { document.getElementById('cf-' + k).style.display = hasXl ? '' : 'none'; });
+        document.getElementById('cf-inv').innerText = `📋 À inventorier (${dbCloudCentres.filter(isInv).length})`;
+        document.getElementById('cf-maj').innerText = `⬆️ MAJ prog (${dbCloudCentres.filter(isMaj).length})`;
         const nSector = dbCloudCentres.filter(c => sectorNames.has(c.nom)).length;
         document.getElementById('cf-all').innerText = `Tous (${dbCloudCentres.length})`;
         document.getElementById('cf-sector').innerText = `⭐ Mon secteur (${nSector})`;
@@ -1595,7 +1689,7 @@
                 <div class="cm-main">
                     <div class="cm-name"></div>
                     <div class="cm-adr"></div>
-                    <div class="cm-tags">${tag(nd > 0, nd > 0 ? `👨‍⚕️ ${nd} médecin${nd > 1 ? 's' : ''}` : 'Aucun médecin')}${tag(!!c.tampon_url, c.tampon_url ? '🖋️ Tampon' : 'Pas de tampon')}${tag(nm > 0, nm > 0 ? `✉️ ${nm} destinataire${nm > 1 ? 's' : ''}` : 'Pas de mail')}</div>
+                    <div class="cm-tags">${tag(nd > 0, nd > 0 ? `👨‍⚕️ ${nd} médecin${nd > 1 ? 's' : ''}` : 'Aucun médecin')}${tag(!!c.tampon_url, c.tampon_url ? '🖋️ Tampon' : 'Pas de tampon')}${tag(nm > 0, nm > 0 ? `✉️ ${nm} destinataire${nm > 1 ? 's' : ''}` : 'Pas de mail')}${hubTags(c)}</div>
                 </div>
                 <span class="cm-chev">›</span>`;
             row.querySelector('.cm-name').textContent = c.nom;
@@ -1805,7 +1899,197 @@
         imgEl.parentElement.innerHTML = `<p style="font-size:11px; color:var(--palette-vibrant-red); font-weight:700; margin:4px 0;">⚠️ Image introuvable à cette adresse :</p><p style="font-size:9.5px; color:#94a3b8; word-break:break-all; margin:0;">${url}</p>`;
     }
 
+    function hubInvBlock(title, list, type, c) {
+        const r = list[0];
+        const counts = x => [x.ok != null ? `${x.ok} conforme${x.ok > 1 ? 's' : ''}` : '', x.ecarts ? `${x.ecarts} écart${x.ecarts > 1 ? 's' : ''}` : '', x.vides ? `${x.vides} sans valeur` : '', x.lignes ? `${x.lignes} lignes` : ''].filter(Boolean).join(' · ');
+        const go = type === 'prog'
+            ? (c.x ? `<a class="btn-mini sign" style="text-decoration:none;" href="depot.html?m=prog&cc=${encodeURIComponent(c.x.cc)}">📋 Faire l'inventaire</a>` : '')
+            : `<a class="btn-mini sign" style="text-decoration:none;" href="depot.html">📋 Nouvel inventaire</a>`;
+        if (!r) return `<div class="hub-inv"><div class="t">${title}</div><div class="m">Aucun inventaire enregistré sur cet appareil.</div>${go ? `<div class="cd-btnrow">${go}</div>` : ''}</div>`;
+        const older = list.slice(1).map(o => `<a href="#" onclick="hubOpenInv(${o.id}); return false;">📄 ${hubDate(o.date)} · ${hubEsc(counts(o))}</a>`).join('');
+        return `<div class="hub-inv"><div class="t">${title} : ${hubDate(r.date)}</div><div class="m">${hubEsc(counts(r))}</div>
+            <div class="cd-btnrow"><button class="btn-mini sign" onclick="hubOpenInv(${r.id})">📄 Ouvrir</button><button class="btn-mini sign" onclick="hubShareInv(${r.id})">↗️ Partager</button>${go}</div>
+            ${older ? `<details class="hub-old"><summary>Précédents (${list.length - 1})</summary>${older}</details>` : ''}</div>`;
+    }
+    function hubCardHtml(centre) {
+        if (!window.CXL) return '';
+        const i = hubInfo(centre), xl = HUB.xl, x = i.x;
+        let excel;
+        if (!xl || !xl.list.length) {
+            excel = `<p class="cd-none" style="text-align:left; padding:4px 0;">Aucun fichier Excel des dépôts sur cet appareil.</p>
+                <div class="cd-btnrow"><button class="btn-mini sign" onclick="openHubImport()">📄 Charger l'Excel</button></div>`;
+        } else if (x) {
+            const lab = { todo: '<b style="color:#b45309">À faire</b>', fait: `<b style="color:#15803d">Fait${i.prog[0] ? ' le ' + hubDate(i.prog[0].date) : ''}</b>`, unk: '<b>Inconnu</b>' }[i.st];
+            const vers = CXL.versTxt(x);
+            excel = `${i.auto ? `<div class="cm-hint" style="display:block; margin:0 0 8px;">Rapprochement proposé avec « ${hubEsc(x.nom)} » : à confirmer.</div>` : ''}
+                <div class="hub-line"><span>Entrée Excel</span><b>${hubEsc(x.nom)}</b></div>
+                <div class="hub-line"><span>Code client · vendeur</span><b>${hubEsc(x.cc)}${x.ve && x.ve !== '-' ? ' · ' + hubEsc(x.ve) : ''}</b></div>
+                <div class="hub-line"><span>Programmateurs en dépôt</span><b>${x.n}</b></div>
+                <div class="hub-line"><span>Inventaire prog</span>${lab}</div>
+                ${vers ? `<div class="hub-line"><span>Versions${xl.maxVer ? ' (réf. v' + hubEsc(xl.maxVer) + ')' : ''}</span><b>${hubEsc(vers)}${i.old > 0 ? `<br><span style="color:#b91c1c">${i.old} à mettre à jour</span>` : ' ✓'}</b></div>` : ''}
+                <div class="cd-btnrow" style="margin-top:8px;">${i.auto ? `<button class="btn-mini sign" onclick="hubSetLink('${hubEsc(x.cc)}')">✓ Confirmer</button>` : ''}<button class="btn-mini edit" onclick="openHubLink()">🔗 ${i.auto ? 'Autre entrée' : 'Changer'}</button></div>`;
+        } else {
+            excel = `<p class="cd-none" style="text-align:left; padding:4px 0;">${i.missing ? `Le code client ${hubEsc(i.m.cc)} n'est plus dans le dernier Excel.` : "Pas d'entrée associée dans l'Excel."}</p>
+                <div class="cd-btnrow"><button class="btn-mini sign" onclick="openHubLink()">🔗 Associer à l'Excel</button></div>`;
+        }
+        const src = xl && xl.data ? `<p class="cd-tip">Excel « ${hubEsc(xl.data.sheet)} » chargé le ${hubDate(xl.data.importedAt)}. Rechargez-le (📥) pour mettre à jour statuts et versions.</p>` : '';
+        return `<section class="cd-card"><h4>📦 Dépôts & inventaires</h4>${excel}
+            ${hubInvBlock('Dernier inventaire prog', i.prog, 'prog', i)}
+            ${hubInvBlock('Dernier inventaire prothèse', i.crm, 'crm', i)}${src}</section>`;
+    }
+    async function hubOpenInv(id) {
+        const r = HUB.inv.find(x => x.id === id); const b = r && await CXL.invBlob(r);
+        if (!b) { document.getElementById('admin-global-status').innerText = "PDF introuvable sur cet appareil."; return; }
+        const u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(u), 60000);
+    }
+    async function hubShareInv(id) {
+        const r = HUB.inv.find(x => x.id === id); const b = r && await CXL.invBlob(r);
+        if (!b) { document.getElementById('admin-global-status').innerText = "PDF introuvable sur cet appareil."; return; }
+        const f = new File([b], r.file_name || 'inventaire.pdf', { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f] }); } catch (e) {} }
+        else hubOpenInv(id);
+    }
+    // ---- Association d'un centre à une entrée de l'Excel ----
+    function openHubLink() {
+        if (!HUB.xl || !HUB.xl.list.length) { openHubImport(); return; }
+        document.getElementById('hub-link-q').value = '';
+        document.getElementById('hub-link-modal').style.display = 'flex';
+        hubDrawLink();
+    }
+    function hubDrawLink() {
+        const c = dbCloudCentres.find(x => x.nom === currentCenterDetail); if (!c) return;
+        const q = CXL.normText(document.getElementById('hub-link-q').value || ''), box = document.getElementById('hub-link-list');
+        const me = { nom: c.nom, dp: CXL.deptOfAddress(c.adresse), commune: CXL.communeOfAddress(c.adresse) };
+        const used = new Map(dbCloudCentres.filter(o => o.code_client && o.code_client !== '-').map(o => [o.code_client, o]));
+        let l = HUB.xl.list.filter(x => !q || CXL.normText(x.nom + ' ' + x.lo + ' ' + x.cc + ' ' + x.ve).includes(q))
+            .map(x => ({ x, s: CXL.similarity(me, x) + (x.ve && x.ve === (localStorage.getItem('lastVendor') || '') ? 1 : 0) }))
+            .sort((a, b) => b.s - a.s || a.x.nom.localeCompare(b.x.nom, 'fr')).slice(0, 60);
+        box.innerHTML = l.map(({ x }) => {
+            const o = used.get(x.cc);
+            return `<button class="hub-pick" onclick="hubSetLink('${hubEsc(x.cc)}')"><div class="n">${hubEsc(x.nom)}${c.code_client === x.cc ? ' ✓' : ''}</div><div class="m">${hubEsc(x.lo)} (${hubEsc(x.dp)}) · ${x.n} prog · ${hubEsc(x.ve || '')}${o && o.id !== c.id ? ' · déjà associé à « ' + hubEsc(o.nom) + ' »' : ''}</div></button>`;
+        }).join('') || "<p class='cm-empty'>Aucune entrée trouvée.</p>";
+    }
+    async function hubSetLink(cc) {
+        const c = dbCloudCentres.find(x => x.nom === currentCenterDetail); if (!c) return;
+        const status = document.getElementById('admin-global-status');
+        try {
+            if (cc !== '-') for (const o of dbCloudCentres.filter(o => o.code_client === cc && o.id !== c.id)) { await _supabase.from('centres').update({ code_client: null }).eq('id', o.id); o.code_client = null; }
+            const upd = { code_client: cc };
+            const x = cc !== '-' && HUB.xl ? HUB.xl.centres.get(cc) : null;
+            if (x && !c.vendeur && x.ve && x.ve !== '-') upd.vendeur = x.ve;
+            const { error } = await _supabase.from('centres').update(upd).eq('id', c.id); if (error) throw error;
+            Object.assign(c, upd);
+            document.getElementById('hub-link-modal').style.display = 'none';
+            status.innerText = cc === '-' ? "Centre marqué sans correspondance dans l'Excel." : "✅ Centre associé à l'Excel.";
+            renderCenterDetail(); renderCentersList();
+        } catch (e) { console.error(e); status.innerText = "❌ Association impossible."; }
+    }
+    // ---- Import de centres depuis l'Excel ----
+    const HUBI = { rows: [] };
+    function openHubImport() {
+        document.getElementById('hub-import-modal').style.display = 'flex';
+        document.getElementById('hub-imp-status').innerText = '';
+        hubPaintImport();
+    }
+    function closeHubImport() { if (HUBI.busy) return; document.getElementById('hub-import-modal').style.display = 'none'; }
+    function hubPaintImport() {
+        const xl = HUB.xl, has = !!(xl && xl.list.length);
+        document.getElementById('hub-xl-info').innerHTML = has
+            ? `Excel « ${hubEsc(xl.data.sheet)} » chargé le ${hubDate(xl.data.importedAt)} : ${xl.list.length} centres. Choisissez votre secteur, puis les centres à ajouter à la liste. Ceux déjà présents sous un autre nom sont simplement associés (tampon, adresse et médecins conservés).`
+            : "Chargez l'Excel des dépôts (le même que dans Dépôts › Inventaire prog) pour importer vos centres.";
+        document.getElementById('hub-xl-btn').innerText = has ? "Mettre à jour l'Excel" : "Charger le fichier Excel";
+        document.getElementById('hub-imp-opts').style.display = has ? 'block' : 'none';
+        if (!has) { document.getElementById('hub-imp-list').innerHTML = ''; document.getElementById('hub-imp-go').disabled = true; return; }
+        const vs = new Map(); xl.list.forEach(c => { if (c.ve && c.ve !== '-') vs.set(c.ve, (vs.get(c.ve) || 0) + 1); });
+        const sel = document.getElementById('hub-vendor'), last = localStorage.getItem('lastVendor') || '';
+        sel.innerHTML = '<option value="">Choisir un vendeur…</option>' + [...vs.entries()].sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([v, n]) => `<option value="${hubEsc(v)}">${hubEsc(v)} — ${n} centre${n > 1 ? 's' : ''}</option>`).join('');
+        if (vs.has(last)) sel.value = last;
+        hubAnalyse();
+    }
+    async function hubLoadExcel(input) {
+        const f = input.files && input.files[0]; input.value = ''; if (!f) return;
+        const st = document.getElementById('hub-imp-status'); st.innerText = "Lecture de l'Excel… ⏳";
+        try { await CXL.importExcelFile(f); await loadHub(); st.innerText = "✅ Excel mis à jour : statuts et versions rafraîchis."; hubPaintImport(); renderCentersList(); }
+        catch (e) { console.error(e); st.innerText = "❌ Lecture impossible : " + (e.message || e); }
+    }
+    function hubAnalyse() {
+        const v = document.getElementById('hub-vendor').value, list = document.getElementById('hub-imp-list'); HUBI.rows = [];
+        if (v) { try { localStorage.setItem('lastVendor', v); } catch (e) {} }
+        if (!v) { list.innerHTML = ''; document.getElementById('hub-imp-sum').innerText = ''; hubUpdGo(); return; }
+        const incl = document.getElementById('hub-cab').checked;
+        const src = HUB.xl.list.filter(c => c.ve === v && (incl || CXL.kindOf(c.nom) !== 'D')).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+        const byCode = new Map(dbCloudCentres.filter(c => c.code_client && c.code_client !== '-').map(c => [c.code_client, c]));
+        // centres pas encore reliés à une ligne de l'Excel (sans code client, ou code absent de cet Excel)
+        const pool = dbCloudCentres.filter(c => !c.code_client || (c.code_client !== '-' && !HUB.xl.centres.has(c.code_client)))
+            .map(c => ({ ...c, dp: CXL.deptOfAddress(c.adresse), commune: CXL.communeOfAddress(c.adresse) }));
+        src.forEach(x => {
+            let st = 'new', match = null;
+            if (byCode.has(x.cc)) { st = 'has'; match = byCode.get(x.cc); }
+            else { const m = CXL.bestMatch({ nom: x.nom, dp: x.dp, commune: x.commune }, pool); if (m) { st = 'dup'; match = dbCloudCentres.find(c => c.id === m.item.id); } }
+            HUBI.rows.push({ x, st, match, checked: st !== 'has' });
+        });
+        const n = k => HUBI.rows.filter(r => r.st === k).length;
+        document.getElementById('hub-imp-sum').innerText = `${src.length} centres : ${n('new')} nouveau${n('new') > 1 ? 'x' : ''}, ${n('dup')} déjà dans la liste sous un autre nom, ${n('has')} déjà associé${n('has') > 1 ? 's' : ''}.`;
+        list.innerHTML = HUBI.rows.map((r, i) => {
+            const b = r.st === 'new' ? '<span class="cm-tag nt">Nouveau</span>' : r.st === 'has' ? `<span class="cm-tag ok">Déjà dans la liste${r.match.nom !== r.x.nom ? ' : ' + hubEsc(r.match.nom) : ''}</span>` : `<span class="cm-tag ko">≈ ${hubEsc(r.match.nom)} — sera associé</span>`;
+            return `<label class="hub-imp"><input type="checkbox" data-i="${i}" ${r.checked ? 'checked' : ''} ${r.st === 'has' ? 'disabled' : ''} onchange="HUBI.rows[${i}].checked=this.checked; hubUpdGo();"><div><div class="n">${hubEsc(r.x.nom)}</div><div class="m">${hubEsc(r.x.lo)} (${hubEsc(r.x.dp)}) · ${r.x.n} prog${r.x.st ? ' · ' + hubEsc(r.x.st) : ''}${r.x.old > 0 ? ' · ' + r.x.old + ' MAJ' : ''}</div>${b}</div></label>`;
+        }).join('') || "<p class='cm-empty'>Aucun centre pour ce vendeur.</p>";
+        hubUpdGo();
+    }
+    function hubUpdGo() {
+        const nN = HUBI.rows.filter(r => r.checked && r.st === 'new').length, nL = HUBI.rows.filter(r => r.checked && r.st === 'dup').length, go = document.getElementById('hub-imp-go');
+        go.disabled = !(nN + nL) || !!HUBI.busy;
+        go.innerText = nN + nL ? (nN ? `Importer ${nN}` : '') + (nN && nL ? ' · ' : '') + (nL ? `Associer ${nL}` : '') : 'Rien à importer';
+    }
+    async function hubRunImport() {
+        const rows = HUBI.rows.filter(r => r.checked && (r.st === 'new' || r.st === 'dup')); if (!rows.length) return;
+        const st = document.getElementById('hub-imp-status'), toSector = document.getElementById('hub-sector').checked, ing = document.getElementById('inIng').value || '';
+        HUBI.busy = true; hubUpdGo();
+        try {
+            const toNew = rows.filter(r => r.st === 'new'), toLink = rows.filter(r => r.st === 'dup');
+            const names = new Set(dbCloudCentres.map(c => CXL.nName(c.nom))), out = [];
+            let i = 0, done = 0;
+            const online = navigator.onLine;
+            async function worker() {
+                while (i < toNew.length) {
+                    const r = toNew[i++], x = r.x;
+                    let g = null;
+                    if (online) { try { g = await CXL.geocodeImport(x.nom, x.lo, x.dp); } catch (e) {} }
+                    if (!g) g = { lat: null, lng: null, adresse: String(x.lo || '').replace(/\bCEDEX\b.*$/i, '').trim() + ' (' + x.dp + ')', src: null };
+                    out.push({ r, g }); done++;
+                    st.innerText = online ? `Recherche des adresses… ${done}/${toNew.length}` : `Préparation… ${done}/${toNew.length}`;
+                }
+            }
+            await Promise.all([worker(), worker(), worker()]);
+            const payload = out.map(({ r, g }) => {
+                let nom = String(r.x.nom).trim().toUpperCase();
+                if (names.has(CXL.nName(nom))) nom = nom + ' – ' + String(r.x.lo).replace(/\bCEDEX\b.*$/i, '').trim().toUpperCase();
+                let k = 2; const base = nom; while (names.has(CXL.nName(nom))) nom = base + ' ' + (k++);
+                names.add(CXL.nName(nom));
+                return { nom, adresse: g.adresse, implanteur: false, lat: g.lat, lng: g.lng, geo_src: g.src, code_client: r.x.cc, vendeur: r.x.ve };
+            });
+            st.innerText = 'Enregistrement… ⏳';
+            if (payload.length) { const { error } = await _supabase.from('centres').insert(payload); if (error) throw error; }
+            for (const r of toLink) {
+                const m = r.match, upd = { code_client: r.x.cc }; if (!m.vendeur && r.x.ve && r.x.ve !== '-') upd.vendeur = r.x.ve;
+                await _supabase.from('centres').update(upd).eq('id', m.id);
+            }
+            let nSec = 0;
+            if (toSector && ing) {
+                const names2 = payload.map(p => p.nom).concat(toLink.map(r => r.match.nom)).filter(n => !sectorNames.has(n));
+                if (names2.length) { const { error } = await _supabase.from('engineer_centers').insert(names2.map(n => ({ engineer_name: ing, center_name: n }))); if (!error) nSec = names2.length; }
+            }
+            await synchroniserDonneesDepuisCloud();
+            await refreshCentersList();
+            const approx = payload.filter(p => !p.geo_src || p.geo_src === 'commune').length;
+            st.innerText = `✅ ${payload.length} centre${payload.length > 1 ? 's' : ''} ajouté${payload.length > 1 ? 's' : ''}` + (toLink.length ? `, ${toLink.length} associé${toLink.length > 1 ? 's' : ''}` : '') + (nSec ? ` · ${nSec} dans votre secteur` : '') + (approx ? `. ${approx} adresse${approx > 1 ? 's' : ''} à compléter (fiche du centre).` : '.');
+            HUBI.busy = false; hubAnalyse();
+        } catch (e) { console.error(e); HUBI.busy = false; hubUpdGo(); st.innerText = '❌ Import interrompu : ' + (e.message || e); }
+    }
+
     async function renderCenterDetail() {
+        if (!HUB.xl) await loadHub();
         const detail = document.getElementById('center-detail-view');
         const centreData = dbCloudCentres.find(c => c.nom === currentCenterDetail);
         if (!centreData) { closeCenterDetail(); return; }
@@ -1867,6 +2151,8 @@
                 <div class="form-group"><label>Nom</label><input type="text" id="cd-nom" value="${esc2(centreData.nom)}"></div>
                 <div class="form-group" style="margin-bottom:0;"><label>Adresse</label><input type="text" id="cd-adr" value="${esc2(centreData.adresse)}"></div>
             </section>
+
+            ${hubCardHtml(centreData)}
 
             <section class="cd-card">
                 <h4>✉️ Destinataires des BL</h4>
@@ -2133,6 +2419,7 @@
             if (error) throw error;
             await deleteTamponFile(oldTamponUrl);
             if (oldRow.tampon_src) await deleteTamponFile(oldRow.tampon_src);
+            if (window.CXL) { try { for (const r of CXL.invFor(oldRow, HUB.inv, 'prog').concat(CXL.invFor(oldRow, HUB.inv, 'crm'))) await CXL.removeInv(r); } catch (e) {} }
 
             status.innerText = "✅ Centre supprimé.";
             closeCenterDetail();

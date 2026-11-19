@@ -825,6 +825,7 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
   <div id="aliasList" style="flex:1;overflow:auto;padding:10px 14px calc(env(safe-area-inset-bottom) + 14px)"></div>
 </div>
 <script src="assets/local-db.js"></script>
+<script src="assets/centres-xl.js"></script>
 <script src="assets/scan.js"></script>
 <script src="assets/vendor/pdf.min.js"></script>
 <script src="assets/vendor/pdf.worker.min.js"></script>
@@ -2139,6 +2140,18 @@ function showResult(bytes,filename){
   box.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 
+// Inventaire généré : gardé dans la fiche du centre (Gestion des centres › Dépôts & inventaires)
+async function saveInvHistory(bytes,filename,missing){
+  if(!window.CXL) return;
+  try{
+    const row=findStampRow(), rows=S.rows;
+    const ok=rows.filter(r=>r.val!==null&&r.val===r.theo).length, ecarts=rows.filter(r=>r.val!==null&&r.val!==r.theo).length;
+    await CXL.addInv({type:S.mode, centre_id:row?row.id:null, centre_nom:row?row.nom:(S.mode==="prog"?S.ctx.et:S.hint),
+      code_client:S.mode==="prog"?S.ctx.cc:((row&&row.code_client&&row.code_client!=="-")?row.code_client:null),
+      excel:S.mode==="prog"?S.ctx.sheet:null, file_name:filename, lignes:rows.length, ok, ecarts, vides:missing}, bytes);
+    const s=$("status"); s.textContent+=" Gardé dans la fiche "+(row?"de « "+row.nom+" »":"du centre")+" (Gestion des centres).";
+  }catch(e){ console.warn("historique",e); }
+}
 function setStatus(msg,cls){ const s=$("status"); s.textContent=msg; s.className="status"+(cls?" "+cls:""); }
 
 async function generate(blank){
@@ -2157,6 +2170,7 @@ async function generate(blank){
     showResult(bytes,filename);
     const missing=blank?0:S.rows.filter(r=>r.val===null).length;
     setStatus("PDF prêt."+(missing?" Attention : "+missing+" ligne(s) sont restées sans valeur.":""),"good");
+    if(!blank) saveInvHistory(bytes,filename,missing);
   }catch(err){
     console.error(err);
     setStatus("La génération a échoué : "+(err && err.message?err.message:"erreur inconnue"),"bad");
