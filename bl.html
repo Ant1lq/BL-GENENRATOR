@@ -1927,7 +1927,7 @@
     }
     function hubInvBlock(title, list, type, c) {
         const r = list[0];
-        const counts = x => [x.ok != null ? `${x.ok} conforme${x.ok > 1 ? 's' : ''}` : '', x.ecarts ? `${x.ecarts} écart${x.ecarts > 1 ? 's' : ''}` : '', x.vides ? `${x.vides} sans valeur` : '', x.lignes ? `${x.lignes} lignes` : ''].filter(Boolean).join(' · ');
+        const counts = x => [x.ok != null ? `${x.ok} conforme${x.ok > 1 ? 's' : ''}` : '', x.ecarts ? `${x.ecarts} écart${x.ecarts > 1 ? 's' : ''}` : '', x.vides ? `${x.vides} sans valeur` : '', x.lignes ? `${x.lignes} lignes` : '', x.hors_listing ? `${x.hors_listing} hors listing` : ''].filter(Boolean).join(' · ');
         const go = type === 'prog'
             ? (c.x ? `<a class="btn-mini sign" style="text-decoration:none;" href="depot.html?m=prog&cc=${encodeURIComponent(c.x.cc)}">📋 Faire l'inventaire</a>` : '')
             : `<a class="btn-mini sign" style="text-decoration:none;" href="depot.html">📋 Nouvel inventaire</a>`;

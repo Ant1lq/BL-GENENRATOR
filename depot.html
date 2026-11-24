@@ -573,6 +573,16 @@ section{margin-bottom:8px}
 .chips button{border:1px solid var(--note);color:var(--note);background:transparent;border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer}
 @media (min-width:720px){.row{grid-template-columns:minmax(0,1.1fr) 190px minmax(0,1.2fr);align-items:start}.app-container{max-width:900px}}
 .final{margin-top:24px;display:grid;gap:18px}
+.xtra{margin-top:14px;background:#fff7ed;border:1.5px dashed #fdba74;border-radius:16px;padding:12px;display:grid;gap:8px}
+.xtraHead{display:flex;justify-content:space-between;align-items:center;color:#9a3412;font-size:14px}
+.xtraHead span{font-size:12px;font-weight:800}
+.xRow{background:#fff;border:1px solid #fed7aa;border-left:5px solid #f97316;border-radius:12px;padding:10px;display:flex;gap:10px;align-items:center}
+.xRow .xi{flex:1;min-width:0}.xRow .xd{font-weight:800;font-size:14px;color:#111827}.xRow .xm{font-size:12px;color:#64748b;margin-top:2px}
+.xRow button{flex:0 0 auto;min-height:40px;padding:0 12px}
+.ovl{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.ovlBox{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+.ovlBox input{width:100%}
+.scanAdd{margin-left:6px;min-height:30px;padding:2px 10px;font-size:12px}
 .final h2{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:.3px;color:var(--blue-mp);font-weight:850}
 .sbNote{font-size:12px;color:var(--muted);margin-top:6px}
 .stampBtns{display:flex;gap:8px;flex-wrap:wrap}
@@ -710,6 +720,13 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 
     <div class="list" id="list"></div>
 
+    <div class="xtra" id="xtra">
+      <div class="xtraHead"><b>➕ Présents hors listing</b><span id="xtraN"></span></div>
+      <div class="hint" id="xtraHint">Un produit est là alors qu'il n'est pas dans la liste ? Ajoutez-le : il apparaîtra dans le PDF et le mail.</div>
+      <div id="xtraList"></div>
+      <button type="button" class="secondary" id="xtraAdd" style="width:100%">➕ Ajouter un produit</button>
+    </div>
+
     <div class="final">
       <h2>3️⃣ Finaliser le document</h2>
 
@@ -815,6 +832,26 @@ dialog>strong{display:block;font-size:15px;font-weight:850;color:var(--blue-mp);
 .zapLine{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .zapLine.ok{color:#86efac}.zapLine.inconnu{color:#fca5a5}
 </style>
+<div id="xDlg" class="ovl" style="display:none" role="dialog" aria-modal="true" aria-labelledby="xDlgT">
+  <div class="ovlBox">
+    <h3 id="xDlgT" style="margin:0 0 4px">Produit présent hors listing</h3>
+    <div class="hint" style="margin-bottom:10px">Seule la désignation est obligatoire.</div>
+    <label class="lbl" for="xDes">Désignation</label><input id="xDes" type="text" placeholder="Ex. ALIZEA DR 6200">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+      <div><label class="lbl" for="xLot">N° de lot / série</label><input id="xLot" type="text" autocapitalize="characters"></div>
+      <div><label class="lbl" for="xCode">Code article</label><input id="xCode" type="text" autocapitalize="characters"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-top:8px">
+      <div><label class="lbl" for="xQty">Quantité</label><input id="xQty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>
+      <div><label class="lbl" for="xNote">Remarque</label><input id="xNote" type="text" placeholder="Facultatif"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+      <button type="button" class="secondary" id="xCancel">Annuler</button>
+      <button type="button" class="primary" id="xOk">Ajouter</button>
+    </div>
+  </div>
+</div>
+
 <div id="alias" style="display:none;position:fixed;inset:0;z-index:9000;background:var(--bg-body,#f4f6fb);flex-direction:column">
   <div style="display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:#fff;border-bottom:1px solid #e2e8f0">
     <button type="button" class="secondary" style="min-height:40px;padding:6px 14px" onclick="document.getElementById('alias').style.display='none'">✕</button>
@@ -1270,12 +1307,53 @@ function applyFilter(){
   ["all","todo","ko"].forEach(f=>$("f-"+f).setAttribute("aria-pressed", String(S.filter===f)));
 }
 
+/* ---------- Produits présents hors listing ---------- */
+function xKey(){ try{ return draftKey()+":x"; }catch(e){ return ""; } }
+function saveExtra(){ const k=xKey(); if(k) lsSet(k,JSON.stringify(S.extra||[])); }
+function loadExtra(){ S.extra=[]; const k=xKey(); if(!k) return; try{ const v=JSON.parse(lsGet(k)||"[]"); if(Array.isArray(v)) S.extra=v.filter(x=>x&&x.des); }catch(e){} }
+function renderExtra(){
+  const box=$("xtraList"); box.replaceChildren(); const l=S.extra||[];
+  $("xtraN").textContent=l.length?l.length+" produit"+(l.length>1?"s":""):"";
+  $("xtraHint").style.display=l.length?"none":"";
+  l.forEach((x,i)=>box.append(h("div",{class:"xRow"},
+    h("div",{class:"xi"},h("div",{class:"xd"},x.des+(x.qty>1?"  ×"+x.qty:"")),
+      h("div",{class:"xm"},[x.lot?"Lot "+x.lot:"",x.code?"Réf. "+x.code:"",x.note||""].filter(Boolean).join(" · ")||"Sans n° de lot")),
+    h("button",{type:"button",class:"secondary",onclick:()=>openExtra(i)},"✎"),
+    h("button",{type:"button",class:"secondary","aria-label":"Retirer",onclick:()=>{ S.extra.splice(i,1); saveExtra(); renderExtra(); }},"✕"))));
+}
+let xEdit=-1;
+function openExtra(i,pre){
+  xEdit=(typeof i==="number")?i:-1;
+  const x=xEdit>=0?S.extra[xEdit]:(pre||{});
+  $("xDes").value=x.des||""; $("xLot").value=x.lot||""; $("xCode").value=x.code||""; $("xQty").value=x.qty||1; $("xNote").value=x.note||"";
+  $("xOk").textContent=xEdit>=0?"Enregistrer":"Ajouter";
+  $("xDlg").style.display="flex"; setTimeout(()=>{ (x.des?$("xLot"):$("xDes")).focus(); },50);
+}
+function addExtra(x){
+  const k=snKey(x.lot);
+  if(k && (S.extra||[]).some(e=>snKey(e.lot)===k)) return false;   // déjà ajouté
+  S.extra.push(x); saveExtra(); renderExtra(); return true;
+}
+$("xtraAdd").addEventListener("click",()=>openExtra());
+$("xCancel").addEventListener("click",()=>{ $("xDlg").style.display="none"; });
+$("xOk").addEventListener("click",()=>{
+  const des=$("xDes").value.trim(); if(!des){ $("xDes").focus(); return; }
+  const x={des,lot:$("xLot").value.trim().toUpperCase(),code:$("xCode").value.trim().toUpperCase(),qty:Math.max(1,parseInt($("xQty").value,10)||1),note:$("xNote").value.trim()};
+  const k=snKey(x.lot);
+  if(k){ const r=S.rows.find(r=>snKey(r.lot)===k); if(r && !confirm("Ce n° de lot est déjà dans la liste (« "+r.des+" »). L'ajouter quand même hors listing ?")) return; }
+  if(xEdit>=0) S.extra[xEdit]=x; else S.extra.push(x);
+  saveExtra(); renderExtra(); $("xDlg").style.display="none";
+});
+// Désignation proposée pour un matériel scanné absent de la liste
+function scanDes(it){ return it.ref || (it.gtin?"GTIN "+it.gtin:"Matériel scanné"); }
+
 function renderAll(){
   const list=$("list"); list.replaceChildren();
   Object.keys(els).forEach(k=>delete els[k]);
   const frag=document.createDocumentFragment();
   S.rows.forEach(r=>frag.append(buildRow(r)));
   list.append(frag);
+  loadExtra(); renderExtra();
   refresh(); applyFilter();
 }
 
@@ -1346,7 +1424,12 @@ function renderScanSummary(stats){
   if(multi) box.append(h("div",null,"ℹ️ "+multi+" lot"+(multi>1?"s":"")+" en plusieurs exemplaires : quantité à saisir à la main."));
   if(inconnus.length){
     box.append(h("div",{style:"margin-top:6px;color:#b45309;font-weight:700"},"⚠️ "+inconnus.length+" scanné"+(inconnus.length>1?"s":"")+" mais absent"+(inconnus.length>1?"s":"")+" de la liste :"));
-    inconnus.forEach(it=>box.append(h("div",null,"• "+it.sn+(it.exp?" — péremption "+fmtFR(it.exp):"")+(it.ref?" — "+it.ref:""))));
+    const isIn=it=>(S.extra||[]).some(e=>snKey(e.lot)===snKey(it.sn));
+    const toX=it=>({des:scanDes(it),lot:String(it.sn||"").toUpperCase(),code:it.ref||"",qty:1,note:it.exp?"Pér. "+fmtFR(it.exp):""});
+    inconnus.forEach(it=>box.append(h("div",null,"• "+it.sn+(it.exp?" — péremption "+fmtFR(it.exp):"")+(it.ref?" — "+it.ref:""),
+      isIn(it)?h("span",{style:"color:#15803d;font-weight:700"}," ✓ ajouté"):h("button",{type:"button",class:"secondary scanAdd",onclick:()=>openExtra(undefined,toX(it))},"➕ Ajouter"))));
+    const rest=inconnus.filter(it=>!isIn(it));
+    if(rest.length>1) box.append(h("button",{type:"button",class:"secondary",style:"margin-top:6px;width:100%",onclick:()=>{ rest.forEach(it=>addExtra(toX(it))); renderScanSummary(stats); }},"➕ Ajouter les "+rest.length+" hors listing"));
   }
 }
 async function scanFiles(files){
@@ -1888,7 +1971,7 @@ function markRow(np,font,r,cx,cy,noteX,noteW){
   if(r.val===null) return;
   const txt=String(r.val), size=txt.length>1?11:14;
   const w=font.widthOfTextAtSize(txt,size);
-  np.drawText(txt,{x:cx-w/2, y:cy-size*0.36, size, font, color:r.val===r.theo?rgb(0.09,0.62,0.30):rgb(0.86,0.12,0.14)});
+  np.drawText(txt,{x:cx-w/2, y:cy-size*0.36, size, font, color:r.xtra?rgb(0.92,0.35,0.05):(r.val===r.theo?rgb(0.09,0.62,0.30):rgb(0.86,0.12,0.14))});
   const note=r.note.trim();
   if(note && noteW>0){
     const {size:ns,lines}=fitNote(note,font,noteW);
@@ -1966,7 +2049,39 @@ async function buildCrmPdf(){
   const rowsLast = S.rows.filter(r=>r.page===lastIdx);
   const lastBottom = rowsLast.length ? Math.min(...rowsLast.map(r=>r.cy))-14 : pages[lastIdx].height-80;
   await drawSignBlock(out,font,pages,lastBottom,margin);
+  await drawExtraAnnex(out);
   return await out.save();
+}
+
+/* Annexe « présents hors listing » (dépôt prothèse) */
+async function drawExtraAnnex(out){
+  const l=S.extra||[]; if(!l.length) return;
+  const {StandardFonts,rgb}=window.PDFLib;
+  const fB=await out.embedFont(StandardFonts.HelveticaBold), fR=await out.embedFont(StandardFonts.Helvetica);
+  const W=595, H=842, L=40, TW=W-80, rowH=20, black=rgb(0.05,0.05,0.05), org=rgb(0.92,0.35,0.05), border=rgb(0.35,0.35,0.35);
+  const cols=[["Désignation",0.36],["N° de lot / série",0.2],["Code article",0.16],["Qté",0.07],["Remarque",0.21]];
+  const xs=[L]; cols.forEach(c=>xs.push(xs[xs.length-1]+c[1]*TW));
+  let np=null, y=0;
+  const head=()=>{
+    np=out.addPage([W,H]); y=H-50;
+    const t1="PRÉSENTS HORS LISTING", t2=clean((S.hint||"")+" — inventaire du "+fmtFR(S.date));
+    np.drawText(t1,{x:L,y,size:15,font:fB,color:org}); y-=18;
+    np.drawText(t2,{x:L,y,size:10,font:fR,color:black}); y-=12;
+    np.drawText(clean("Produits trouvés dans le dépôt mais absents de l'état de dépôt ci-joint."),{x:L,y,size:8.5,font:fR,color:rgb(0.35,0.35,0.35)}); y-=22;
+    np.drawRectangle({x:L,y:y-rowH,width:TW,height:rowH,color:org});
+    cols.forEach((c,i)=>np.drawText(clean(c[0]),{x:xs[i]+4,y:y-rowH+7,size:8,font:fB,color:rgb(1,1,1)}));
+    y-=rowH;
+  };
+  head();
+  l.forEach(x=>{
+    if(y-rowH<60) head();
+    [x.des,x.lot,x.code,String(x.qty||1),x.note].forEach((v,i)=>{
+      np.drawRectangle({x:xs[i],y:y-rowH,width:xs[i+1]-xs[i],height:rowH,borderColor:border,borderWidth:0.4});
+      if(!v) return; const f=fitText(clean(v),i===0||i===1?fB:fR,8.5,xs[i+1]-xs[i]-8,5);
+      np.drawText(f.text,{x:xs[i]+4,y:y-rowH+7,size:f.size,font:i===0||i===1?fB:fR,color:i===3?org:black});
+    });
+    y-=rowH;
+  });
 }
 
 /* ---- Dépôt programmateurs : le tableau est reconstruit à l'identique ---- */
@@ -1982,10 +2097,12 @@ async function buildProgPdf(blank){
   const k=TW/pxw.reduce((a,b)=>a+b,0);
   const xs=[L]; pxw.forEach(w=>xs.push(xs[xs.length-1]+w*k));
   const heads=["Code Clients","Etablissement","Dépt","Localité","Vendeur","Zone","Code Article","Désignation","N° de Lot","Version Smartview","N° CPR4 kit","N° Smart ECG kit","Quantité Théorique","Quantité Comptée"];
-  const hasNotes = !blank && S.rows.some(r=>r.note.trim());
+  const XR = blank ? [] : (S.extra||[]).map(x=>({code:x.code,des:x.des,lot:x.lot,vs:"",k1:"",k2:"",theo:0,val:x.qty||1,note:("Hors listing"+(x.note?" : "+x.note:"")),xtra:true}));
+  const ALL = S.rows.concat(XR);
+  const hasNotes = !blank && ALL.some(r=>r.note.trim());
   const margin = hasNotes ? 200 : 0;
   const perPage = Math.floor((H-bottom-(topY+hdrH))/rowH);
-  const nPages = Math.max(1,Math.ceil(S.rows.length/perPage));
+  const nPages = Math.max(1,Math.ceil(ALL.length/perPage));
   const hdrColor=rgb(0.58,0.21,0.21), border=rgb(0.25,0.25,0.25), black=rgb(0.05,0.05,0.05), white=rgb(1,1,1);
   const pages=[];
   for(let p=0;p<nPages;p++){
@@ -2011,9 +2128,10 @@ async function buildProgPdf(blank){
       });
     });
     // lignes
-    const slice=S.rows.slice(p*perPage,(p+1)*perPage);
+    const slice=ALL.slice(p*perPage,(p+1)*perPage);
     slice.forEach((r,j)=>{
       const yb=H-(topY+hdrH+(j+1)*rowH);
+      if(r.xtra) np.drawRectangle({x:L,y:yb,width:TW,height:rowH,color:rgb(1,0.93,0.84)});
       const vals=[c.cc,c.et,c.dp,c.lo,c.ve,c.zo,r.code,r.des,r.lot,r.vs,r.k1,r.k2,String(r.theo),""];
       vals.forEach((v,i)=>{
         np.drawRectangle({x:xs[i],y:yb,width:xs[i+1]-xs[i],height:rowH,borderColor:border,borderWidth:0.4});
@@ -2029,7 +2147,7 @@ async function buildProgPdf(blank){
     np.drawText(pn,{x:734-pw,y:H-591,size:6,font:fR,color:black});
   }
   if(!blank){
-    const nLast=S.rows.length-(nPages-1)*perPage;
+    const nLast=ALL.length-(nPages-1)*perPage;
     const lastBottom=H-(topY+hdrH+nLast*rowH)-14;
     await drawSignBlock(out,fB,pages,lastBottom,margin);
   }
@@ -2068,9 +2186,12 @@ function buildInventoryMail(){
   let bilan = sep+"\n📦 BILAN\n"+sep+"\n• Lignes inventoriées : "+(rows.length-todo.length)+" / "+rows.length+"\n• Quantité comptée : "+counted+" / "+total;
   if(!gaps.length) bilan += "\n• ✅ Aucun écart : tout le matériel est présent.";
   else bilan += "\n• ⚠️ Écarts : "+gaps.length+" ligne"+(gaps.length>1?"s":"");
+  if((S.extra||[]).length) bilan += "\n• ➕ Présents hors listing : "+S.extra.length+" produit"+(S.extra.length>1?"s":"");
   let det = "";
   if(gaps.length) det += "\n\n"+sep+"\n⚠️ ÉCARTS\n"+sep+"\n"+gaps.map(gapLine).join("\n");
   if(notes.length) det += "\n\n"+sep+"\n📝 REMARQUES\n"+sep+"\n"+notes.map(r=>"   • "+label(r)+" : "+r.note.trim()).join("\n");
+  const xl=S.extra||[];
+  if(xl.length) det += "\n\n"+sep+"\n➕ PRÉSENTS HORS LISTING\n"+sep+"\n"+xl.map(x=>"   • "+x.des+(x.lot?" — lot "+x.lot:"")+(x.code?" (réf. "+x.code+")":"")+(x.qty>1?" ×"+x.qty:"")+(x.note?" : "+x.note:"")).join("\n");
   if(todo.length) det += "\n\n⚠️ "+todo.length+" ligne"+(todo.length>1?"s":"")+" non renseignée"+(todo.length>1?"s":"")+" dans ce document.";
   const body = "Bonjour,\n\nVeuillez trouver ci-joint l'état de "+title.toLowerCase()+" complété pour "+centre+", inventaire réalisé le "+date+".\n\n"+ctx+"\n\n"+bilan+det+"\n\nCordialement,";
   return {subject, body};
@@ -2119,7 +2240,8 @@ async function sendInventory(file,mail){
     window.location.href = method==="outlook" ? "ms-outlook://compose?to="+to+"&"+q : "mailto:"+to+"?"+q;
   }catch(err){ setStatus("Envoi impossible : "+(err&&err.message?err.message:"erreur"),"bad"); }
 }
-window.__inv={getInvMethod,setInvMethod,sendInventory,showResult:(b,f)=>showResult(b,f)};
+window.__inv={getInvMethod,setInvMethod,sendInventory,showResult:(b,f)=>showResult(b,f),
+  annexTest:async(extra)=>{ const keep=S.extra; S.extra=extra; try{ const out=await window.PDFLib.PDFDocument.create(); await drawExtraAnnex(out); return await out.save(); } finally{ S.extra=keep; } }};
 function showResult(bytes,filename){
   clearResult();
   const blob=new Blob([bytes],{type:"application/pdf"});
@@ -2148,7 +2270,7 @@ async function saveInvHistory(bytes,filename,missing){
     const ok=rows.filter(r=>r.val!==null&&r.val===r.theo).length, ecarts=rows.filter(r=>r.val!==null&&r.val!==r.theo).length;
     await CXL.addInv({type:S.mode, centre_id:row?row.id:null, centre_nom:row?row.nom:(S.mode==="prog"?S.ctx.et:S.hint),
       code_client:S.mode==="prog"?S.ctx.cc:((row&&row.code_client&&row.code_client!=="-")?row.code_client:null),
-      excel:S.mode==="prog"?S.ctx.sheet:null, file_name:filename, lignes:rows.length, ok, ecarts, vides:missing}, bytes);
+      excel:S.mode==="prog"?S.ctx.sheet:null, file_name:filename, lignes:rows.length, ok, ecarts, vides:missing, hors_listing:(S.extra||[]).length}, bytes);
     const s=$("status"); s.textContent+=" Gardé dans la fiche "+(row?"de « "+row.nom+" »":"du centre")+" (Gestion des centres).";
   }catch(e){ console.warn("historique",e); }
 }
