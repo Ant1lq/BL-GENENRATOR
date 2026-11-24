@@ -871,6 +871,7 @@
                     <option value="partage">Partage : BL joint, destinataires à coller</option>
                     <option value="outlook">Outlook : tout prérempli, BL à coller</option>
                     <option value="coller">Appli mail par défaut : tout prérempli, BL à coller</option>
+                    <option value="raccourci">Raccourci iPhone : envoi complet par Mail</option>
                 </select>
             </div>
             <div class="act-group">
@@ -4400,7 +4401,8 @@ function removeBg(src,sens){
         h.innerText = { photos: "1. Enregistrez l'image du BL. 2. Le mail s'ouvre tout rempli : ajoutez l'image en pièce jointe.",
                         outlook: "Outlook s'ouvre avec destinataires, objet et texte ; le BL est copié : appui long dans le message, puis Coller.",
                         coller: "L'appli mail par défaut s'ouvre complète ; le BL est copié : appui long dans le texte, puis Coller.",
-                        partage: "Le BL est joint avec le texte. Les destinataires sont copiés : à coller dans « À »." }[getSendMethod()];
+                        partage: "Le BL est joint avec le texte. Les destinataires sont copiés : à coller dans « À ».",
+                        raccourci: "Dans le partage, choisissez « " + LocalDB.SHORTCUT_NAME + " » : destinataires, objet, texte et BL sont envoyés par Mail. (Création du raccourci : Réglages.)" }[getSendMethod()] || '';
     }
     document.addEventListener('DOMContentLoaded', paintSendHint);
     // Texte du mail -> HTML : les caractères « gras Unicode » redeviennent du vrai gras
@@ -4456,6 +4458,15 @@ function removeBg(src,sens){
                 // Texte brut uniquement : Outlook n'interprète pas la mise en forme passée par ce lien
                 const q = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                 window.location.href = method === 'outlook' ? `ms-outlook://compose?to=${to}&${q}` : `mailto:${to}?${q}`;
+            } else if (method === 'raccourci') {
+                // Le texte du mail (destinataires, objet, corps) est copié pendant le geste ; le raccourci le lit
+                // dans le presse-papiers et reçoit l'image du BL par le partage.
+                if (!to) hint.innerText = "Aucun destinataire enregistré pour ce centre : le raccourci ouvrira le mail sans destinataire.";
+                try { await navigator.clipboard.writeText(LocalDB.shortcutPayload(to, subject, body)); } catch (e) { throw new Error('copie du texte impossible'); }
+                const file = await getBlFileForSharing();
+                if (!file || !(navigator.canShare && navigator.canShare({ files: [file] }))) throw new Error('partage de fichier indisponible');
+                if (to) hint.innerText = "Choisissez « " + LocalDB.SHORTCUT_NAME + " » dans le partage.";
+                try { await navigator.share({ files: [file] }); } catch (err) { if (!(err && err.name === 'AbortError')) throw err; return; }
             } else if (method === 'partage') {
                 // Destinataires copiés tout de suite (pendant le geste), à coller dans « À »
                 const toPlain = to.split(',').filter(Boolean).map(a => decodeURIComponent(a)).join('; ');

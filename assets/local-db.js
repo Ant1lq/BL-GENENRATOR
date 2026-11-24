@@ -255,7 +255,7 @@
   };
 
   /* ------------------------------ Sauvegarde / restauration ------------------------------ */
-  var LS_KEYS = ['gtinModels', 'bl_autosave_enabled', 'stampMode', 'stampImg', 'stampTxt', 'stampScale', 'sbStampId', ME_KEY];
+  var LS_KEYS = ['gtinModels', 'bl_autosave_enabled', 'stampMode', 'stampImg', 'stampTxt', 'stampScale', 'sbStampId', 'mp_shortcut_link', ME_KEY];
 
   function bufToB64(buf) {
     var bytes = new Uint8Array(buf), out = '', CH = 0x8000;
@@ -401,6 +401,14 @@
   }
   persist();
 })();
+
+/* Envoi par raccourci iPhone : le texte placé dans le presse-papiers est lu par le raccourci
+   « Envoyer BL Cardioflow » (lignes A: / OBJET: puis --- et le corps du mail). */
+window.LocalDB.SHORTCUT_NAME = 'Envoyer BL Cardioflow';
+window.LocalDB.shortcutPayload = function (to, subject, body) {
+  var list = String(to || '').split(/[,;]/).map(function (a) { try { return decodeURIComponent(a).trim(); } catch (e) { return a.trim(); } }).filter(Boolean);
+  return 'CARDIOFLOW\nA: ' + list.join(',') + '\nOBJET: ' + String(subject || '').replace(/\s*\n\s*/g, ' ') + '\n---\n' + String(body || '');
+};
 
 /* Lecteur de codes-barres (zxing-wasm 2.2.4) : inclus dans l'appli (assets/vendor/zxing), aucun site
    extérieur nécessaire. Secours : jsDelivr si le fichier local manquait. */
