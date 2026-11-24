@@ -1560,7 +1560,7 @@ function paintStamp(){
   $("adjStamp").classList.toggle("hidden",!S.stampImg);
   if(imgMode){
     if(S.stampImg){ const im=h("img",{alt:"Aperçu du tampon",src:S.stampImg}); im.style.maxWidth=Math.round(STAMP_BOX_W*S.stampScale/100*1.4)+"px"; im.style.maxHeight=Math.round(STAMP_BOX_H*S.stampScale/100*1.4)+"px"; prev.append(im); }
-    else prev.append(h("span",{class:"empty"},"Aucun tampon ni signature : le PDF portera seulement la date."));
+    else prev.append(h("span",{class:"empty"},"Pas de tampon pour ce centre : prenez-le en photo, signez, ou repassez sur « Texte »."));
   }else{
     if(S.stampTxt.trim()) prev.append(h("pre",null,S.stampTxt));
     else prev.append(h("span",{class:"empty"},"Saisissez le texte du tampon ci-dessus."));
@@ -1893,10 +1893,12 @@ function stampKey(){
   if(S.mode==="crm" && S.hint) return "c:"+keyName(S.hint);
   return "";
 }
-function markStampFor(){ const k=stampKey(); if(k && current==="work") lsSet("stampFor",k); }
+function markStampFor(){ const k=stampKey(); if(k && current==="work") lsSet("stampFor2",k); }
 function setTextStamp(txt){
   S.stampTxt=txt; $("stampTxt").value=txt; lsSet("stampTxt",txt);
   S.stampMode="txt"; lsSet("stampMode","txt");
+  // ce centre n'a pas de tampon : on oublie l'image d'un autre centre (aperçu « Image » vide)
+  S.stampImg=null; try{ ["stampImg","stampOrig","stampEdit"].forEach(k=>localStorage.removeItem(k)); }catch(e){}
   $("sbSel").value=""; lsSet("sbStampId",""); paintStamp();
 }
 // À l'ouverture d'un inventaire : tampon du centre s'il existe, sinon tampon texte (nom + adresse).
@@ -1904,12 +1906,12 @@ function setTextStamp(txt){
 function suggestStamp(force){
   const box=$("sbSuggest"); box.classList.add("hidden"); box.replaceChildren();
   const key=stampKey(); if(!key || !sbTried) return;   // la liste des tampons doit être lue d'abord (relancé ensuite)
-  if(!force && lsGet("stampFor")===key) return;
+  if(!force && lsGet("stampFor2")===key) return;
   let best=(S.mode==="prog"&&S.progCentre)?aliasOf(S.progCentre.cc):null,score=best?999:0;
   const k=keyName(S.hint);
   if(!best && k.length>=4) sbRows.forEach(r=>{ const n=keyName(r.nom); if(n.length<3) return;
     if(k.includes(n)||n.includes(k)){ const sc=Math.min(n.length,k.length); if(sc>score){score=sc;best=r;} } });
-  lsSet("stampFor",key);
+  lsSet("stampFor2",key);
   if(best && String(best.tampon_url||"").trim()){
     $("sbSel").value=String(best.id); lsSet("sbStampId",String(best.id)); useRow(best);
     box.append(h("span",null,"Tampon du centre utilisé : "+best.nom)); box.classList.remove("hidden");
