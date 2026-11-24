@@ -3348,16 +3348,54 @@ function removeBg(src,sens){
             ref.sort((a, b) => a - b); const paper = ref[Math.floor(ref.length * 0.9)];
             if (paper < 110) return null;
             const isPaper = p => lum[p] >= paper * 0.74 && sat[p] < 0.28;
+            // Planche d'étiquettes identiques : l'écart avec les exemplaires voisins donne la taille d'une étiquette.
+            // On place la découpe là où le motif répété est le plus vide (bord / interstice entre deux étiquettes).
+            let lim = null;
+            if (bc.twins && bc.twins.length) {
+                const ca0 = Math.cos(-ang), sa0 = Math.sin(-ang);
+                const rel = bc.twins.map(q => { const t = { x: (q[0].x + q[1].x + q[2].x + q[3].x) / 4 - mid.x, y: (q[0].y + q[1].y + q[2].y + q[3].y) / 4 - mid.y }; return { x: (t.x * ca0 - t.y * sa0) * k, y: (t.x * sa0 + t.y * ca0) * k }; });
+                const py = Math.min(...rel.filter(t => Math.abs(t.x) < 90 && Math.abs(t.y) > 50).map(t => Math.abs(t.y)), Infinity);
+                const pxp = Math.min(...rel.filter(t => Math.abs(t.y) < 40 && Math.abs(t.x) > 170).map(t => Math.abs(t.x)), Infinity);
+                const ink = new Float32Array(N); for (let p = 0; p < N; p++) ink[p] = (lum[p] < paper * 0.62 || sat[p] > 0.35) ? 1 : 0;
+                const rowInk = y => { if (y < 0 || y >= H) return 1e9; let c = 0; for (let xx = Math.max(0, cx - 150); xx <= Math.min(W - 1, cx + 150); xx++) c += ink[y * W + xx]; return c; };
+                const colInk = xx => { if (xx < 0 || xx >= W) return 1e9; let c = 0; for (let y = Math.max(0, cy - 60); y <= Math.min(H - 1, cy + 60); y++) c += ink[y * W + xx]; return c; };
+                const sm = (f, v) => f(v - 1) + f(v) + f(v + 1);
+                lim = { y0: 0, y1: H - 1, x0: 0, x1: W - 1 };
+                // Le voisin le plus proche peut être à 2 ou 3 étiquettes (code mal lu entre les deux) : on essaie
+                // aussi la moitié / le tiers de l'écart, gardé si les bords tombent encore dans des zones vides.
+                const bestCut = (f, c, half, pitch, minP, span) => {
+                    let res = null;
+                    for (let d = 1; d <= 4; d++) {
+                        const pd = pitch / d; if (pd < minP) break;
+                        let best = 1e18, bt = null;
+                        for (let t = Math.ceil(c + half - pd); t <= c - half; t++) { const v = sm(f, t) + sm(f, Math.round(t + pd)); if (v < best) { best = v; bt = t; } }
+                        if (bt == null) continue;
+                        // bords quasi vides (moins de 8 % de pixels sombres sur les deux lignes de coupe)
+                        const blankEnough = best <= Math.max(res ? res.cost * 1.25 + 6 : 0, 0.08 * 6 * span);
+                        if (!res || blankEnough) res = { t: bt, p: pd, cost: d === 1 ? best : Math.min(res.cost, best) };
+                    }
+                    return res;
+                };
+                if (isFinite(py) && py < 3 * H) {
+                    const r = bestCut(rowInk, cy, 14, py, 60, 301);
+                    if (r) { lim.y0 = Math.max(0, r.t + 1); lim.y1 = Math.min(H - 1, Math.round(r.t + r.p) - 1); }
+                }
+                if (isFinite(pxp) && pxp < 3 * W) {
+                    const r = bestCut(colInk, cx, 84, pxp, 180, 121);
+                    if (r) { lim.x0 = Math.max(0, r.t + 1); lim.x1 = Math.min(W - 1, Math.round(r.t + r.p) - 1); }
+                }
+            }
+            const inLim = p => { if (!lim) return true; const xx = p % W, yy = (p - xx) / W; return xx >= lim.x0 && xx <= lim.x1 && yy >= lim.y0 && yy <= lim.y1; };
             // remplissage depuis plusieurs points blancs au-dessus et au-dessous du code-barres
             const seen = new Uint8Array(N), stack = [];
-            for (const dy of [-34, -26, -20, 20, 26, 34, 44]) for (const dx of [-60, -20, 20, 60]) { const p = (cy + dy) * W + cx + dx; if (isPaper(p) && !seen[p]) { seen[p] = 1; stack.push(p); } }
+            for (const dy of [-34, -26, -20, 20, 26, 34, 44]) for (const dx of [-60, -20, 20, 60]) { const p = (cy + dy) * W + cx + dx; if (isPaper(p) && inLim(p) && !seen[p]) { seen[p] = 1; stack.push(p); } }
             if (!stack.length) return null;
             let n = 0, x0 = W, x1 = 0, y0 = H, y1 = 0;
             while (stack.length) {
                 const p = stack.pop(), px_ = p % W, py = (p - px_) / W; n++;
                 if (px_ < x0) x0 = px_; if (px_ > x1) x1 = px_; if (py < y0) y0 = py; if (py > y1) y1 = py;
                 if (px_ <= 0 || px_ >= W - 1 || py <= 0 || py >= H - 1) continue;
-                for (const q of [p - 1, p + 1, p - W, p + W]) if (!seen[q] && isPaper(q)) { seen[q] = 1; stack.push(q); }
+                for (const q of [p - 1, p + 1, p - W, p + W]) if (!seen[q] && isPaper(q) && inLim(q)) { seen[q] = 1; stack.push(q); }
             }
             // Boîtes empilées ou fond clair : la zone remplie peut déborder. On garde la bande continue autour du
             // code-barres, en s'arrêtant aux lignes (puis colonnes) presque vides : bord d'étiquette, carton, interstice.
@@ -3369,6 +3407,14 @@ function removeBg(src,sens){
             let xa = cx, xb = cx;
             while (xa - 1 > x0 && colFill(xa - 1) > 0.25) xa--;
             while (xb + 1 < x1 && colFill(xb + 1) > 0.25) xb++;
+            // Planche sans voisin lu sur la même ligne : si la zone est bien trop allongée, on coupe au premier
+            // espace vide franc (interstice entre deux étiquettes) de part et d'autre du code-barres.
+            if (lim && lim.x0 === 0 && lim.x1 === W - 1 && (xb - xa) / Math.max(1, yb - ya) > 4.2) {
+                const dark = xx => { let c = 0; for (let y = ya; y <= yb; y++) { const p = y * W + xx; if (lum[p] < paper * 0.62 || sat[p] > 0.35) c++; } return c; };
+                const cut = (from, to, step) => { let run = 0; for (let xx = from; step > 0 ? xx <= to : xx >= to; xx += step) { if (dark(xx) <= 1) run++; else { if (run >= 22) return xx - step * Math.ceil(run / 2); run = 0; } } return null; };
+                const r = cut(cx + 84, xb, 1), l = cut(cx - 84, xa, -1);
+                if (r != null) xb = Math.min(xb, r); if (l != null) xa = Math.max(xa, l);
+            }
             // le code-barres lui-même doit rester entier
             x0 = Math.min(xa, cx - 82); x1 = Math.max(xb, cx + 82); y0 = ya; y1 = yb;
             n = 0; for (let y = y0; y <= y1; y++) for (let xx = x0; xx <= x1; xx++) if (seen[y * W + xx]) n++;

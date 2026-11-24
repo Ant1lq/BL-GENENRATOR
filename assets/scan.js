@@ -106,7 +106,13 @@
           if (g) {
             if (g.gtin.indexOf(MICROPORT_GTIN) !== 0) return;          // autre fabricant
             var key = g.gtin + '|' + (g.sn || g.raw);
-            if (!gs1.has(key)) { g.format = /matrix/i.test(r.format || '') ? 'dm' : 'linear'; g.position = pos; g.ref = ''; g.plain = false; gs1.set(key, g); }
+            if (!gs1.has(key)) { g.format = /matrix/i.test(r.format || '') ? 'dm' : 'linear'; g.position = pos; g.ref = ''; g.plain = false; g.copies = [pos]; gs1.set(key, g); }
+            else {
+              // Planche d'étiquettes : le même code est imprimé plusieurs fois. On garde chaque exemplaire
+              // (positions distinctes) pour choisir le mieux placé et connaître l'écart entre étiquettes.
+              var e = gs1.get(key), c1 = center(pos), len = Math.hypot(pos[1].x - pos[0].x, pos[1].y - pos[0].y);
+              if (!e.copies.some(function (q) { var cq = center(q); return Math.hypot(cq.x - c1.x, cq.y - c1.y) < Math.max(12, len * 0.35); })) e.copies.push(pos);
+            }
             return;
           }
           var t = String(r.text).toUpperCase().trim(), kind = null, value = t, m;
@@ -120,8 +126,31 @@
         });
       } catch (e) { console.error('Lecture codes-barres :', e); }
     }
+    // Plusieurs exemplaires du même code : on retient celui qui est le plus au centre de la photo et
+    // entièrement visible (c'est celui que l'on vise), les autres servent à délimiter l'étiquette.
+    var W0 = srcCanvas.width, H0 = srcCanvas.height;
+    gs1.forEach(function (g) {
+      if (!g.copies || g.copies.length < 2) { delete g.copies; return; }
+      var score = function (q) {
+        var c0 = center(q), m = Math.min(W0, H0) * 0.03, edge = q.some(function (pt) { return pt.x < m || pt.y < m || pt.x > W0 - m || pt.y > H0 - m; });
+        return Math.hypot((c0.x - W0 / 2) / W0, (c0.y - H0 / 2) / H0) + (edge ? 1 : 0);
+      };
+      g.copies.sort(function (a, b) { return score(a) - score(b); });
+      g.position = g.copies[0]; g.twins = g.copies.slice(1); g.count = g.copies.length; delete g.copies;
+    });
     var known = new Set(); gs1.forEach(function (g) { if (g.sn) known.add(g.sn); });
-    var all = Array.from(gs1.values()).concat(groupPlain(Array.from(plain.values())).filter(function (it) { return !known.has(it.sn); }));
+    // Codes séparés répétés (planche) : un seul matériel par n° de série, le plus au centre de la photo
+    var plainBySn = new Map(), cd = function (it) { var c0 = center(it.position); return Math.hypot((c0.x - W0 / 2) / W0, (c0.y - H0 / 2) / H0); };
+    groupPlain(Array.from(plain.values())).forEach(function (it) {
+      if (!it.sn || known.has(it.sn)) return;
+      var o = plainBySn.get(it.sn);
+      if (!o) { plainBySn.set(it.sn, it); it.count = 1; return; }
+      var n = (o.count || 1) + 1;
+      var keep = cd(it) < cd(o) ? it : o;
+      ['ref', 'exp', 'mfg', 'model'].forEach(function (k) { if (!keep[k] && (it[k] || o[k])) keep[k] = it[k] || o[k]; });
+      keep.count = n; plainBySn.set(it.sn, keep);
+    });
+    var all = Array.from(gs1.values()).concat(Array.from(plainBySn.values()));
     var band = maxSide * 0.06;
     all.sort(function (a, b) { var ca = center(a.position), cb = center(b.position); return Math.abs(ca.y - cb.y) > band ? ca.y - cb.y : ca.x - cb.x; });
     return all;
