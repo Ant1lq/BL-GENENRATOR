@@ -2205,7 +2205,7 @@ const INV_METHODS={
   photos:{label:"Enregistrer le PDF, puis mail tout rempli",hint:"1. Enregistrez le PDF (« Enregistrer dans Fichiers »). 2. Le mail s'ouvre tout rempli : ajoutez le PDF en pièce jointe."},
   partage:{label:"Partage : PDF joint, destinataires à coller",hint:"Le PDF est joint avec le texte. Les destinataires sont copiés : à coller dans « À »."},
   outlook:{label:"Outlook : tout prérempli, PDF à joindre",hint:"1. Enregistrez le PDF. 2. Outlook s'ouvre avec destinataires, objet et texte : joignez le PDF depuis Fichiers."},
-  raccourci:{label:"Raccourci iPhone : envoi complet par Mail",hint:"Dans le partage, choisissez « Envoyer BL Cardioflow » : destinataires, objet, texte et PDF sont envoyés par Mail. (Création du raccourci : Réglages.)"},
+  raccourci:{label:"Raccourci iPhone : envoi complet par Mail",hint:"Dans le partage, choisissez « Envoyer BL Cardioflow » : Mail s'ouvre avec destinataires, objet et PDF joint ; appui long dans le message › Coller pour le texte. (Création du raccourci : Réglages.)"},
   coller:{label:"Appli mail par défaut : tout prérempli, PDF à joindre",hint:"1. Enregistrez le PDF. 2. L'appli mail par défaut s'ouvre complète : joignez le PDF depuis Fichiers."}
 };
 function getInvMethod(){ try{ const v=localStorage.getItem("inv_send_method")||localStorage.getItem("bl_send_method2")||"photos"; return INV_METHODS[v]?v:"photos"; }catch(e){ return "photos"; } }

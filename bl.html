@@ -4402,7 +4402,7 @@ function removeBg(src,sens){
                         outlook: "Outlook s'ouvre avec destinataires, objet et texte ; le BL est copié : appui long dans le message, puis Coller.",
                         coller: "L'appli mail par défaut s'ouvre complète ; le BL est copié : appui long dans le texte, puis Coller.",
                         partage: "Le BL est joint avec le texte. Les destinataires sont copiés : à coller dans « À ».",
-                        raccourci: "Dans le partage, choisissez « " + LocalDB.SHORTCUT_NAME + " » : destinataires, objet, texte et BL sont envoyés par Mail. (Création du raccourci : Réglages.)" }[getSendMethod()] || '';
+                        raccourci: "Dans le partage, choisissez « " + LocalDB.SHORTCUT_NAME + " » : Mail s'ouvre avec destinataires, objet et BL joint ; appui long dans le message › Coller pour le texte. (Création du raccourci : Réglages.)" }[getSendMethod()] || '';
     }
     document.addEventListener('DOMContentLoaded', paintSendHint);
     // Texte du mail -> HTML : les caractères « gras Unicode » redeviennent du vrai gras
