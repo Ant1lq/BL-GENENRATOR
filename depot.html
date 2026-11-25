@@ -2205,7 +2205,6 @@ const INV_METHODS={
   photos:{label:"Enregistrer le PDF, puis mail tout rempli",hint:"1. Enregistrez le PDF (« Enregistrer dans Fichiers »). 2. Le mail s'ouvre tout rempli : ajoutez le PDF en pièce jointe."},
   partage:{label:"Partage : PDF joint, destinataires à coller",hint:"Le PDF est joint avec le texte. Les destinataires sont copiés : à coller dans « À »."},
   outlook:{label:"Outlook : tout prérempli, PDF à joindre",hint:"1. Enregistrez le PDF. 2. Outlook s'ouvre avec destinataires, objet et texte : joignez le PDF depuis Fichiers."},
-  raccourci:{label:"Raccourci iPhone : envoi complet par Mail",hint:"Dans le partage, choisissez « Envoyer BL Cardioflow » : Mail s'ouvre avec destinataires, objet et PDF joint ; appui long dans le message › Coller pour le texte. (Création du raccourci : Réglages.)"},
   coller:{label:"Appli mail par défaut : tout prérempli, PDF à joindre",hint:"1. Enregistrez le PDF. 2. L'appli mail par défaut s'ouvre complète : joignez le PDF depuis Fichiers."}
 };
 function getInvMethod(){ try{ const v=localStorage.getItem("inv_send_method")||localStorage.getItem("bl_send_method2")||"photos"; return INV_METHODS[v]?v:"photos"; }catch(e){ return "photos"; } }
@@ -2225,13 +2224,6 @@ async function sendInventory(file,mail){
   const to=INVENTORY_TO.join(",");
   const q="subject="+encodeURIComponent(mail.subject)+"&body="+encodeURIComponent(mail.body);
   try{
-    if(method==="raccourci"){
-      try{ await navigator.clipboard.writeText(LocalDB.shortcutPayload(INVENTORY_TO.join(","),mail.subject,mail.body)); }catch(e){ throw new Error("copie du texte impossible"); }
-      if(!(navigator.canShare && navigator.canShare({files:[file]}))) throw new Error("partage de fichier indisponible");
-      setStatus("Choisissez « "+LocalDB.SHORTCUT_NAME+" » dans le partage.","");
-      try{ await navigator.share({files:[file]}); }catch(err){ if(err && err.name==="AbortError") return; throw err; }
-      return;
-    }
     if(method==="partage"){
       let copied=false;
       try{ await navigator.clipboard.writeText(INVENTORY_TO.join("; ")); copied=true; }catch(e){}

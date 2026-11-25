@@ -402,12 +402,17 @@
   persist();
 })();
 
-/* Envoi par raccourci iPhone : le texte placé dans le presse-papiers est lu par le raccourci
-   « Envoyer BL Cardioflow » (lignes A: / OBJET: puis --- et le corps du mail). */
+/* Envoi par raccourci iPhone (« Envoyer BL Cardioflow ») : l'appli place dans le presse-papiers
+   les destinataires (A:), l'objet (OBJET:) puis le mail complet en HTML (texte + image du BL dans le corps),
+   et lance le raccourci, qui l'envoie avec l'appli Mail. */
 window.LocalDB.SHORTCUT_NAME = 'Envoyer BL Cardioflow';
-window.LocalDB.shortcutPayload = function (to, subject, body) {
+window.LocalDB.shortcutRunUrl = function () { return 'shortcuts://run-shortcut?name=' + encodeURIComponent(window.LocalDB.SHORTCUT_NAME); };
+window.LocalDB.shortcutPayload = function (to, subject, body, imgDataUrl) {
   var list = String(to || '').split(/[,;]/).map(function (a) { try { return decodeURIComponent(a).trim(); } catch (e) { return a.trim(); } }).filter(Boolean);
-  return 'CARDIOFLOW\nA: ' + list.join(',') + '\nOBJET: ' + String(subject || '').replace(/\s*\n\s*/g, ' ') + '\n---\n' + String(body || '');
+  var esc = function (t) { return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  var html = '<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45">' + esc(body).replace(/\n/g, '<br>') + '</div>' +
+    (imgDataUrl ? '<p><img src="' + imgDataUrl + '" style="max-width:100%;border:1px solid #ddd"></p>' : '');
+  return 'CARDIOFLOW\nA: ' + list.join(',') + '\nOBJET: ' + String(subject || '').replace(/\s*\n\s*/g, ' ') + '\n---HTML---\n' + html;
 };
 
 /* Lecteur de codes-barres (zxing-wasm 2.2.4) : inclus dans l'appli (assets/vendor/zxing), aucun site
