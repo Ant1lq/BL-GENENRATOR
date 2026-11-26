@@ -233,6 +233,34 @@ button,input,select,textarea{font:inherit}
   .notes{margin:6px 10px 20px;border-radius:0 12px 12px 0}
   .wrap .card{padding:10px}
 }
+
+/* ---------- modifications masquées (état « programmé ») ---------- */
+.nohl .box.o,.nohl .zv.o,.nohl .mv.o,.nohl .opt.sel{background:var(--val)}
+.nohl .si.o .v,.nohl .ther .o,.nohl .zdisc.o,.nohl .tg .y.o{color:inherit}
+.nohl .ther .o{color:var(--txt)}
+.nohl .sw.o,.nohl .onoff.o{background:var(--val)}
+.nohl .ruler div.o b{color:#fff}
+.nohl .sec .side.mod{color:var(--txt)}
+.nohl .pen,.nohl .mtabs .dot,.nohl .bd.o,.nohl .lg-o{display:none}
+.hlbtn{white-space:nowrap}
+/* ---------- accueil du guide ---------- */
+.intro{font-size:13.5px;color:#3d4a68;line-height:1.45;margin:2px 2px 12px}
+.mdl{background:#fff;border-radius:14px;margin-bottom:14px;overflow:hidden;border:1px solid #b5c6ee;box-shadow:0 1px 3px rgba(37,56,106,.08)}
+.mdl .mhd{display:flex;gap:12px;align-items:center;padding:14px;background:linear-gradient(90deg,#25386a,#3a5296);color:#fff}
+.mdl .mic{width:50px;height:50px;border-radius:12px;background:#fff;color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;flex:0 0 50px}
+.mdl .mhd b{display:block;font-size:16px}
+.mdl .mhd span{display:block;font-size:12.5px;opacity:.85;margin-top:2px}
+.frow{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid #e6ebf7;cursor:pointer}
+.frow .fi{flex:1;min-width:0}
+.frow .fi b{display:block;font-size:14.5px;color:var(--navy);word-break:break-all}
+.frow .fi small{display:block;font-size:12px;color:#5e6a87;margin-top:2px}
+.frow .tags{margin-top:5px}
+.frow .ch{font-size:20px;color:#8a98bd}
+.frow.def{background:#f3f6fe}
+.frow.def .ico{font-size:20px}
+.addr{display:block;width:calc(100% - 28px);margin:10px 14px 14px;border:1.5px dashed #8aa2dc;background:#fff;color:var(--navy);border-radius:10px;padding:11px;font-weight:800;font-size:14px;cursor:pointer}
+.defnote{background:#fff7ea;border-left:4px solid var(--org);padding:9px 12px;font-size:13px;color:#5b4520;margin:10px 8px 0;border-radius:0 8px 8px 0}
+@media (max-width:760px){ .defnote{margin:8px 10px 0} }
 </style>
 </head>
 <body>
@@ -250,175 +278,246 @@ button,input,select,textarea{font:inherit}
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const TABLE = 'guide_fiches';
-const TYPES = ['DAI DR', 'DAI VR', 'CRT-D', 'PM DR', 'PM VR', 'CRT-P'];
-const isDAI = t => /^DAI|CRT-D/.test(t), hasA = t => !/VR/.test(t), isCRT = t => /^CRT/.test(t);
-
-/* ---------- Paramètres : libellé, unité, valeur nominale, choix (relevés sur le programmateur) ---------- */
-const ONOFF = ['Oui', 'Non'];
-const P = {
-  // Brady — paramètres de base
-  mode: { l: 'Mode', t: 'Mode de stimulation', nom: 'SafeR (AAI - DDD)', o: ['SafeR (AAI - DDD)', 'SafeR-R (AAIR - DDDR)', 'DDD', 'DDDR', 'DDD/DDIR', 'DDI', 'DDIR', 'VVI', 'VVIR', 'DOO', 'VOO', 'OOO'] },
-  bav1: { l: 'Commutation BAV I', nom: 'Repos + Effort', o: ['Repos + Effort'], dim: 1, a: 1 },
-  prEff: { l: "PR long à l'effort", u: 'ms', nom: '250', a: 1 },
-  prRep: { l: 'PR long au repos', u: 'ms', nom: '450', o: ['250', '300', '350', '400', '450', '500'], a: 1 },
-  pause: { l: 'Pause max.', u: 's', nom: '2', a: 1 },
-  fbase: { l: 'Fréquence de base', u: 'min-1', nom: '60' },
-  fmax: { l: 'Fréquence max.', u: 'min-1', nom: '130', o: ['100', '105', '110', '115', '120', '125', '130', '135', '140', '145'], a: 1 },
-  hyst: { l: 'Hystérésis', u: '%', nom: '0' },
-  davRep: { l: 'DAV repos', u: 'ms', nom: '110', a: 1 },
-  davEff: { l: 'DAV effort', u: 'ms', nom: '70', o: ['30', '40', '45', '55', '65', '70', '80', '85', '95', '100', '110'], a: 1 },
-  extDav: { l: 'Extension DAV', u: 'ms', nom: '30', a: 1 },
-  cavV: { l: 'Cavité V', nom: 'D', o: ['D', 'G', 'D + G', 'G + D'] },
-  asserv: { l: 'Asservissement', nom: 'Non', o: ['Non', 'Apprentissage'] },
-  // Brady — paramètres avancés
-  lissage: { l: 'Lissage', nom: 'Non', o: ['Non', 'Très lent', 'Lent', 'Moyen', 'Rapide'] },
-  antiTRE: { l: 'Protection Anti-TRE', nom: 'Réduct.', a: 1 },
-  repli: { l: 'Repli', nom: 'Oui', o: ONOFF, dim: 1, a: 1 },
-  fRepli: { l: 'Fréquence de Repli', u: 'min-1', nom: '60', a: 1 },
-  sensBruit: { l: 'Sensibilité auto sur bruit', t: 'Adaptation auto de la sensibilité sur bruit V', nom: 'Oui', o: ONOFF },
-  stimBruit: { l: 'Stimulation V sur bruit', nom: 'Non', o: ONOFF },
-  pcMode: { l: 'Mode', t: 'Mode post-choc', nom: 'DDD', o: ['Non', 'DDD'], dai: 1 },
-  pcFreq: { l: 'Fréquence Post-Choc', u: 'min-1', nom: '80', dai: 1 },
-  pcDur: { l: 'Durée', t: 'Durée du mode post-choc', nom: '1 min', o: ['10 s', '20 s', '30 s', '1 min', '2 min', '3 min', '4 min', '5 min'], dai: 1 },
-  pcAmpA: { l: 'Amplitude A', t: 'Amplitude A post-choc', u: 'V', nom: '6', dai: 1, a: 1 },
-  pcLargA: { l: 'Largeur A', t: "Largeur d'impulsion A post-choc", u: 'ms', nom: '1', o: ['0,35', '0,5', '0,6', '0,75', '0,85', '1'], dai: 1, a: 1 },
-  pcAmpVD: { l: 'Amplitude VD', t: 'Amplitude VD post-choc', u: 'V', nom: '6', dai: 1 },
-  pcLargVD: { l: 'Largeur VD', t: "Largeur d'impulsion ventriculaire droite post-choc", u: 'ms', nom: '1', o: ['0,35', '0,5', '0,6', '0,75', '0,85', '1'], dai: 1 },
-  refAV: { l: 'Réfractaire A post V', t: 'Période réfractaire atriale post V', u: 'ms', nom: '80', o: ['80', '95', '110', '125', '140', '155'], a: 1 },
-  refAR: { l: 'Réfractaire A post R', u: 'ms', nom: '45', a: 1 },
-  margeA: { l: 'Marge A post V ou R', t: 'Marge A post stimulation / détection ventriculaire', u: 'mV', nom: '0,4', o: ['0', '0,2', '0,4', '0,6', '0,8', '1'], a: 1 },
-  margeV: { l: 'Marge V post V', u: 'mV', nom: '0,8' },
-  overdrive: { l: 'Overdrive', nom: 'Non', o: ONOFF, a: 1 },
-  suppPauseES: { l: 'Suppression de pause post ES', t: 'Suppression de pause post ESA', nom: 'Non', o: ['Non', 'Oui'], a: 1 },
-  accelESA: { l: 'Accél. sur ESA', nom: 'Non', o: ['Non', 'Oui'], a: 1 },
-  stimAESV: { l: 'Stimulation A sur ESV', t: 'Stimulation atriale sur extra-systoles ventriculaires', nom: 'Non', o: ['Non', 'Oui'], a: 1 },
-  suppPause: { l: 'Suppression de pause', nom: 'Non', o: ['Non', 'Oui'] },
-  accelESV: { l: 'Accélération sur ESV', t: 'Accélération sur extra-systoles ventriculaires', nom: 'Non', o: ['Non', 'Oui'] },
-  // Sondes
-  ampA: { l: 'Amp. A', t: 'Amplitude atriale', u: 'V', nom: '3,5', o: ['1', '1,5', '2', '2,5', '3', '3,5', '4', '4,5', '5', '6'], a: 1 },
-  largA: { l: 'Largeur A', t: "Largeur d'impulsion A", u: 'ms', nom: '0,35', o: ['0,12', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1'], a: 1 },
-  polA: { l: 'Polarité de stimulation A', nom: 'Bipolaire', dim: 1, a: 1 },
-  sensA: { l: 'Sensibilité A', u: 'mV', nom: '0,4', a: 1 },
-  autoA: { l: 'Auto-Seuil A', nom: 'Suivi', o: ['Non', 'Auto', 'Suivi'], a: 1 },
-  ampVD: { l: 'Amp. VD', t: 'Amplitude ventriculaire droite', u: 'V', nom: '3,5', o: ['1', '1,5', '2', '2,5', '3', '3,5', '4', '4,5', '5', '6'] },
-  largVD: { l: 'Largeur VD', t: "Largeur d'impulsion ventriculaire droite", u: 'ms', nom: '0,35', o: ['0,12', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1'] },
-  polVD: { l: 'Polarité de stimulation VD', nom: 'Bipolaire', dim: 1 },
-  sensVD: { l: 'Sensibilité VD', t: 'Sensibilité ventriculaire droite', u: 'mV', nom: '0,4', o: ['0,4', '0,6', '0,8', '1', '1,2', '1,4', '1,6', '1,8', '2', '2,2', '2,4', '2,6', '2,8', '3', '3,2', '3,4', '3,6', '3,8', '4'] },
-  autoVD: { l: 'Auto-Seuil VD', nom: 'Suivi', o: ['Non', 'Auto', 'Suivi'] },
-  asMarge: { l: 'Marge de sécurité', t: 'Auto-Seuil : marge de sécurité', nom: 'x2.0' },
-  asAmpMin: { l: 'Amplitude min.', t: 'Amplitude minimale ventriculaire', u: 'V', nom: '2,5', o: ['1', '1,5', '2', '2,5', '3', '3,5'] },
-  asAmpSec: { l: 'Amplitude de sécurité', t: 'Amplitude de sécurité ventriculaire', u: 'V', nom: '3,5', o: ['2,5', '3', '3,5', '4', '4,5', '5', '6'] },
-  asAmpMax: { l: 'Amplitude max.', u: 'V', nom: '6', dim: 1 },
-  asFmax: { l: 'Fréquence max.', t: 'Auto-Seuil : fréquence max.', u: 'min-1', nom: '100', dim: 1 },
-  asHeure: { l: 'Heure démarrage', nom: 'Toutes les 6 h', dim: 1 },
-  ampVG: { l: 'Amp. VG', u: 'V', nom: '3,5', o: ['0,1', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1', '1,1', '1,25', '1,35', '1,5', '1,6', '1,75', '1,85', '2', '2,1', '2,25', '2,35', '2,5', '2,6', '2,75', '2,85', '3', '3,1', '3,25', '3,35', '3,5', '3,6', '3,75', '3,85', '4', '4,1', '4,25', '4,35', '4,5'], crt: 1 },
-  largVG: { l: 'Largeur VG', u: 'ms', nom: '0,35', o: ['0,12', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1', '1,1', '1,25', '1,35', '1,5', '1,6', '1,75', '1,85', '2'], crt: 1 },
-  polVG: { l: 'Polarité stim. VG', t: 'Polarité de stimulation VG', nom: 'VG1 - VG2', o: (() => { const r = []; ['VG1', 'VG2', 'VG3', 'VG4'].forEach(d => ['VG2', 'VG4', 'Prox. VD', 'Coil VD', 'Boîtier'].forEach(a => { if (a !== d) r.push(d + ' - ' + a); })); return r; })(), crt: 1 },
-  mp: { l: 'Stim. MultiPoint', t: 'Stim. MultiPoint (MP)', nom: 'Non', o: ONOFF, crt: 1 },
-  // Tachy — zones
-  tvlOn: { l: 'Zone TV lente', nom: 'Non', o: ONOFF, dai: 1 },
-  tvOn: { l: 'Zone TV', nom: 'Oui', o: ONOFF, dai: 1 },
-  tvrOn: { l: 'Zone TV rapide', nom: 'Oui', o: ONOFF, dai: 1 },
-  fTVL: { l: 'Fréquence zone TV lente', u: 'min-1', nom: '', o: ['100', '105', '110', '115', '120', '125', '130', '135', '140', '145', '150', '155', '160', '165'], dai: 1 },
-  fTV: { l: 'Fréquence zone TV', u: 'min-1', nom: '170', dai: 1 },
-  fTVR: { l: 'Fréquence zone TV rapide', u: 'min-1', nom: '220', dai: 1 },
-  fFV: { l: 'Fréquence zone FV', u: 'min-1', nom: '240', dai: 1 },
-  pTVL: { l: 'Persistance TV lente', u: 'cycles', nom: '', dai: 1 },
-  pTV: { l: 'Persistance TV', u: 'cycles', nom: '30', dai: 1 },
-  pFV: { l: 'Persistance FV / TV rapide', u: 'cycles', nom: '20', dai: 1 },
-  discTV: { l: 'Discrimination TV lente / TV', t: 'Critères de discrimination', nom: 'PARAD+', o: ['PARAD+', 'Stabilité+ / Accélération'], dai: 1 },
-  discTVR: { l: 'Discrimination TV rapide', t: 'Critères de discrimination zone TV rapide', nom: 'Fréquence + stabilité', o: ['Fréquence + stabilité', 'Fréquence seule'], dai: 1 },
-  atpOn: { l: 'Activation des ATP', nom: 'Oui', o: ONOFF, dai: 1 },
-  chocOn: { l: 'Activation des chocs', nom: 'Oui', o: ONOFF, dai: 1 },
-  cavATP: { l: 'Cavité stimulée en ATP', nom: 'D', o: ['D', 'D + G'], dai: 1 },
-  autoComATP: { l: 'Auto-Commutation ATP', nom: 'Non', o: ONOFF, dai: 1 },
-  polAlt: { l: 'Polarité alternée (42 J)', nom: 'Oui', o: ONOFF, dai: 1 },
-  coilVCS: { l: 'Coil VCS', nom: 'Non', o: ONOFF, dai: 1 },
-  boitier: { l: 'Boîtier actif', nom: 'Oui', o: ONOFF, dim: 1, dai: 1 },
-  vecteur: { l: 'Vecteur des chocs', nom: 'VD vers Boîtier', dai: 1 },
-  // Suivi à distance
-  rsSuivi: { l: 'Suivi à distance', nom: 'Oui', o: ONOFF }, rsAlertes: { l: 'Alertes système', nom: 'Oui', o: ONOFF },
-  rsIRM: { l: 'Notifications IRM', nom: 'Oui', o: ONOFF }, rsAsync: { l: 'Mode asynchrone', nom: 'Oui', o: ONOFF },
-  rsImpA: { l: 'Impédance A anormale', nom: 'Oui', o: ONOFF, a: 1 }, rsImpAH: { l: 'Limite Haute', u: 'Ω', nom: '2000', a: 1 }, rsImpAB: { l: 'Limite Basse', u: 'Ω', nom: '200', a: 1 },
-  rsASA: { l: 'Alerte Auto-Seuil A', nom: 'Oui', o: ONOFF, a: 1 }, rsASAs: { l: 'Seuil limite', u: 'V', nom: '2', a: 1 },
-  rsImpVD: { l: 'Impédance VD anormale', nom: 'Oui', o: ONOFF }, rsImpVDH: { l: 'Limite Haute', u: 'Ω', nom: '2000' }, rsImpVDB: { l: 'Limite Basse', u: 'Ω', nom: '200' },
-  rsASVD: { l: 'Alerte Auto-Seuil VD', nom: 'Oui', o: ONOFF }, rsASVDs: { l: 'Seuil limite', u: 'V', nom: '2,5' },
-  rsLPE: { l: 'Alerte LPE', nom: 'Oui', o: ONOFF, dai: 1 }, rsImpChoc: { l: 'Imp. choc anormale', nom: 'Oui', o: ONOFF, dai: 1 }, rsCoil: { l: 'Coil VD anormal', nom: 'Oui', o: ONOFF, dai: 1 },
-  rsImpVG: { l: 'Impédance VG anormale', nom: 'Oui', o: ONOFF, crt: 1 }, rsImpVGH: { l: 'Limite Haute', u: 'Ω', nom: '2000', crt: 1 }, rsImpVGB: { l: 'Limite Basse', u: 'Ω', nom: '200', crt: 1 },
-  rsChocDes: { l: 'Choc désactivé', nom: 'Oui', o: ONOFF, dai: 1 }, rsChocDel: { l: 'Choc délivré', nom: 'Tous les chocs', dai: 1 }, rsATP: { l: 'ATP délivré', nom: 'Oui', o: ONOFF, dai: 1 },
-  rsFA: { l: 'Charge en FA / TA élevée', nom: 'Oui', o: ONOFF }, rsSurdet: { l: 'Surdétection V', nom: 'Oui', o: ONOFF, dai: 1 },
-  irm: { l: 'Mode IRM', nom: 'Non' }
+/* ---------- Les 4 défibrillateurs (fiches techniques MicroPort, nov. 2023) ---------- */
+const MODELS = {
+  VR: { ref: '3240', name: 'TALENTIA VR', cat: 'DAI simple chambre', conn: 'DF4', prefix: 'DAI_VR' },
+  DR: { ref: '3540', name: 'TALENTIA DR', cat: 'DAI double chambre', conn: 'DF4', prefix: 'DAI_DR' },
+  SONR: { ref: '3841', name: 'TALENTIA SonR CRT-D', cat: 'CRT-D bipolaire', conn: 'DF4 / IS-1', prefix: 'CRTD_SONR' },
+  '4LV': { ref: '3844', name: 'TALENTIA 4LV SonR CRT-D', cat: 'CRT-D quadripolaire', conn: 'DF4 / IS4', prefix: 'CRTD_4LV' }
 };
-// Thérapies par zone : ATP 1, ATP 2, chocs (zones TV lente, TV, FV ; l'ATP de la zone FV est celle de la TV rapide)
+const TYPES = ['VR', 'DR', 'SONR', '4LV'];
+const LEGACY = { 'DAI VR': 'VR', 'DAI DR': 'DR', 'CRT-D': '4LV', 'PM VR': 'VR', 'PM DR': 'DR', 'CRT-P': '4LV' };
+const isDAI = () => true, hasA = t => t !== 'VR', isCRT = t => t === 'SONR' || t === '4LV';
+
+/* ---------- Paramètres ----------
+   nom  : valeur de départ = valeur à l'expédition (en gras sur la fiche technique), c'est ce qu'affiche un boîtier neuf
+   nomi : valeur nominale MicroPort (soulignée sur la fiche technique), quand elle est différente
+   m    : différences par modèle { VR: {nom, nomi, o}, … }
+   a : avec oreillette (DR, CRT-D) · crt : CRT-D · only : modèles concernés */
+const ONOFF = ['Oui', 'Non'];
+const R = (a, b, s) => { const r = []; for (let x = a; x <= b + 1e-9; x += s) r.push(String(Math.round(x * 100) / 100).replace('.', ',')); return r; };
+const AMP = ['1', '1,5', '2', '2,5', '3', '3,5', '4', '4,5', '5', '6'];
+const LARG = ['0,12', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1'];
+const AMPVG = ['0,1', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1', '1,1', '1,25', '1,35', '1,5', '1,6', '1,75', '1,85', '2', '2,1', '2,25', '2,35', '2,5', '2,6', '2,75', '2,85', '3', '3,1', '3,25', '3,35', '3,5', '3,6', '3,75', '3,85', '4', '4,1', '4,25', '4,35', '4,5', '4,6', '4,75', '4,85', '5', '5,1', '5,25', '5,35', '5,5', '5,6', '5,75', '5,85', '6', '6,1', '6,25', '6,35', '6,5', '6,6', '6,75', '6,85', '7'];
+const LARGVG = LARG.concat(['1,1', '1,25', '1,35', '1,5', '1,6', '1,75', '1,85', '2']);
+const DAV = ['30', '40', '45', '55', '65', '70', '80', '85', '95', '100', '110', '115', '125', '135', '140', '150', '155', '165', '170', '180', '190', '195', '205', '210', '220', '225', '235', '250'];
+const EXTDAV = ['0', '10', '15', '25', '30', '40', '45', '55', '65', '70', '80', '85', '95', '100', '110', '115', '125'];
+const FTV = ['130', '135', '140', '145', '150', '155', '160', '165', '170', '175', '180', '185', '190', '195', '200', '210', '220', '230'];
+const FFV = ['150', '155', '160', '165', '170', '175', '180', '185', '190', '195', '200', '210', '220', '230', '240'];
+const FTVR = ['155', '160', '165', '170', '175', '180', '185', '190', '195', '200', '210', '220', '230', '240', '255'];
+const PERS = ['4', '6', '8', '12', '16', '20', '30', '50', '100', '200'];
+const MODES_DR = ['VVI', 'VVIR', 'DDD', 'DDDR', 'DDD/DDIR', 'DDI', 'DDIR', 'SafeR (AAI - DDD)', 'SafeR-R (AAIR - DDDR)', 'DOO', 'VOO', 'OOO'];
+const DISC_VR = ['Fréquence seule', 'Stabilité', 'Stabilité+', 'Stabilité / Accélération', 'Stabilité+ / Accélération'];
+const POL_4LV = ['Distale VG1 vers Boîtier', 'Distale VG1 vers VG2', 'Distale VG1 vers Proximale VD', 'Distale VG1 vers coil VD', 'Distale VG1 vers VG4', 'VG2 vers Boîtier', 'VG2 vers coil VD', 'VG2 vers VG4', 'VG3 vers Boîtier', 'VG3 vers VG4', 'VG3 vers VG2', 'VG3 vers Proximale VD', 'VG3 vers coil VD', 'VG4 vers coil VD'];
+const POL_SONR = ['VG bipolaire', 'Distale VG vers Proximale VD', 'Proximale VG vers coil VD', 'Distale VG vers coil VD', 'Proximale VG vers boîtier', 'Distale VG vers boîtier'];
+const SEUIL = ['1', '1,25', '1,5', '1,75', '2', '2,25', '2,5', '3', '3,5', '4'];
+const P = {
+  // ---------- Brady : paramètres de base ----------
+  mode: { l: 'Mode', t: 'Mode de stimulation', nom: 'SafeR (AAI - DDD)', nomi: 'VVI', o: MODES_DR,
+    m: { VR: { nom: 'VVI', o: ['VVI', 'VVIR', 'VOO', 'OOO'] }, SONR: { nom: 'DDD' }, '4LV': { nom: 'DDD' } } },
+  cavV: { l: 'Cavités stimulées', nom: 'D+G', o: ['D+G', 'G+D', 'Droite', 'Gauche'], crt: 1 },
+  fbase: { l: 'Fréquence de base', u: 'min-1', nom: '60', o: R(30, 90, 5), m: { VR: { nom: '40', nomi: '60' } } },
+  fmax: { l: 'Fréquence max.', u: 'min-1', nom: '120', o: R(100, 145, 5) },
+  hyst: { l: 'Hystérésis', u: '%', nom: '0', o: ['0', '5', '10', '20', '35'] },
+  davRep: { l: 'DAV repos', u: 'ms', nom: '155', o: DAV, a: 1, m: { '4LV': { nom: '125' }, SONR: { nom: '110' } } },
+  davEff: { l: 'DAV effort', u: 'ms', nom: '80', o: DAV, a: 1, m: { SONR: { nom: '70' } } },
+  extDav: { l: 'Extension DAV', u: 'ms', nom: '65', o: EXTDAV, a: 1, m: { SONR: { nom: '30' } } },
+  delaiVV: { l: 'Délai VV', u: 'ms', nom: '0', o: ['0', '16', '24', '32', '40', '48', '56', '64'], crt: 1 },
+  stimVGs: { l: 'Stimulation VG synchrone', nom: 'Non', o: ONOFF, crt: 1 },
+  asserv: { l: 'Asservissement', nom: 'Non', o: ['Apprentissage', 'RRAuto', 'RRFigé', 'Non'] },
+  actPhys: { l: 'Activité physique', nom: 'Moyenne', o: ['Très faible', 'Faible', 'Moyenne', 'Élevée', 'Très élevée'] },
+  bav1: { l: 'Commutation BAV I', nom: 'Repos + Effort', nomi: 'Effort', o: ['Repos + Effort', 'Effort'], a: 1 },
+  pause: { l: 'Pause max.', u: 's', nom: '2', o: ['2', '3', '4'], a: 1 },
+  prRep: { l: 'PR long au repos', u: 'ms', nom: '450', o: R(200, 500, 50), a: 1, m: { SONR: { o: ['80', '100', '125', '150'].concat(R(200, 500, 50)) }, '4LV': { o: ['80', '100', '125', '150'].concat(R(200, 500, 50)) } } },
+  prEff: { l: "PR long à l'effort", u: 'ms', nom: '250', o: R(200, 500, 50), a: 1, m: { SONR: { o: ['80', '100', '125', '150'].concat(R(200, 500, 50)) }, '4LV': { o: ['80', '100', '125', '150'].concat(R(200, 500, 50)) } } },
+  sonrOpt: { l: 'Optimisation CRT SonR', nom: 'Non', o: ['Non', 'Suivi', 'DAV', 'DAV+DVV'], crt: 1 },
+  sonrFreq: { l: 'Fréq. de déclenchement optim. DAV effort', u: 'min-1', nom: '90', o: R(70, 120, 5), crt: 1 },
+  // ---------- Brady : paramètres avancés ----------
+  lissage: { l: 'Lissage', nom: 'Non', o: ['Non', 'Très lent', 'Lent', 'Moyen', 'Rapide'] },
+  repli: { l: 'Repli', nom: 'Oui', o: ONOFF, a: 1 },
+  fRepli: { l: 'Fréquence de repli', u: 'min-1', nom: '60', o: R(30, 90, 5), a: 1 },
+  antiTRE: { l: 'Protection Anti-TRE', nom: 'Réduct. + Reprog.', o: ['Réduct.', 'Réduct. + Reprog.'], a: 1, m: { SONR: { nom: 'Réduct.' }, '4LV': { nom: 'Réduct.' } } },
+  sensBruit: { l: 'Sensibilité auto sur bruit', nom: 'Oui', o: ONOFF },
+  stimBruit: { l: 'Stimulation V sur bruit', nom: 'Non', o: ONOFF },
+  pcMode: { l: 'Mode post-choc', nom: 'DDD', o: ['Non', 'VVI', 'DDI', 'DDD'], m: { VR: { nom: 'VVI', o: ['Non', 'VVI'] } } },
+  pcFreq: { l: 'Fréquence post-choc', u: 'min-1', nom: '80', o: R(50, 90, 5) },
+  pcDur: { l: 'Durée post-choc', nom: '20 s', o: ['10 s', '20 s', '30 s', '1 min', '2 min', '3 min', '4 min', '5 min'] },
+  pcDavRep: { l: 'DAV repos post-choc', u: 'ms', nom: '155', o: DAV, a: 1, m: { SONR: { nom: '125' }, '4LV': { nom: '125' } } },
+  pcDavEff: { l: 'DAV effort post-choc', u: 'ms', nom: '80', o: DAV, a: 1 },
+  pcExtDav: { l: 'Extension DAV post-choc', u: 'ms', nom: '65', o: EXTDAV, a: 1 },
+  pcAmpA: { l: 'Amplitude A post-choc', u: 'V', nom: '6', o: AMP, a: 1 },
+  pcLargA: { l: 'Largeur A post-choc', u: 'ms', nom: '1', o: LARG, a: 1 },
+  pcAmpVD: { l: 'Amplitude VD post-choc', u: 'V', nom: '6', o: AMP },
+  pcLargVD: { l: 'Largeur VD post-choc', u: 'ms', nom: '1', o: LARG },
+  pcAmpVG: { l: 'Amplitude VG post-choc', u: 'V', nom: '6', o: AMPVG, crt: 1 },
+  pcLargVG: { l: 'Largeur VG post-choc', u: 'ms', nom: '1', o: LARGVG, crt: 1 },
+  refAV: { l: 'Réfractaire A post V', t: 'Période réfractaire atriale post-stimulation V', u: 'ms', nom: '80', o: ['80', '95', '110', '125', '140', '155'], a: 1 },
+  refAR: { l: 'Réfractaire A post R', t: 'Période réfractaire atriale post-détection V', u: 'ms', nom: '45', o: ['45', '65', '80', '95', '110', '125', '140', '155'], a: 1 },
+  margeA: { l: 'Marge A post V ou R', u: 'mV', nom: '0,4', o: R(0, 1, 0.2), a: 1 },
+  margeV: { l: 'Marge V post V', u: 'mV', nom: '0,8', o: R(0, 2, 0.2) },
+  overdrive: { l: 'Overdrive', nom: 'Non', o: ONOFF, a: 1 },
+  fOverdrive: { l: "Fréquence max. d'overdrive", u: 'min-1', nom: '100', o: ['80', '90', '100', '110', '130'], a: 1 },
+  suppPauseES: { l: 'Suppression de pause post ESA', nom: 'Non', o: ONOFF, a: 1 },
+  accelESA: { l: 'Accélération sur ESA', nom: 'Non', o: ONOFF, a: 1 },
+  stimAESV: { l: 'Stimulation A sur ESV', nom: 'Non', o: ONOFF, a: 1 },
+  suppPause: { l: 'Suppression de pause post ESV', nom: 'Non', o: ONOFF, a: 1 },
+  accelESV: { l: 'Accélération sur ESV', nom: 'Non', o: ONOFF, a: 1 },
+  fAccel: { l: "Fréquence max. d'accélération", u: 'min-1', nom: '100', o: R(60, 145, 5), a: 1 },
+  // ---------- Sondes ----------
+  ampA: { l: 'Amplitude A', u: 'V', nom: '3,5', nomi: '5', o: AMP, a: 1 },
+  largA: { l: 'Largeur A', u: 'ms', nom: '0,35', o: LARG, a: 1 },
+  polA: { l: 'Polarité de stimulation A', nom: 'Bipolaire', dim: 1, a: 1 },
+  sensA: { l: 'Sensibilité A', u: 'mV', nom: '0,4', o: R(0.2, 4, 0.2), a: 1 },
+  autoA: { l: 'Auto-Seuil A', nom: 'Non', o: ['Auto', 'Non', 'Suivi'], a: 1 },
+  asAMarge: { l: 'Marge de sécurité A', nom: 'x2', o: ['x1.5', 'x2', 'x2.5', 'x3'], a: 1 },
+  asAMin: { l: 'Amplitude min. A', u: 'V', nom: '1,5', o: ['1', '1,5', '2', '2,5', '3', '3,5'], a: 1 },
+  asASec: { l: 'Amplitude de sécurité A', u: 'V', nom: '3,5', o: ['2', '2,5', '3', '3,5', '4', '4,5', '5'], a: 1 },
+  asAMax: { l: 'Amplitude max. A', u: 'V', nom: '5', dim: 1, a: 1 },
+  asAFmax: { l: 'Fréquence max. Auto-Seuil A', u: 'min-1', nom: '110', o: ['100', '110', '120'], a: 1 },
+  asAHeure: { l: 'Heure de démarrage A', nom: '02:00', o: ['00:00', '01:00', '02:00', '12:00'], a: 1 },
+  ampVD: { l: 'Amplitude VD', u: 'V', nom: '3,5', nomi: '5', o: AMP },
+  largVD: { l: 'Largeur VD', u: 'ms', nom: '0,35', o: LARG },
+  polVD: { l: 'Polarité de stimulation VD', nom: 'Bipolaire', dim: 1 },
+  sensVD: { l: 'Sensibilité VD', u: 'mV', nom: '0,4', o: R(0.4, 4, 0.2) },
+  autoVD: { l: 'Auto-Seuil VD', nom: 'Non', o: ['Auto', 'Non', 'Suivi'] },
+  asMarge: { l: 'Marge de sécurité VD', nom: 'x2', o: ['x1.5', 'x2', 'x2.5', 'x3'] },
+  asAmpMin: { l: 'Amplitude min. VD', u: 'V', nom: '2,5', o: ['1', '1,5', '2', '2,5', '3', '3,5'] },
+  asAmpSec: { l: 'Amplitude de sécurité VD', u: 'V', nom: '3,5', o: ['2', '2,5', '3', '3,5', '4', '4,5', '5', '6'] },
+  asAmpMax: { l: 'Amplitude max. VD', u: 'V', nom: '6', dim: 1 },
+  asFmax: { l: 'Fréquence max. Auto-Seuil VD', u: 'min-1', nom: '100', dim: 1 },
+  ampVG: { l: 'Amplitude VG', u: 'V', nom: '3,5', nomi: '5', o: AMPVG, crt: 1 },
+  largVG: { l: 'Largeur VG', u: 'ms', nom: '0,35', o: LARGVG, crt: 1 },
+  polVG: { l: 'Polarité de stimulation VG', nom: 'Distale VG1 vers VG2', o: POL_4LV, crt: 1, m: { SONR: { nom: 'Distale VG vers coil VD', o: POL_SONR } } },
+  mp: { l: 'Stimulation VG MultiPoint (MP)', nom: 'Non', o: ONOFF, only: ['4LV'] },
+  polMP1: { l: 'Polarité VG – MP1', nom: 'Distale VG1 vers VG2', o: POL_4LV, only: ['4LV'] },
+  polMP2: { l: 'Polarité VG – MP2', nom: 'VG3 vers VG4', o: POL_4LV, only: ['4LV'] },
+  autoVG: { l: 'Auto-Seuil VG', nom: 'Non', o: ['Auto', 'Non', 'Suivi'], crt: 1 },
+  asVGMarge: { l: 'Marge de sécurité VG', u: 'V', nom: '+1', o: ['+0,5', '+1', '+1,5', '+2', '+2,5'], crt: 1 },
+  asVGMin: { l: 'Amplitude min. VG', u: 'V', nom: '1,5', o: ['1', '1,5', '2', '2,5', '3', '3,5'], crt: 1 },
+  asVGSec: { l: 'Amplitude de sécurité VG', u: 'V', nom: '3,5', o: ['2', '2,5', '3', '3,5', '4', '4,5', '5'], crt: 1 },
+  asVGMax: { l: 'Amplitude max. VG', u: 'V', nom: '5', o: ['2', '2,5', '3', '3,5', '4', '4,5', '5', '6', '7'], crt: 1 },
+  asVGHeure: { l: 'Heure de démarrage VG', nom: '01:00', o: ['00:00', '01:00', '02:00', '12:00'], crt: 1 },
+  // ---------- Tachy : zones ----------
+  tvlOn: { l: 'Zone TV lente', nom: 'Non', o: ONOFF, tab: 'tachy' },
+  tvOn: { l: 'Zone TV', nom: 'Non', o: ONOFF, tab: 'tachy' },
+  tvrOn: { l: 'Zone TV rapide', nom: 'Non', o: ONOFF, tab: 'tachy' },
+  fTVL: { l: 'Fréquence zone TV lente', u: 'min-1', nom: '190', o: R(100, 200, 5), tab: 'tachy' },
+  fTV: { l: 'Fréquence zone TV', u: 'min-1', nom: '190', o: FTV, tab: 'tachy' },
+  fTVR: { l: 'Fréquence zone TV rapide', u: 'min-1', nom: '190', o: FTVR, tab: 'tachy' },
+  fFV: { l: 'Fréquence zone FV', u: 'min-1', nom: '190', o: FFV, tab: 'tachy' },
+  pTVL: { l: 'Persistance TV lente', u: 'cycles', nom: '20', o: PERS, tab: 'tachy' },
+  pTV: { l: 'Persistance TV', u: 'cycles', nom: '20', o: PERS, tab: 'tachy' },
+  pFV: { l: 'Persistance FV / TV rapide', u: 'cycles', nom: '12', o: R(4, 20, 1), tab: 'tachy' },
+  discTV: { l: 'Discrimination TV lente / TV', t: 'Critères de discrimination', nom: 'PARAD+', nomi: 'PARAD', o: DISC_VR.concat(['PARAD', 'PARAD+']), tab: 'tachy',
+    m: { VR: { nom: 'Stabilité+ / Accélération', nomi: 'Stabilité / Accélération', o: DISC_VR } } },
+  discTVR: { l: 'Discrimination TV rapide', nom: 'Fréquence + stabilité', o: ['Fréquence + stabilité', 'Fréquence seule'], tab: 'tachy' },
+  dAccel: { l: 'Accélération (Prématurité)', u: '%', nom: '25', o: ['6', '13', '19', '25', '31', '38', '44', '50'], tab: 'tachy' },
+  dMajY: { l: 'Majorité (X/Y), Y', u: 'cycles', nom: '8', o: ['8', '12', '16'], tab: 'tachy' },
+  dMajX: { l: 'Majorité (X/Y), X', u: '%', nom: '75', o: ['65', '70', '75', '80', '90', '95', '100'], tab: 'tachy' },
+  dCLext: { l: 'Cycle long (Extension de la persistance)', u: 'cycles', nom: '10', o: R(0, 16, 1), tab: 'tachy' },
+  dCLall: { l: 'Cycle long (Allongement)', u: 'ms', nom: '170', o: ['15', '30', '45', '65', '80', '95', '110', '125', '140', '155', '170', '190', '205'], tab: 'tachy' },
+  dStabTV: { l: 'Stabilité RR TV / TV lente', u: 'ms', nom: '65', o: ['30', '45', '65', '80', '95', '110', '125'], tab: 'tachy' },
+  dStabTVR: { l: 'Stabilité RR TV rapide', u: 'ms', nom: '30', o: ['30', '45', '65'], tab: 'tachy' },
+  ecouteA: { l: 'Écoute auriculaire', nom: 'Oui', o: ONOFF, a: 1, tab: 'tachy' },
+  // ---------- Tachy : paramètres usuels ----------
+  atpOn: { l: 'Activation des ATP', nom: 'Non', o: ONOFF, tab: 'tachy' },
+  chocOn: { l: 'Activation des chocs', nom: 'Non', nomi: 'Oui', o: ONOFF, tab: 'tachy' },
+  cavATP: { l: 'Cavité stimulée en ATP', nom: 'Droite', o: ['Droite', 'Gauche', 'D+G'], crt: 1, tab: 'tachy' },
+  autoComATP: { l: 'Auto-Commutation ATP', nom: 'Oui', o: ONOFF, tab: 'tachy' },
+  polAlt: { l: 'Polarité alternée (42 J)', nom: 'Oui', o: ONOFF, tab: 'tachy' },
+  coilVCS: { l: 'Coil VCS', nom: 'Oui', o: ONOFF, tab: 'tachy' },
+  boitier: { l: 'Boîtier actif', nom: 'Oui', o: ONOFF, dim: 1, tab: 'tachy' },
+  vecteur: { l: 'Vecteur des chocs', nom: 'VD vers Boîtier', o: ['Boîtier vers VD', 'VCS vers VD', 'Boîtier + VCS vers VD', 'VD vers Boîtier', 'VD vers VCS', 'VD vers Boîtier + VCS'], tab: 'tachy' },
+  exclVCS: { l: 'Exclusion VCS (choc < 15 J)', nom: 'Non', o: ONOFF, tab: 'tachy' },
+  // ---------- Suivi à distance ----------
+  rsSuivi: { l: 'Suivi à distance', nom: 'Non', nomi: 'Oui', o: ONOFF },
+  rsAlertes: { l: 'Alertes système', nom: 'Oui', dim: 1 },
+  rsIRM: { l: 'Notifications IRM', nom: 'Oui', o: ONOFF },
+  rsAsync: { l: 'Mode asynchrone', nom: 'Oui', o: ONOFF },
+  rsImpA: { l: 'Impédance A anormale', nom: 'Oui', o: ONOFF, a: 1 },
+  rsImpAB: { l: 'Limite basse A', u: 'Ω', nom: '200', o: R(200, 500, 50), a: 1 },
+  rsImpAH: { l: 'Limite haute A', u: 'Ω', nom: '3000', o: ['1500', '1750', '2000', '2500', '3000'], a: 1 },
+  rsASA: { l: 'Alerte Auto-Seuil A', nom: 'Oui', o: ONOFF, a: 1 },
+  rsASAs: { l: 'Seuil limite A', u: 'V', nom: '2', o: SEUIL, a: 1 },
+  rsImpVD: { l: 'Impédance VD anormale', nom: 'Oui', o: ONOFF },
+  rsImpVDB: { l: 'Limite basse VD', u: 'Ω', nom: '200', o: R(200, 500, 50) },
+  rsImpVDH: { l: 'Limite haute VD', u: 'Ω', nom: '3000', o: ['1500', '1750', '2000', '2500', '3000'] },
+  rsASVD: { l: 'Alerte Auto-Seuil VD', nom: 'Oui', o: ONOFF },
+  rsASVDs: { l: 'Seuil limite VD', u: 'V', nom: '2,5', o: SEUIL.concat(['4,5', '5']) },
+  rsImpVG: { l: 'Impédance VG anormale', nom: 'Oui', o: ONOFF, crt: 1 },
+  rsImpVGB: { l: 'Limite basse VG', u: 'Ω', nom: '200', o: R(200, 500, 50), crt: 1 },
+  rsImpVGH: { l: 'Limite haute VG', u: 'Ω', nom: '3000', o: ['1500', '1750', '2000', '2500', '3000'], crt: 1 },
+  rsASVG: { l: 'Alerte Auto-Seuil VG', nom: 'Oui', o: ONOFF, crt: 1 },
+  rsASVGs: { l: 'Seuil limite VG', u: 'V', nom: '2,5', o: SEUIL.concat(['4,5', '5', '6', '7']), crt: 1 },
+  rsCoil: { l: 'Coil VD anormal', nom: 'Oui', o: ONOFF },
+  rsCoilVCS: { l: 'Coil VCS anormal', nom: 'Oui', o: ONOFF },
+  rsImpChoc: { l: 'Impédance de choc anormale', nom: 'Oui', o: ONOFF },
+  rsLPE: { l: 'Alerte LPE', nom: 'Oui', o: ONOFF },
+  rsChocDes: { l: 'Choc désactivé', nom: 'Oui', o: ONOFF },
+  rsChocDel: { l: 'Choc délivré', nom: 'Tous les chocs', o: ['Non', 'Tous les chocs', 'Chocs inefficaces', 'Chocs max inefficaces'] },
+  rsATP: { l: 'ATP délivré', nom: 'Oui', o: ONOFF },
+  rsSurdet: { l: 'Surdétection V', nom: 'Oui', o: ONOFF },
+  rsSurdetN: { l: "Limite (nombre d'épisodes)", nom: '2', o: ['1', '2', '3', '4', '5', '6'] },
+  rsFA: { l: 'Charge en TA / FA', nom: 'Oui', o: ONOFF, a: 1 },
+  rsFAfaible: { l: 'Charge en TA / FA faible', nom: '6 min', o: ['6 min', '15 min', '30 min', '1 h', '3 h', '6 h'], a: 1 },
+  rsVrap: { l: 'Fréquence V rapide en repli', nom: 'Non', o: ONOFF, a: 1 },
+  rsVrapF: { l: 'Fréquence V limite', u: 'min-1', nom: '100', o: ['80', '90', '100', '110', '120'], a: 1 },
+  rsVrapD: { l: 'Durée limite', u: 'h', nom: '1', o: ['0,5', '1', '3', '6', '12', '24'], a: 1 },
+  rsCRT: { l: '% limité de stimulation V en CRT', nom: 'Oui', o: ONOFF, crt: 1 },
+  rsCRTl: { l: 'Limite sur 24 h', u: '%', nom: '80', o: ['50', '70', '80', '85', '90', '95'], crt: 1 },
+  // ---------- IRM ----------
+  irmMode: { l: 'Mode IRM', nom: 'Arrêt', o: ['Auto', 'Manuel', 'Arrêt'], tab: 'irm' },
+  irmStim: { l: 'Mode de stimulation IRM', nom: 'DOO', o: ['DOO', 'VOO', 'OOO'], tab: 'irm', m: { VR: { nom: 'VOO', o: ['VOO', 'OOO'] } } },
+  irmFreq: { l: 'Fréquence de stimulation IRM', u: 'min-1', nom: '80', o: R(50, 120, 5), tab: 'irm' },
+  irmAuto: { l: 'Période de suivi IRM (auto)', nom: '1 jour', o: ['2 h', '4 h', '6 h', '12 h', '1 jour', '2 jours', '3 jours', '7 jours', '10 jours'], tab: 'irm' },
+  irmMan: { l: 'Période de suivi IRM (manuel)', nom: '12 h', o: ['2 h', '4 h', '6 h', '12 h', '1 jour', '2 jours'], tab: 'irm' }
+};
+// Thérapies par zone : ATP 1, ATP 2, chocs (en zone FV / TV rapide, un seul programme d'ATP)
 const ATP_FIELDS = [['prog', 'Programme ATP', '', ['Non', 'SALVE', 'SALVE + SCAN', 'RAMPE', 'RAMPE + SCAN']], ['decR', 'Décrément rampe (/cycle)', 'ms', ['0', '4', '8', '12', '16', '20', '30', '40', '50', '60']],
-  ['nb', 'Nombre de séquences', '', null], ['decS', 'Décrément scan (/séquence)', 'ms', null], ['prem', 'Première séquence', 'cycles', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15']],
-  ['dur', 'Durée max. autorisée', 'min', null], ['ajout', 'Ajout par séquence', 'cycles', ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15']], ['coupl', 'Couplage min. autorisé', 'ms', null],
-  ['interv', 'Intervalle de couplage', '%', ['50', '55', '60', '65', '70', '75', '80', '85', '90', '95']]];
+  ['nb', 'Nombre de séquences', '', R(1, 15, 1)], ['decS', 'Décrément scan (/séquence)', 'ms', ['0', '4', '8', '12', '16', '20', '30', '40', '50', '60']], ['prem', 'Première séquence', 'cycles', R(1, 15, 1)],
+  ['dur', 'Durée max. autorisée', 'min', ['0,5', '1', '1,5', '2', '2,5', '3', '3,5', '4']], ['ajout', 'Ajout par séquence', 'cycles', R(0, 15, 1)],
+  ['coupl', 'Couplage min. autorisé', 'ms', ['95', '110', '125', '140', '155', '170', '190', '205', '220', '235', '250', '265', '280', '295', '310']],
+  ['interv', 'Intervalle de couplage', '%', R(50, 95, 5)]];
 const ATP_NOM = { prog: 'Non', decR: '0', nb: '3', decS: '0', prem: '8', dur: '2', ajout: '0', coupl: '220', interv: '80' };
 const CHOCS = ['Non', '0,5', '0,8', '1', '1,3', '1,5', '2', '2,5', '3', '3,5', '4', '5', '6', '7', '8', '9', '10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30', '32', '34', '42'];
 const ZONES = { TVL: 'TV lente', TV: 'TV', FV: 'FV / TV rapide' };
-const ZNOM = { FV: { a1prog: 'SALVE', a1nb: '1', c1: '42', c2: '42', c42: '4' } };
+const ZNOM = { TV: { c42: '4' }, FV: { c1: '42', c2: '42', c42: '4' } };
 Object.keys(ZONES).forEach(z => {
   ['a1', 'a2'].forEach((a, ai) => {
     if (z === 'FV' && a === 'a2') return;
     ATP_FIELDS.forEach(([k, l, u, o]) => {
-      const nom = (ZNOM[z] && ZNOM[z][a + k]) || ATP_NOM[k];
-      P[z + '_' + a + k] = { l, t: (z === 'FV' ? 'ATP TV rapide' : 'ATP ' + (ai + 1) + ' zone ' + ZONES[z]) + ' : ' + l, u, nom, o, dai: 1 };
+      let nom = ATP_NOM[k], uu = u, oo = o;
+      if (z === 'FV' && k === 'dur') { nom = '30'; uu = 's'; oo = ['10', '20', '30', '60', '90', '120']; }
+      P[z + '_' + a + k] = { l, t: (z === 'FV' ? 'ATP TV rapide' : 'ATP ' + (ai + 1) + ' zone ' + ZONES[z]) + ' : ' + l, u: uu, nom, o: oo, tab: 'tachy' };
     });
   });
-  P[z + '_c1'] = { l: 'Choc 1', t: 'Choc 1 zone ' + ZONES[z], u: 'J', nom: (ZNOM[z] && ZNOM[z].c1) || 'Non', o: CHOCS, dai: 1 };
-  P[z + '_c2'] = { l: 'Choc 2', t: 'Choc 2 zone ' + ZONES[z], u: 'J', nom: (ZNOM[z] && ZNOM[z].c2) || 'Non', o: CHOCS, dai: 1 };
-  P[z + '_c42'] = { l: 'Choc 42 J', t: 'Choc 42 J zone ' + ZONES[z], nom: (ZNOM[z] && ZNOM[z].c42) || 'Non', o: ['Non', '1', '2', '3', '4'], dai: 1 };
+  P[z + '_c1'] = { l: 'Choc 1', t: 'Choc 1 zone ' + ZONES[z], u: 'J', nom: (ZNOM[z] && ZNOM[z].c1) || 'Non', o: z === 'FV' ? CHOCS.slice(1) : CHOCS, tab: 'tachy' };
+  P[z + '_c2'] = { l: 'Choc 2', t: 'Choc 2 zone ' + ZONES[z], u: 'J', nom: (ZNOM[z] && ZNOM[z].c2) || 'Non', o: z === 'FV' ? CHOCS.slice(1) : CHOCS, tab: 'tachy' };
+  P[z + '_c42'] = { l: 'Chocs 42 J', t: 'Nombre de chocs 42 J zone ' + ZONES[z], nom: (ZNOM[z] && ZNOM[z].c42) || 'Non', o: z === 'FV' ? ['1', '2', '3', '4'] : ['Non', '1', '2', '3', '4'], tab: 'tachy' };
 });
-// Critères de discrimination (écran « Critères de discrimination »)
-Object.assign(P, {
-  dAccel: { l: 'Accélération (Prématurité)', u: '%', nom: '19', o: ['6', '9', '13', '16', '19', '22', '25', '28', '31', '34'], dai: 1, tab: 'tachy' },
-  dMajY: { l: 'Majorité (X/Y), Y', u: 'cycles', nom: '8', o: ['4', '6', '8', '10', '12', '14', '16'], dai: 1, tab: 'tachy' },
-  dCLext: { l: 'Cycle long (Extension de la persistance)', u: 'cycles', nom: '10', dai: 1, tab: 'tachy' },
-  dMajX: { l: 'Majorité (X/Y), X', u: '%', nom: '75', o: ['50', '63', '75', '88', '100'], dai: 1, tab: 'tachy' },
-  dCLall: { l: 'Cycle long (Allongement)', u: 'ms', nom: '170', dai: 1, tab: 'tachy' },
-  dStabTV: { l: 'Stabilité RR TV / TV lente', u: 'ms', nom: '65', o: ['30', '45', '55', '65', '80', '95', '110', '125'], dai: 1, tab: 'tachy' },
-  dStabTVR: { l: 'Stabilité RR TV rapide', u: 'ms', nom: '30', o: ['30', '45', '55', '65', '80', '95', '110', '125'], dai: 1, tab: 'tachy' },
-  rsCoilVCS: { l: 'Coil VCS anormal', nom: 'Oui', o: ONOFF, dai: 1, only: ['DAI VR'] }
-});
-P.discTV.o = ['PARAD+', 'PARAD', 'Fréquence seule', 'Stabilité', 'Stabilité+', 'Stabilité / Accélération', 'Stabilité+ / Accélération'];
-const DISC_KEYS = ['dAccel', 'dMajY', 'dCLext', 'dMajX', 'dCLall', 'dStabTV', 'dStabTVR'];
-/* Différences par appareil, relevées sur les vidéos TALENTIA DF4 DR / DF4 VR (le CRT-D garde les valeurs ci-dessus).
-   nom : valeur de départ ; o : choix ; dim : grisé ; hide : paramètres absents de l'interface de cet appareil. */
-const TYPE = {
-  'DAI DR': {
-    nom: { antiTRE: 'Réduct. + Reprog.', pcDur: '30 s', ampA: '2', ampVD: '2,5', fTV: '180', fTVR: '220', fFV: '240' },
-    hide: ['cavV', 'cavATP', 'rsCoilVCS']
-  },
-  'DAI VR': {
-    nom: { mode: 'VVI', fbase: '40', pcMode: 'VVI', pcDur: '30 s', fTV: '180', fTVR: '220', fFV: '240', discTV: 'Stabilité+ / Accélération' },
-    o: { mode: ['VVI', 'VVIR', 'VOO', 'OOO'], pcMode: ['Non', 'VVI'], discTV: ['Fréquence seule', 'Stabilité', 'Stabilité+', 'Stabilité / Accélération', 'Stabilité+ / Accélération'] },
-    dim: { hyst: 1 },
-    hide: ['cavV', 'cavATP', 'autoComATP', 'stimAESV', 'suppPause', 'accelESV', 'rsFA']
-  }
-};
+const DISC_KEYS = ['dAccel', 'dMajY', 'dCLext', 'dMajX', 'dCLall', 'dStabTV', 'dStabTVR', 'ecouteA'];
 const _pt = {};
 function PT(t, k) {
   const id = t + '|' + k; if (_pt[id]) return _pt[id];
-  const d = TYPE[t] || {}, p = Object.assign({}, P[k]);
-  if (d.nom && d.nom[k] != null) p.nom = d.nom[k];
-  if (d.o && d.o[k]) p.o = d.o[k];
-  if (d.dim && d.dim[k]) p.dim = 1;
+  const p = Object.assign({}, P[k]), d = p.m && p.m[t];
+  if (d) Object.assign(p, d);
   return (_pt[id] = p);
 }
 // pas d'unité affichée pour « Non »
 const fmt = (k, v) => { const p = P[k]; if (v === '' || v == null) return '—'; return (p.u && !/^(Non|Oui)$/.test(v)) ? v + '  ' + p.u : v; };
-const avail = (k, t) => { const p = P[k]; if (!p) return false; if (TYPE[t] && (TYPE[t].hide || []).includes(k)) return false; if (p.only && !p.only.includes(t)) return false; if (p.a && !hasA(t)) return false; if (p.dai && !isDAI(t)) return false; if (p.crt && !isCRT(t)) return false; return true; };
+const avail = (k, t) => { const p = P[k]; if (!p) return false; if (p.only && !p.only.includes(t)) return false; if (p.a && !hasA(t)) return false; if (p.crt && !isCRT(t)) return false; return true; };
 
 /* ---------- état ---------- */
-const S = { list: [], cur: null, tab: 'brady', edit: false, focus: false, open: {}, mopen: {}, only: false, zone: null, q: '' };
+const S = { list: [], cur: null, tab: 'brady', edit: false, focus: false, open: {}, mopen: {}, only: false, zone: null, q: '', hl: false };
+try { S.hl = localStorage.getItem('mp_guide_hl') === '1'; } catch (e) {}
 const val = (f, k) => (f.values && f.values[k] != null) ? f.values[k] : PT(f.type, k).nom;
 const isMod = (f, k) => !!((f.values && f.values[k] != null && f.values[k] !== PT(f.type, k).nom) || (f.mark && f.mark[k]));
 const isChk = (f, k) => !!(f.chk && f.chk[k]);
 const hasCm = (f, k) => !!(f.comments && f.comments[k]);
 const keysOfTab = (tab, t) => Object.keys(P).filter(k => avail(k, t) && tabOf(k) === tab);
-function tabOf(k) { if (P[k] && P[k].tab) return P[k].tab; if (/^rs/.test(k)) return 'rs'; if (k === 'irm') return 'irm'; if (/^(TVL|TV|FV)_|^(tvlOn|tvOn|tvrOn|fTVL|fTV|fTVR|fFV|pTVL|pTV|pFV|discTV|discTVR|atpOn|chocOn|cavATP|autoComATP|polAlt|coilVCS|boitier|vecteur)$/.test(k)) return 'tachy'; return 'brady'; }
-const titleOf = f => 'PROG_' + String(f.type || '').replace(/[^A-Za-z0-9]+/g, '_') + '_' + String(f.variante || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+function tabOf(k) { if (P[k] && P[k].tab) return P[k].tab; if (/^rs/.test(k)) return 'rs'; return 'brady'; }
+const titleOf = f => 'PROG_' + ((MODELS[f.type] || {}).prefix || 'DAI') + '_' + (f.isDefault ? 'DEFAUT' : String(f.variante || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_'));
+const defaultFiche = t => ({ id: 'defaut-' + t, type: t, variante: 'DÉFAUT', appareil: MODELS[t].name + ' ' + MODELS[t].ref, values: {}, chk: {}, mark: {}, comments: {}, notes: '', isDefault: true });
 
 /* ---------- stockage ---------- */
 async function loadList() { S.list = (await LocalDB.rows(TABLE)).sort((a, b) => TYPES.indexOf(a.type) - TYPES.indexOf(b.type) || String(a.variante).localeCompare(String(b.variante), 'fr')); }
@@ -430,48 +529,60 @@ function seedFiches() {
   const tvTher = { TV_a1prog: 'SALVE + SCAN', TV_a1nb: '3', TV_a1prem: '8', TV_a1ajout: '0', TV_a1interv: '85', TV_a1decR: '0', TV_a1decS: '8', TV_a1dur: '4', TV_a1coupl: '190',
     TV_a2prog: 'SALVE + SCAN', TV_a2nb: '3', TV_a2prem: '8', TV_a2ajout: '0', TV_a2interv: '80', TV_a2decR: '0', TV_a2decS: '8', TV_a2dur: '4', TV_a2coupl: '190', TV_c1: '42', TV_c2: '42', TV_c42: '4' };
   const chkTher = { TV_a1dur: 1, TV_a1coupl: 1, TV_a2dur: 1, TV_a2coupl: 1, TV_a1interv: 1 };
-  const base = (type, variante, appareil, values, chk) => ({ id: uid(), type, variante, appareil, values, chk, mark: {}, comments: {}, notes: '' });
+  const common = { pcDur: '1 min', atpOn: 'Oui', chocOn: 'Oui', rsSuivi: 'Oui', tvOn: 'Oui', tvrOn: 'Oui', pTV: '30', pFV: '20', coilVCS: 'Non', FV_a1prog: 'SALVE', FV_a1nb: '1', autoVD: 'Suivi' };
+  const drBrady = Object.assign({}, common, { mode: 'SafeR (AAI - DDD)', fmax: '130', davRep: '110', davEff: '70', autoA: 'Suivi' });
+  const vr = Object.assign({}, common, { fbase: '70', fTV: '170', fTVR: '220', fFV: '240' });
+  const base = (type, variante, values, chk) => ({ id: uid(), type, variante, values, chk, mark: {}, comments: {}, notes: '' });
   return [
-    base('DAI DR', 'RECO', 'TALENTIA DF4 DR', Object.assign({ tvlOn: 'Oui', fTVL: '160', pTVL: '50', fTV: '185', fTVR: '230', fFV: '255', autoComATP: 'Oui', pcDur: '1 min' }, tvTher), Object.assign({ pcMode: 1, pcDur: 1, autoA: 1, autoVD: 1 }, chkTher)),
-    base('DAI DR', 'TOURS', 'TALENTIA DF4 DR', { pcDur: '1 min' }, { pcMode: 1, pcDur: 1, autoA: 1, autoVD: 1 }),
-    base('DAI VR', 'RECO', 'TALENTIA DF4 VR', { fbase: '70', pcDur: '1 min' }, { pcMode: 1, pcDur: 1, autoVD: 1 }),
-    base('DAI VR', 'TOURS', 'TALENTIA DF4 VR', { fbase: '70', pcDur: '1 min' }, { pcMode: 1, pcDur: 1, autoVD: 1 })
+    base('DR', 'RECO', Object.assign({}, drBrady, { tvlOn: 'Oui', fTVL: '160', pTVL: '50', fTV: '185', fTVR: '230', fFV: '255' }, tvTher), Object.assign({ pcMode: 1, pcDur: 1, autoA: 1, autoVD: 1 }, chkTher)),
+    base('DR', 'TOURS', Object.assign({}, drBrady, { fTV: '170', fTVR: '220', fFV: '240' }), { pcMode: 1, pcDur: 1, autoA: 1, autoVD: 1 }),
+    base('VR', 'RECO', Object.assign({}, vr), { pcMode: 1, pcDur: 1, autoVD: 1 }),
+    base('VR', 'TOURS', Object.assign({}, vr), { pcMode: 1, pcDur: 1, autoVD: 1 })
   ];
 }
 
 /* ====================== LISTE ====================== */
+function ficheTags(f) {
+  const ks = Object.keys(P).filter(k => avail(k, f.type)), nm = ks.filter(k => isMod(f, k)).length, nc = ks.filter(k => isChk(f, k)).length;
+  return `<div class="tags">${nm ? `<span class="tag o">${nm} réglage${nm > 1 ? 's' : ''} modifié${nm > 1 ? 's' : ''}</span>` : '<span class="tag n">Valeurs par défaut</span>'}${nc ? `<span class="tag r">${nc} à vérifier</span>` : ''}${f.notes ? '<span class="tag n">📝 notes</span>' : ''}</div>`;
+}
 function renderList() {
-  S.cur = null;
+  S.cur = null; document.body.classList.remove('nohl');
   const q = S.q.trim().toLowerCase();
-  const l = S.list.filter(f => !q || (titleOf(f) + ' ' + (f.appareil || '') + ' ' + (f.notes || '') + ' ' + f.type + ' ' + f.variante).toLowerCase().includes(q));
+  const match = f => !q || (titleOf(f) + ' ' + (f.notes || '') + ' ' + MODELS[f.type].name + ' ' + f.variante).toLowerCase().includes(q);
   let html = `<div class="top"><a class="home" href="index.html" aria-label="Accueil">‹</a><div class="it">📘 Guide de programmation</div><div class="sp"></div></div><div class="band"></div>
-  <div class="wrap"><div class="search"><input id="q" type="search" placeholder="🔎 Rechercher (DAI DR, TOURS, RECO…)" value="${esc(S.q)}"><button class="btnP" id="new">＋ Fiche</button></div>`;
-  if (!l.length) html += `<div class="empty">${S.list.length ? 'Aucune fiche ne correspond.' : 'Aucune fiche. Touchez « ＋ Fiche » pour en créer une.'}</div>`;
-  TYPES.concat(['Autre']).forEach(t => {
-    const g = l.filter(f => (TYPES.includes(f.type) ? f.type : 'Autre') === t); if (!g.length) return;
-    html += `<div class="grp">${esc(t)}</div>`;
-    g.forEach(f => {
-      const ks = Object.keys(P).filter(k => avail(k, f.type)), nm = ks.filter(k => isMod(f, k)).length, nc = ks.filter(k => isChk(f, k)).length;
-      html += `<div class="card" data-id="${esc(f.id)}"><div class="ic">${esc(f.type).replace(' ', '<br>')}</div><div style="flex:1;min-width:0"><div class="t">${esc(titleOf(f))}</div>
-        <div class="m">${esc(f.variante)}${f.appareil ? ' · ' + esc(f.appareil) : ''}</div>
-        <div class="tags">${nm ? `<span class="tag o">${nm} réglage${nm > 1 ? 's' : ''} à programmer</span>` : '<span class="tag n">Réglages nominaux</span>'}${nc ? `<span class="tag r">${nc} à vérifier</span>` : ''}${f.notes ? '<span class="tag n">📝 notes</span>' : ''}</div></div><div style="font-size:22px;color:#8a98bd">›</div></div>`;
-    });
+  <div class="wrap"><div class="search"><input id="q" type="search" placeholder="🔎 Rechercher une reco (RECO, TOURS, CHU…)" value="${esc(S.q)}"></div>
+  <div class="intro">Chaque défibrillateur a sa <b>page par défaut</b> (valeurs d'un boîtier neuf, tous les paramètres programmables). Créez vos recos à partir d'elle : seuls les réglages changés sont mémorisés.</div>`;
+  let any = false;
+  TYPES.forEach(t => {
+    const M = MODELS[t], fs = S.list.filter(f => f.type === t && match(f));
+    if (q && !fs.length && !(M.name + ' ' + M.cat).toLowerCase().includes(q)) return;
+    any = true;
+    html += `<section class="mdl"><div class="mhd"><div class="mic">${esc(t)}</div><div><b>${esc(M.name)}</b><span>${esc(M.cat)} · ${esc(M.conn)} · réf. ${esc(M.ref)}</span></div></div>
+      <div class="frow def" data-id="defaut-${t}"><span class="ico">📄</span><div class="fi"><b>Page par défaut</b><small>${esc(titleOf(defaultFiche(t)))} · valeurs à l'expédition</small></div><span class="ch">›</span></div>
+      ${fs.map(f => `<div class="frow" data-id="${esc(f.id)}"><span class="ico">🗂️</span><div class="fi"><b>${esc(titleOf(f))}</b>${ficheTags(f)}</div><span class="ch">›</span></div>`).join('')}
+      <button class="addr" data-new="${t}">＋ Nouvelle reco ${esc(M.name)}</button></section>`;
   });
-  html += `<div class="legend" style="margin-top:14px"><span><i style="background:var(--org)"></i>à programmer</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span><span>💬 commentaire</span></div></div>`;
+  if (!any) html += `<div class="empty">Aucune fiche ne correspond.</div>`;
+  html += `</div>`;
   $('#app').innerHTML = html;
   $('#q').addEventListener('input', e => { S.q = e.target.value; const p = e.target.selectionStart; renderList(); const i = $('#q'); i.focus(); try { i.setSelectionRange(p, p); } catch (_) {} });
-  $('#new').addEventListener('click', newFiche);
-  document.querySelectorAll('.card').forEach(c => c.addEventListener('click', () => openFiche(c.dataset.id)));
+  document.querySelectorAll('[data-new]').forEach(b => b.addEventListener('click', () => newFiche(b.dataset.new)));
+  document.querySelectorAll('.frow[data-id]').forEach(c => c.addEventListener('click', () => openFiche(c.dataset.id)));
 }
-async function newFiche() {
-  const f = { id: uid(), type: 'DAI DR', variante: 'RECO', appareil: '', values: {}, chk: {}, mark: {}, comments: {}, notes: '' };
-  await save(f); await loadList(); S.edit = true; openFiche(f.id);
+async function newFiche(t) {
+  const name = prompt('Nom de la reco pour ' + MODELS[t].name + ' (ex. RECO, TOURS, CHU LILLE) :', 'RECO');
+  if (name == null || !name.trim()) return;
+  const f = { id: uid(), type: t, variante: name.trim().toUpperCase(), values: {}, chk: {}, mark: {}, comments: {}, notes: '' };
+  await save(f); await loadList(); S.edit = true; S.tab = 'brady'; openFiche(f.id);
 }
-
 /* ====================== FICHE ====================== */
 function openFiche(id) {
-  const f = S.list.find(x => x.id === id); if (!f) return renderList();
-  S.cur = f; S.zone = null; S.only = false; S.mopen = {}; S.open = Object.assign({}, f.open || {}); if (S.tab === 'tachy' && !isDAI(f.type)) S.tab = 'brady';
+  const dm = /^defaut-(.+)$/.exec(id || '');
+  const f = dm && MODELS[dm[1]] ? defaultFiche(dm[1]) : S.list.find(x => x.id === id); if (!f) return renderList();
+  if (f.isDefault) S.edit = false;
+  if (f.isDefault) setTimeout(() => {}, 0);
+  S.cur = f; S.zone = null; S.only = false; S.mopen = {}; S.open = Object.assign(f.isDefault ? { base: 1, adv: 1, sondes: 1, rsSys: 1, rsSond: 1, rsTh: 1, rsCl: 1, irm: 1 } : {}, f.open || {}); if (S.tab === 'tachy' && !isDAI(f.type)) S.tab = 'brady';
   history.replaceState(null, '', '#' + id);
   renderFiche();
 }
@@ -481,15 +592,14 @@ function renderFiche() {
   const f = S.cur, t = f.type;
   const tabs = [['brady', 'Brady'], ['tachy', 'Tachy'], ['rs', 'Suivi à distance'], ['irm', 'IRM']].filter(([k]) => k !== 'tachy' || isDAI(t));
   let h = `<div class="top"><a class="home" href="#" id="back" aria-label="Retour à la liste">‹</a>
-    <div class="it">👤 ${esc(f.variante || '—')}</div><div class="it">❤ ${esc(f.appareil || t)}</div><div class="it"><span class="chip">${esc(t)}</span></div>
+    <div class="it">👤 ${esc(titleOf(f))}</div><div class="it">❤ ${esc(MODELS[t].name)}</div><div class="it"><span class="chip">${esc(MODELS[t].ref)} · ${esc(MODELS[t].conn)}</span></div>
     ${isDAI(t) ? `<div class="it"><span class="chip">ATP ${val(f, 'atpOn') === 'Oui' ? 'activés' : 'désactivés'}</span><span class="chip">Chocs ${val(f, 'chocOn') === 'Oui' ? 'activés' : 'désactivés'}</span></div>` : ''}
-    <div class="sp"></div><button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ Terminé' : '✎ Modifier'}</button></div><div class="band"></div>`;
-  if (S.edit) h += `<div class="meta"><div><label>Catégorie (appareil)</label><select id="mType">${TYPES.map(x => `<option ${x === t ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div class="sp"></div>${f.isDefault ? '<button id="mkReco">＋ Créer une reco</button>' : `<button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ Terminé' : '✎ Modifier'}</button>`}</div><div class="band"></div>${f.isDefault ? `<div class="defnote">Page par défaut du ${esc(MODELS[t].name)} : valeurs d'un boîtier neuf (à l'expédition). Touchez une valeur pour voir tous les choix possibles et la valeur nominale.</div>` : ''}`;
+  if (S.edit) h += `<div class="meta"><div><label>Défibrillateur</label><select id="mType">${TYPES.map(x => `<option value="${x}" ${x === t ? 'selected' : ''}>${MODELS[x].name}</option>`).join('')}</select></div>
     <div><label>Centre ou « RECO »</label><input id="mVar" value="${esc(f.variante)}" placeholder="RECO, TOURS, CHU…" autocapitalize="characters"></div>
-    <div><label>Appareil affiché</label><input id="mApp" value="${esc(f.appareil)}" placeholder="TALENTIA 4LV SonR CRT-D"></div>
     <div style="display:flex;gap:8px;align-items:flex-end"><button class="btnS" id="dup">Dupliquer</button><button class="btnS" id="del" style="color:#c3141f">Supprimer</button></div></div>`;
   h += `<div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${S.tab === k ? 'on' : ''}" data-tab="${k}">${l}${tabMod(f, k) ? '<span class="pen">✎</span>' : ''}</button>`).join('')}<button class="tab dis">Modes pré-programmés</button></div>
-    <div class="tools"><button class="btnS ${S.focus ? 'on' : ''}" id="focus">🔦 Mettre en avant</button><span class="legend"><span><i style="background:var(--org)"></i>à programmer</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span>${S.edit ? '<span>Touchez une valeur pour la modifier</span>' : '<span>Touchez une valeur pour le détail</span>'}</span></div>
+    <div class="tools"><button class="btnS ${S.focus ? 'on' : ''}" id="focus">🔦 Mettre en avant</button>${f.isDefault ? '' : `<button class="btnS hlbtn ${S.hl ? 'on' : ''}" data-hl="1">${S.hl ? '🟧 Modifications affichées' : '⬜ Modifications masquées'}</button>`}<span class="legend"><span class="lg-o"><i style="background:var(--org)"></i>modifié</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span>${S.edit ? '<span>Touchez une valeur pour la modifier</span>' : '<span>Touchez une valeur pour le détail</span>'}</span></div>
     <div class="screen ${S.focus ? 'focus' : ''}" id="screen"></div>
     <div class="notes"><h3>📝 Recommandations / indication</h3>${S.edit ? `<textarea id="mNotes" placeholder="Indication, contexte, consignes du centre…">${esc(f.notes)}</textarea>` : `<div class="txt">${f.notes ? esc(f.notes) : '<span style="color:#8a94ad">Aucune note.</span>'}</div>`}</div>`;
   $('#app').innerHTML = h;
@@ -520,26 +630,27 @@ function mcard(f, id, title, groups, extra) {
   const all = groups.flatMap(g => g[1]).filter(k => avail(k, f.type));
   const keys = all.filter(k => keep(f, k)); if (!keys.length && !extra) return '';
   const nm = all.filter(k => isMod(f, k)).length, nc = all.filter(k => isChk(f, k)).length;
-  const open = S.only ? true : (S.mopen[id] != null ? S.mopen[id] : (nm + nc > 0));
+  const open = S.only ? true : (S.mopen[id] != null ? S.mopen[id] : (f.isDefault || nm + nc > 0));
   const body = groups.map(([sub, ks, labs]) => { const r = ks.map((k, i) => mrow(f, k, labs && labs[i])).join(''); return r ? (sub ? `<div class="msub">${esc(sub)}</div>` : '') + r : ''; }).join('');
   return `<div class="mc ${open ? '' : 'cl'}"><div class="mh" data-msec="${id}"><span class="tl">${esc(title)}</span>${nm ? `<span class="bd o">${nm}</span>` : ''}${nc ? `<span class="bd r">${nc}</span>` : ''}${S.only ? '' : '<span class="chev">⌄</span>'}</div><div class="mb">${body}${extra || ''}</div></div>`;
 }
 const B_SECT = [
-  ['base', 'Paramètres de base', [['', ['mode', 'bav1', 'prEff', 'prRep', 'pause', 'fbase', 'fmax', 'hyst', 'davRep', 'davEff', 'extDav', 'cavV', 'asserv']]]],
-  ['adv', 'Paramètres avancés', [['', ['lissage', 'antiTRE', 'repli', 'fRepli']], ['Gestion du bruit', ['sensBruit', 'stimBruit']], ['Post-choc', ['pcMode', 'pcFreq', 'pcDur', 'pcAmpA', 'pcLargA', 'pcAmpVD', 'pcLargVD'], ['Mode post-choc', 'Fréquence post-choc', 'Durée post-choc', 'Amplitude A', 'Largeur A', 'Amplitude VD', 'Largeur VD']], ['Périodes réfractaires', ['refAV', 'refAR']], ['Marges de sensibilité', ['margeA', 'margeV']], ['Prévention arythmies A', ['overdrive', 'suppPauseES', 'accelESA']], ['Prévention arythmies V', ['stimAESV', 'suppPause', 'accelESV']]]],
-  ['sondes', 'Sondes', [['Sonde A', ['ampA', 'largA', 'polA', 'sensA', 'autoA'], ['Amplitude', 'Largeur', 'Polarité', 'Sensibilité', 'Auto-Seuil A']], ['Sonde VD', ['ampVD', 'largVD', 'polVD', 'sensVD', 'autoVD'], ['Amplitude', 'Largeur', 'Polarité', 'Sensibilité', 'Auto-Seuil VD']], ['Auto-Seuil (réglages)', ['asMarge', 'asAmpMin', 'asAmpSec', 'asAmpMax', 'asFmax', 'asHeure']], ['Sonde VG', ['ampVG', 'largVG', 'polVG', 'mp'], ['Amplitude', 'Largeur', 'Polarité', 'Stim. MultiPoint']]]]
+  ['base', 'Paramètres de base', [['', ['mode', 'cavV', 'fbase', 'fmax', 'hyst']], ['Délais', ['davRep', 'davEff', 'extDav', 'delaiVV', 'stimVGs']], ['Asservissement', ['asserv', 'actPhys']], ['SafeR', ['pause', 'prRep', 'prEff', 'bav1']], ['SonR', ['sonrOpt', 'sonrFreq']]]],
+  ['adv', 'Paramètres avancés', [['', ['lissage', 'repli', 'fRepli', 'antiTRE']], ['Gestion du bruit', ['sensBruit', 'stimBruit']], ['Paramètres post-choc', ['pcMode', 'pcFreq', 'pcDur', 'pcDavRep', 'pcDavEff', 'pcExtDav', 'pcAmpA', 'pcLargA', 'pcAmpVD', 'pcLargVD', 'pcAmpVG', 'pcLargVG']], ['Périodes réfractaires', ['refAV', 'refAR']], ['Marges de sensibilité', ['margeA', 'margeV']], ['Prévention arythmies A', ['overdrive', 'fOverdrive', 'suppPauseES', 'accelESA']], ['Prévention arythmies V', ['stimAESV', 'suppPause', 'accelESV', 'fAccel']]]],
+  ['sondes', 'Sondes', [['Sonde A', ['ampA', 'largA', 'polA', 'sensA', 'autoA']], ['Auto-Seuil A', ['asAMarge', 'asAMin', 'asASec', 'asAMax', 'asAFmax', 'asAHeure']], ['Sonde VD', ['ampVD', 'largVD', 'polVD', 'sensVD', 'autoVD']], ['Auto-Seuil VD', ['asMarge', 'asAmpMin', 'asAmpSec', 'asAmpMax', 'asFmax']], ['Sonde VG', ['ampVG', 'largVG', 'polVG', 'mp', 'polMP1', 'polMP2']], ['Auto-Seuil VG', ['autoVG', 'asVGMarge', 'asVGMin', 'asVGSec', 'asVGMax', 'asVGHeure']]]]
 ];
-const T_GEN = [['', ['atpOn', 'chocOn']], ['', ['cavATP', 'autoComATP', 'polAlt', 'coilVCS', 'boitier', 'vecteur']], ['', ['sensVD']]];
+const T_GEN = [['', ['atpOn', 'chocOn']], ['', ['cavATP', 'autoComATP', 'polAlt', 'coilVCS', 'boitier', 'vecteur', 'exclVCS']], ['', ['sensVD']]];
 const thGroups = z => (z === 'FV' ? [['ATP en TV rapide', ATP_FIELDS.map(a => z + '_a1' + a[0])]] : [['ATP 1', ATP_FIELDS.map(a => z + '_a1' + a[0])], ['ATP 2', ATP_FIELDS.map(a => z + '_a2' + a[0])]]).concat([['Chocs', [z + '_c1', z + '_c2', z + '_c42']]]);
 const R_SECT = [
   ['rsSys', 'Système', [['', ['rsSuivi', 'rsAlertes', 'rsIRM', 'rsAsync']]]],
-  ['rsSond', 'Sondes', [['Sonde A', ['rsImpA', 'rsImpAH', 'rsImpAB', 'rsASA', 'rsASAs']], ['Sonde VD', ['rsImpVD', 'rsImpVDH', 'rsImpVDB', 'rsASVD', 'rsASVDs', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsCoilVCS']], ['Sonde VG', ['rsImpVG', 'rsImpVGH', 'rsImpVGB']]]],
+  ['rsSond', 'Sondes', [['Sonde A', ['rsImpA', 'rsImpAB', 'rsImpAH', 'rsASA', 'rsASAs']], ['Sonde VD', ['rsImpVD', 'rsImpVDB', 'rsImpVDH', 'rsASVD', 'rsASVDs']], ['Sonde VG', ['rsImpVG', 'rsImpVGB', 'rsImpVGH', 'rsASVG', 'rsASVGs']], ['Défibrillation', ['rsCoil', 'rsCoilVCS', 'rsImpChoc', 'rsLPE']]]],
   ['rsTh', 'Thérapies', [['', ['rsChocDes', 'rsChocDel', 'rsATP']]]],
-  ['rsCl', 'Alertes cliniques', [['', ['rsFA', 'rsSurdet']]]]
+  ['rsCl', 'Alertes cliniques', [['Surdétection V', ['rsSurdet', 'rsSurdetN']], ['Charge en TA / FA', ['rsFA', 'rsFAfaible']], ['Fréquence V rapide en repli', ['rsVrap', 'rsVrapF', 'rsVrapD']], ['Stimulation CRT', ['rsCRT', 'rsCRTl']]]]
 ];
+const I_SECT = [['irm', 'Mode IRM', [['', ['irmMode', 'irmStim', 'irmFreq', 'irmAuto', 'irmMan']]]]];
 const mBrady = f => B_SECT.map(([id, t, g]) => mcard(f, id, t, g)).join('');
 const mRS = f => R_SECT.map(([id, t, g]) => mcard(f, id, t, g)).join('');
-const mIRM = f => mcard(f, 'irm', 'IRM', [['', ['irm']]]);
+const mIRM = f => I_SECT.map(([id, t, g]) => mcard(f, id, t, g)).join('');
 function therLine(f, label, keys, txt) {
   const o = keys.some(k => isMod(f, k)), c = keys.some(k => isChk(f, k));
   return `<div class="mr ${c ? 'chk' : ''}" data-k="${keys[0]}"><div class="ml">${label}</div><div class="mv ${o ? 'o' : ''}">${esc(txt)}</div></div>`;
@@ -574,7 +685,7 @@ function mTachy(f) {
     mcard(f, 'tgen', 'Réglages des thérapies', T_GEN, '<button class="mgo" data-sondes="1">Paramètres sondes ›</button>');
 }
 function mZone(f, z) {
-  if (z === 'DISC') return `<div class="mback"><button data-zback="1">‹ Zones</button><b>Critères de discrimination</b></div>` + mcard(f, 'disc', 'Critères', [['', ['discTV'].concat(discShown(f) ? DISC_KEYS : [])]]).replace('class="mc cl"', 'class="mc"');
+  if (z === 'DISC') return `<div class="mback"><button data-zback="1">‹ Zones</button><b>Critères de discrimination</b></div>` + mcard(f, 'disc', 'Critères', [['', ['discTV'].concat(discShown(f) ? DISC_KEYS : ['ecouteA'])]]).replace('class="mc cl"', 'class="mc"');
   const title = z === 'FV' ? 'Thérapies FV / TV rapide' : 'Thérapies ' + ZONES[z];
   return `<div class="mback"><button data-zback="1">‹ Zones</button><b>${title}</b></div>` + thGroups(z).map(([t, ks], i) => { const sv = S.only; S.only = false; const h = mcard(f, 'th' + z + i, t, [['', ks]]); S.only = sv; return h.replace('class="mc cl"', 'class="mc"'); }).join('');
 }
@@ -593,21 +704,21 @@ function countAll(f) { const ks = Object.keys(P).filter(k => avail(k, f.type)); 
 function renderFicheMobile() {
   const f = S.cur, t = f.type;
   const tabs = [['brady', 'Brady'], ['tachy', 'Tachy'], ['rs', 'Suivi'], ['irm', 'IRM']].filter(([k]) => k !== 'tachy' || isDAI(t));
-  const sub = [t, f.appareil].filter(Boolean).join(' · ') + (isDAI(t) ? ` · ATP ${val(f, 'atpOn') === 'Oui' ? 'ON' : 'OFF'} · Chocs ${val(f, 'chocOn') === 'Oui' ? 'ON' : 'OFF'}` : '');
-  let h = `<div class="head"><div class="mtop"><a href="#" id="back" aria-label="Retour">‹</a><div class="tt"><b>${esc(titleOf(f))}</b><span>${esc(sub)}</span></div><button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ OK' : '✎ Modifier'}</button></div>
+  const sub = MODELS[t].name + (isDAI(t) ? ` · ATP ${val(f, 'atpOn') === 'Oui' ? 'ON' : 'OFF'} · Chocs ${val(f, 'chocOn') === 'Oui' ? 'ON' : 'OFF'}` : '');
+  let h = `<div class="head"><div class="mtop"><a href="#" id="back" aria-label="Retour">‹</a><div class="tt"><b>${esc(titleOf(f))}</b><span>${esc(sub)}</span></div>${f.isDefault ? '<button id="mkReco">＋ Reco</button>' : `<button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ OK' : '✎ Modifier'}</button>`}</div>
     ${S.only ? '' : `<div class="mtabs" style="grid-template-columns:repeat(${tabs.length},1fr)">${tabs.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-tab="${k}">${l}${tabMod(f, k) ? '<span class="dot"></span>' : ''}</button>`).join('')}</div>`}</div>`;
-  if (S.edit) h += `<div class="meta"><div><label>Catégorie</label><select id="mType">${TYPES.map(x => `<option ${x === t ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
-    <div><label>Centre ou « RECO »</label><input id="mVar" value="${esc(f.variante)}" autocapitalize="characters"></div>
-    <div style="grid-column:1/3"><label>Appareil affiché</label><input id="mApp" value="${esc(f.appareil)}" placeholder="TALENTIA 4LV SonR CRT-D"></div>
+  if (S.edit) h += `<div class="meta"><div style="grid-column:1/3"><label>Défibrillateur</label><select id="mType">${TYPES.map(x => `<option value="${x}" ${x === t ? 'selected' : ''}>${MODELS[x].name}</option>`).join('')}</select></div>
+    <div style="grid-column:1/3"><label>Centre ou « RECO »</label><input id="mVar" value="${esc(f.variante)}" autocapitalize="characters"></div>
     <div style="display:flex;gap:8px"><button class="btnS" id="dup" style="flex:1">Dupliquer</button><button class="btnS" id="del" style="flex:1;color:#c3141f">Supprimer</button></div></div>`;
   const n = countAll(f);
-  h += `<div class="mtool"><div class="seg"><button id="vAll" class="${S.only ? '' : 'on'}">Tous les réglages</button><button id="vOnly" class="${S.only ? 'on' : ''}">À régler (${n})</button></div></div>
-    <div class="mleg"><span><i style="background:var(--org)"></i>à programmer</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span><span>${S.edit ? 'Touchez une ligne pour la modifier' : 'Touchez une ligne pour le détail'}</span></div>
+  h += f.isDefault ? `<div class="defnote">Page par défaut : valeurs d'un boîtier neuf. Touchez une ligne pour voir les choix et la valeur nominale MicroPort.</div><div class="mscr" id="screen"></div>` : `<div class="mtool"><div class="seg"><button id="vAll" class="${S.only ? '' : 'on'}">Tous les réglages</button><button id="vOnly" class="${S.only ? 'on' : ''}">${f.isDefault ? 'Récap' : 'À régler'} (${n})</button></div><button class="btnS hlbtn ${S.hl ? 'on' : ''}" data-hl="1" style="height:40px;padding:0 10px" aria-label="Afficher les modifications en orange">🟧</button></div>
+
+    <div class="mleg"><span class="lg-o"><i style="background:var(--org)"></i>modifié</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span><span>${S.edit ? 'Touchez une ligne pour la modifier' : 'Touchez une ligne pour le détail'}</span></div>
     <div class="mscr" id="screen"></div>
     <div class="notes"><h3>📝 Recommandations / indication</h3>${S.edit ? `<textarea id="mNotes" placeholder="Indication, contexte, consignes du centre…">${esc(f.notes)}</textarea>` : `<div class="txt">${f.notes ? esc(f.notes) : '<span style="color:#8a94ad">Aucune note.</span>'}</div>`}</div>`;
   $('#app').innerHTML = h;
-  $('#vAll').addEventListener('click', () => { S.only = false; renderFiche(); });
-  $('#vOnly').addEventListener('click', () => { S.only = true; S.zone = null; renderFiche(); window.scrollTo(0, 0); });
+  if ($('#vAll')) $('#vAll').addEventListener('click', () => { S.only = false; renderFiche(); });
+  if ($('#vOnly')) $('#vOnly').addEventListener('click', () => { S.only = true; S.zone = null; renderFiche(); window.scrollTo(0, 0); });
   const scr = $('#screen');
   if (S.only) scr.innerHTML = mAll(f);
   else if (S.tab === 'brady') scr.innerHTML = mBrady(f);
@@ -620,13 +731,15 @@ function renderFicheMobile() {
 function bindFiche() {
   const f = S.cur;
   $('#back').addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', location.pathname); S.edit = false; loadList().then(renderList); });
-  $('#edit').addEventListener('click', async () => { if (S.edit) { await save(f); } S.edit = !S.edit; renderFiche(); });
+  document.body.classList.toggle('nohl', !S.hl);
+  if ($('#edit')) $('#edit').addEventListener('click', async () => { if (S.edit) { await save(f); } S.edit = !S.edit; renderFiche(); });
+  if ($('#mkReco')) $('#mkReco').addEventListener('click', () => newFiche(f.type));
+  document.querySelectorAll('[data-hl]').forEach(b => b.addEventListener('click', () => { S.hl = !S.hl; try { localStorage.setItem('mp_guide_hl', S.hl ? '1' : '0'); } catch (e) {} renderFiche(); }));
   if ($('#focus')) $('#focus').addEventListener('click', () => { S.focus = !S.focus; renderFiche(); });
   document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.tab; S.zone = null; renderFiche(); }));
   if (S.edit) {
     $('#mType').addEventListener('change', async e => { f.type = e.target.value; await save(f); renderFiche(); });
     $('#mVar').addEventListener('change', async e => { f.variante = e.target.value.trim().toUpperCase(); await save(f); renderFiche(); });
-    $('#mApp').addEventListener('change', async e => { f.appareil = e.target.value.trim(); await save(f); renderFiche(); });
     $('#mNotes').addEventListener('change', async e => { f.notes = e.target.value; await save(f); });
     $('#dup').addEventListener('click', async () => { const c = JSON.parse(JSON.stringify(f)); c.id = uid(); c.variante = (f.variante || '') + ' COPIE'; await save(c); await loadList(); openFiche(c.id); });
     $('#del').addEventListener('click', async () => { if (!confirm('Supprimer la fiche ' + titleOf(f) + ' ?')) return; await supabase.createClient().from(TABLE).delete().eq('id', f.id); S.edit = false; history.replaceState(null, '', location.pathname); await loadList(); renderList(); });
@@ -657,24 +770,18 @@ function section(f, id, title, keys, sumHtml, openHtml) {
 const col = (f, head, keys) => !keys.some(k => avail(k, f.type)) ? '<div></div>' : `<div>${head ? `<div class="colh">${head}</div>` : ''}${keys.map(k => field(f, k)).join('')}</div>`;
 
 /* ---------- Brady ---------- */
+function dOpen(f, groups) { const g = groups.filter(([, ks]) => ks.some(k => avail(k, f.type))); return `<div class="grid4">${g.map(([sub, ks]) => col(f, sub, ks)).join('')}</div>`; }
+function dSecs(f, defs, sums) { return defs.map(([id, t, g]) => { const keys = g.flatMap(x => x[1]).filter(k => avail(k, f.type)); if (!keys.length) return ''; const sm = (sums && sums[id]) ? sums[id] : `<div class="sumrow">${g.map(([sub, ks]) => { const k = ks.find(x => avail(x, f.type)); return k ? sumItem(f, sub || P[k].l, [k]) : ''; }).filter(Boolean).slice(0, 8).join('')}</div>`; return section(f, id, t, keys, sm, dOpen(f, g)); }).join(''); }
 function renderBrady(f) {
-  const t = f.type, A = hasA(t), D = isDAI(t), C = isCRT(t);
-  const baseK = ['mode', 'bav1', 'prEff', 'prRep', 'pause', 'fbase', 'fmax', 'hyst', 'davRep', 'davEff', 'extDav', 'cavV', 'asserv'];
-  const baseSum = `<div class="sumrow">${sumItem(f, 'Mode', ['mode'])}${A ? sumItem(f, 'Fréquence de base / Fréquence max.', ['fbase', 'fmax']) : sumItem(f, 'Fréquence de base', ['fbase'])}${A ? sumItem(f, 'DAV repos / DAV effort', ['davRep', 'davEff']) : '<div></div>'}${C || D ? sumItem(f, 'Cavité V', ['cavV']) : '<div></div>'}</div><div class="sumrow">${sumItem(f, 'Asservissement', ['asserv'])}</div>`;
-  const baseOpen = `<div class="grid4">${col(f, '', ['mode', 'bav1', 'prEff', 'prRep', 'pause'])}${col(f, '', ['fbase', 'fmax', 'hyst'])}${col(f, '', ['davRep', 'davEff', 'extDav'])}${C || D ? col(f, '', ['cavV']) : '<div></div>'}</div><div class="grid4">${col(f, '', ['asserv'])}</div>`;
-  const advK = ['lissage', 'antiTRE', 'repli', 'fRepli', 'sensBruit', 'stimBruit', 'pcMode', 'pcFreq', 'pcDur', 'pcAmpA', 'pcLargA', 'pcAmpVD', 'pcLargVD', 'refAV', 'refAR', 'margeA', 'margeV', 'overdrive', 'suppPauseES', 'accelESA', 'stimAESV', 'suppPause', 'accelESV'];
-  const advSum = `<div class="sumrow">${sumItem(f, 'Lissage', ['lissage'])}${A ? sumItem(f, 'Repli', ['repli']) : '<div></div>'}${sumItem(f, 'Sensibilité auto sur bruit / Stimulation V sur bruit', ['sensBruit', 'stimBruit'])}${D ? sumItem(f, 'Paramètres post-choc', ['pcMode', 'pcFreq', 'pcDur']) : '<div></div>'}</div>`;
-  const advOpen = `<div class="grid4">${col(f, '', ['lissage', 'antiTRE'])}${col(f, '', ['repli', 'fRepli'])}${col(f, 'Gestion du bruit', ['sensBruit', 'stimBruit'])}${D ? col(f, 'Paramètres post-choc', ['pcMode', 'pcFreq', 'pcDur', 'pcAmpA', 'pcLargA', 'pcAmpVD', 'pcLargVD']) : '<div></div>'}</div>
-    <div class="grid4">${col(f, 'Périodes réfractaires', ['refAV', 'refAR'])}${col(f, 'Marges de sensibilité', ['margeA', 'margeV'])}${A ? col(f, 'Prévention arythmies A', ['overdrive', 'suppPauseES', 'accelESA']) : '<div></div>'}${col(f, 'Prévention arythmies V', ['stimAESV', 'suppPause', 'accelESV'])}</div>`;
-  const sondK = ['ampA', 'largA', 'polA', 'sensA', 'autoA', 'ampVD', 'largVD', 'polVD', 'sensVD', 'autoVD', 'asMarge', 'asAmpMin', 'asAmpSec', 'asAmpMax', 'asFmax', 'asHeure', 'ampVG', 'largVG', 'polVG', 'mp'];
-  const sondSum = (A ? `<div class="sumrow">${sumItem(f, 'Amp. A / Largeur A', ['ampA', 'largA'])}${sumItem(f, 'Polarité de stimulation A', ['polA'])}${sumItem(f, 'Sensibilité A', ['sensA'])}${sumItem(f, 'Auto-Seuil A', ['autoA'])}</div>` : '') +
-    `<div class="sumrow">${sumItem(f, 'Amp. VD / Largeur VD', ['ampVD', 'largVD'])}${sumItem(f, 'Polarité de stimulation VD', ['polVD'])}${sumItem(f, 'Sensibilité VD', ['sensVD'])}${sumItem(f, 'Auto-Seuil VD', ['autoVD'])}</div>` +
-    (C ? `<div class="sumrow">${sumItem(f, 'Amp. VG / Largeur VG', ['ampVG', 'largVG'])}${sumItem(f, 'Polarité stim. VG', ['polVG'])}${sumItem(f, 'Stim. MultiPoint', ['mp'])}<div></div></div>` : '');
-  const asBlock = `<div><div class="colh" style="font-size:12px;margin-top:6px">Paramètres Auto-Seuil</div>${['asMarge', 'asAmpMin', 'asAmpSec', 'asAmpMax', 'asFmax', 'asHeure'].map(k => field(f, k)).join('')}</div>`;
-  const sondOpen = (A ? `<div class="subh">SONDE A</div><div class="grid4">${col(f, '', ['ampA', 'largA'])}${col(f, '', ['polA'])}${col(f, '', ['sensA'])}${col(f, '', ['autoA'])}</div>` : '') +
-    `<div class="subh">SONDE VD</div><div class="grid4">${col(f, '', ['ampVD', 'largVD'])}${col(f, '', ['polVD'])}${col(f, '', ['sensVD'])}<div>${field(f, 'autoVD')}${asBlock}</div></div>` +
-    (C ? `<div class="subh">SONDE VG</div><div class="grid4">${col(f, '', ['ampVG', 'largVG'])}${col(f, '', ['polVG'])}${col(f, '', ['mp'])}<div></div></div>` : '');
-  return section(f, 'base', 'Paramètres de base', baseK, baseSum, baseOpen) + section(f, 'adv', 'Paramètres avancés', advK, advSum, advOpen) + section(f, 'sondes', 'Sondes', sondK, sondSum, sondOpen);
+  const t = f.type, A = hasA(t), C = isCRT(t);
+  const sums = {
+    base: `<div class="sumrow">${sumItem(f, 'Mode', ['mode'])}${sumItem(f, 'Fréquence de base / Fréquence max.', ['fbase', 'fmax'])}${A ? sumItem(f, 'DAV repos / DAV effort', ['davRep', 'davEff']) : sumItem(f, 'Hystérésis', ['hyst'])}${C ? sumItem(f, 'Cavités stimulées', ['cavV']) : sumItem(f, 'Asservissement', ['asserv'])}</div>${C ? `<div class="sumrow">${sumItem(f, 'Asservissement', ['asserv'])}${sumItem(f, 'Délai VV', ['delaiVV'])}${sumItem(f, 'Optimisation CRT SonR', ['sonrOpt'])}</div>` : ''}`,
+    adv: `<div class="sumrow">${sumItem(f, 'Lissage', ['lissage'])}${A ? sumItem(f, 'Repli', ['repli']) : '<div></div>'}${sumItem(f, 'Sensibilité auto sur bruit / Stimulation V sur bruit', ['sensBruit', 'stimBruit'])}${sumItem(f, 'Paramètres post-choc', ['pcMode', 'pcFreq', 'pcDur'])}</div>`,
+    sondes: (A ? `<div class="sumrow">${sumItem(f, 'Amp. A / Largeur A', ['ampA', 'largA'])}${sumItem(f, 'Polarité de stimulation A', ['polA'])}${sumItem(f, 'Sensibilité A', ['sensA'])}${sumItem(f, 'Auto-Seuil A', ['autoA'])}</div>` : '') +
+      `<div class="sumrow">${sumItem(f, 'Amp. VD / Largeur VD', ['ampVD', 'largVD'])}${sumItem(f, 'Polarité de stimulation VD', ['polVD'])}${sumItem(f, 'Sensibilité VD', ['sensVD'])}${sumItem(f, 'Auto-Seuil VD', ['autoVD'])}</div>` +
+      (C ? `<div class="sumrow">${sumItem(f, 'Amp. VG / Largeur VG', ['ampVG', 'largVG'])}${sumItem(f, 'Polarité de stimulation VG', ['polVG'])}${t === '4LV' ? sumItem(f, 'Stim. MultiPoint', ['mp']) : '<div></div>'}${sumItem(f, 'Auto-Seuil VG', ['autoVG'])}</div>` : '')
+  };
+  return dSecs(f, B_SECT, sums);
 }
 
 /* ---------- Tachy ---------- */
@@ -711,7 +818,7 @@ function renderTachy(f) {
       <div class="ther" data-zone="FV"><span class="go">»</span>${fvCh}</div></div>
   </div></div>`;
   const rr = k => avail(k, f.type) ? `<div class="rr"><div class="l">${esc(P[k].l)}</div>${['atpOn', 'chocOn'].includes(k) ? `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-k="${k}" style="justify-content:flex-start"><span class="sw ${val(f, k) === 'Oui' ? '' : 'off'}" style="${val(f, k) === 'Oui' ? 'background:var(--green)' : ''}"></span><span style="color:${val(f, k) === 'Oui' ? 'var(--green)' : 'var(--redTxt)'}">${esc(val(f, k))}</span></div>` : `<div class="f ${isChk(f, k) ? 'chk' : ''}" style="margin:0"><div class="box ${isMod(f, k) ? 'o' : (PT(f.type, k).dim ? 'dim' : '')}" data-k="${k}">${esc(fmt(k, val(f, k)))}${hasCm(f, k) ? '<span class="cm">💬</span>' : ''}</div></div>`}</div>` : '';
-  const right = `<div class="right">${rr('atpOn')}${rr('chocOn')}<div class="rsep"></div>${rr('cavATP')}${rr('autoComATP')}${rr('polAlt')}${rr('coilVCS')}${rr('boitier')}${rr('vecteur')}</div>`;
+  const right = `<div class="right">${rr('atpOn')}${rr('chocOn')}<div class="rsep"></div>${rr('cavATP')}${rr('autoComATP')}${rr('polAlt')}${rr('coilVCS')}${rr('boitier')}${rr('vecteur')}${rr('exclVCS')}</div>`;
   return `<div class="tachy"><div>${g}<div class="sensrow"><span class="l">Sensibilité VD</span><div class="f ${isChk(f, 'sensVD') ? 'chk' : ''}" style="margin:0;min-width:120px"><div class="box ${isMod(f, 'sensVD') ? 'o' : ''}" data-k="sensVD">${esc(fmt('sensVD', val(f, 'sensVD')))}</div></div><span style="flex:1"></span><button class="btnS" data-sondes="1">Paramètres sondes »</button></div></div>${right}</div>`;
 }
 function renderZone(f, z) {
@@ -724,28 +831,15 @@ function renderZone(f, z) {
 
 function discShown(f) { return !/PARAD/.test(val(f, 'discTV')); }
 function renderDisc(f) {
-  const ks = discShown(f) ? DISC_KEYS : [];
+  const ks = discShown(f) ? DISC_KEYS : ['ecouteA'];
   return `<div class="ztitle"><button data-zback="1">‹ Retour</button><h2>Critères de discrimination</h2></div>
     <div class="cols"><div class="colc" style="flex:0 1 460px"><div class="hd">Critères de discrimination</div><div class="in" style="grid-template-columns:1fr 1fr">
     <div>${field(f, 'discTV', 'Critères de discrimination')}${['dAccel', 'dMajY', 'dCLext', 'dMajX'].filter(k => ks.includes(k)).map(k => field(f, k)).join('')}</div>
-    <div>${['dCLall', 'dStabTV', 'dStabTVR'].filter(k => ks.includes(k)).map(k => field(f, k)).join('')}</div></div></div></div>`;
+    <div>${['dCLall', 'dStabTV', 'dStabTVR', 'ecouteA'].filter(k => ks.includes(k)).map(k => field(f, k)).join('')}</div></div></div></div>`;
 }
 /* ---------- Suivi à distance / IRM ---------- */
-function renderRS(f) {
-  const t = f.type, A = hasA(t), D = isDAI(t), C = isCRT(t);
-  const sys = ['rsSuivi', 'rsAlertes', 'rsIRM', 'rsAsync'], sond = ['rsImpA', 'rsImpAH', 'rsImpAB', 'rsASA', 'rsASAs', 'rsImpVD', 'rsImpVDH', 'rsImpVDB', 'rsASVD', 'rsASVDs', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsCoilVCS', 'rsImpVG', 'rsImpVGH', 'rsImpVGB'], th = ['rsChocDes', 'rsChocDel', 'rsATP'], cl = ['rsFA', 'rsSurdet'];
-  const sum = keys => `<div class="sumrow">${keys.filter(k => avail(k, t)).map(k => sumItem(f, P[k].l, [k])).join('')}</div>`;
-  const sondOpen = (A ? `<div class="subh">SONDE A</div><div class="grid4">${col(f, '', ['rsImpA', 'rsImpAH', 'rsImpAB'])}${col(f, '', ['rsASA', 'rsASAs'])}<div></div><div></div></div>` : '') +
-    `<div class="subh">SONDE VD</div><div class="grid4">${col(f, '', ['rsImpVD', 'rsImpVDH', 'rsImpVDB'])}${col(f, '', ['rsASVD', 'rsASVDs'])}${D ? col(f, '', ['rsLPE']) : '<div></div>'}<div></div></div>` +
-    (D ? `<div class="grid4">${col(f, '', ['rsImpChoc'])}${col(f, '', ['rsCoil'])}${col(f, '', ['rsCoilVCS'])}<div></div></div>` : '') +
-    (C ? `<div class="subh">SONDE VG</div><div class="grid4">${col(f, '', ['rsImpVG', 'rsImpVGH', 'rsImpVGB'])}<div></div><div></div><div></div></div>` : '');
-  const sondSum = `<div class="sumrow">${['rsImpA', 'rsASA', 'rsImpVD', 'rsASVD', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsCoilVCS', 'rsImpVG'].filter(k => avail(k, t)).map(k => sumItem(f, P[k].l, [k])).join('')}</div>`;
-  return section(f, 'rsSys', 'Système', sys, sum(sys), `<div class="grid4">${sys.map(k => col(f, '', [k])).join('')}</div>`) +
-    section(f, 'rsSond', 'Sondes', sond, sondSum, sondOpen) +
-    (D ? section(f, 'rsTh', 'Thérapies', th, sum(th), `<div class="grid4">${th.map(k => col(f, '', [k])).join('')}<div></div></div>`) : '') +
-    section(f, 'rsCl', 'Alertes cliniques', cl, sum(cl), `<div class="grid4">${cl.filter(k => avail(k, t)).map(k => col(f, '', [k])).join('')}</div>`);
-}
-function renderIRM(f) { return `<div class="sec"><div class="side"> </div><div class="body"><div class="grid4">${col(f, '', ['irm'])}</div></div></div>`; }
+function renderRS(f) { return dSecs(f, R_SECT); }
+function renderIRM(f) { return dSecs(f, I_SECT); }
 
 /* ---------- fenêtre de choix / détail ---------- */
 function openPop(k) {
@@ -756,14 +850,14 @@ function openPop(k) {
   if (S.edit) {
     b = `${opts.length ? `<div class="opts">${opts.map(o => `<button class="opt ${o === p.nom ? 'nom' : ''} ${o === v && v !== p.nom ? 'sel' : ''}" data-v="${esc(o)}">${esc(o)}${o === v ? ' •' : ''}</button>`).join('')}</div>` : ''}
       <div class="row"><input type="text" id="pVal" placeholder="${opts.length ? 'Autre valeur' : 'Valeur'}" value="${opts.includes(v) ? '' : esc(v)}" ${p.u && !p.o ? 'inputmode="decimal"' : ''}><span>${esc(p.u || '')}</span></div>
-      <div class="leg">Valeur soulignée : valeur nominale (${esc(fmt(k, p.nom))}) · orange : valeur à programmer</div>
-      <label class="ck"><input type="checkbox" id="pMark" ${f.mark && f.mark[k] ? 'checked' : ''}> Mettre en orange même si c'est la valeur nominale</label>
+      <div class="leg">Valeur soulignée : valeur par défaut, boîtier neuf (${esc(fmt(k, p.nom))})${p.nomi && p.nomi !== p.nom ? ` · valeur nominale MicroPort : ${esc(fmt(k, p.nomi))}` : ''}</div>
+      <label class="ck"><input type="checkbox" id="pMark" ${f.mark && f.mark[k] ? 'checked' : ''}> Compter comme réglage à faire même si c'est la valeur par défaut</label>
       <label class="ck"><input type="checkbox" id="pChk" ${isChk(f, k) ? 'checked' : ''}> Encadrer en rouge (à vérifier)</label>
       <div style="margin-top:10px;font-size:12.5px;font-weight:700;color:var(--lab)">Commentaire</div><textarea id="pCm" placeholder="Pourquoi ce réglage, à quoi faire attention…">${esc((f.comments || {})[k] || '')}</textarea>
-      <div class="acts"><button class="a1" id="pNom">Valeur nominale</button><button class="a2" id="pOk">OK</button></div>`;
+      <div class="acts"><button class="a1" id="pNom">Valeur par défaut</button><button class="a2" id="pOk">OK</button></div>`;
   } else {
     b = `${opts.length ? `<div class="opts">${opts.map(o => `<button class="opt ro ${o === p.nom ? 'nom' : ''} ${o === v && isMod(f, k) ? 'sel' : ''}">${esc(o)}${o === v ? ' •' : ''}</button>`).join('')}</div>` : ''}
-      <div class="info"><b>Réglage : ${esc(fmt(k, v))}</b>${isMod(f, k) ? ' — <span style="color:var(--org);font-weight:800">à programmer</span>' : ''}${isChk(f, k) ? ' — <span style="color:var(--red);font-weight:800">à vérifier</span>' : ''}\nValeur nominale : ${esc(fmt(k, p.nom))}${hasCm(f, k) ? '\n\n💬 ' + esc(f.comments[k]) : ''}</div>`;
+      <div class="info"><b>Réglage : ${esc(fmt(k, v))}</b>${isMod(f, k) ? ' — <span style="color:var(--org);font-weight:800">à programmer</span>' : ''}${isChk(f, k) ? ' — <span style="color:var(--red);font-weight:800">à vérifier</span>' : ''}\nValeur par défaut (boîtier neuf) : ${esc(fmt(k, p.nom))}${p.nomi && p.nomi !== p.nom ? '\nValeur nominale MicroPort : ' + esc(fmt(k, p.nomi)) : ''}${hasCm(f, k) ? '\n\n💬 ' + esc(f.comments[k]) : ''}</div>`;
   }
   ovl.innerHTML = `<div class="pop" role="dialog" aria-modal="true"><div class="ph"><span>${esc(title)}</span>${p.u ? `<span class="u">(${esc(p.u)})</span>` : ''}<button class="x" id="pX" aria-label="Fermer">✕</button></div><div class="pb">${b}</div></div>`;
   ovl.classList.remove('hidden');
@@ -788,22 +882,25 @@ function openPop(k) {
 /* ---------- démarrage ---------- */
 (async function start() {
   await loadList();
-  let seeded = false; try { seeded = !!localStorage.getItem('mp_guide_seeded'); } catch (e) {}
-  if (!S.list.length && !seeded) { for (const f of seedFiches()) await save(f); try { localStorage.setItem('mp_guide_seeded', '2'); } catch (e) {} await loadList(); }
-  else {
-    // v2 : les 4 exemples DR / VR passent sur l'interface TALENTIA DF4 (notes et commentaires conservés)
-    let v = ''; try { v = localStorage.getItem('mp_guide_seeded') || ''; } catch (e) {}
-    if (v === '1') {
-      for (const n of seedFiches()) {
-        const old = S.list.find(f => f.type === n.type && f.variante === n.variante && f.appareil === 'TALENTIA 4LV SonR CRT-D');
+  let v = ''; try { v = localStorage.getItem('mp_guide_seeded') || ''; } catch (e) {}
+  if (v !== '3') {
+    const fresh = seedFiches();
+    // anciens types → modèles
+    for (const f of S.list) if (LEGACY[f.type]) { f.type = LEGACY[f.type]; delete f.appareil; await save(f); }
+    if (!v && !S.list.length) { for (const f of fresh) await save(f); }
+    else if (v) {
+      // exemples DR / VR recalés sur les fiches techniques (notes et commentaires conservés)
+      for (const n of fresh) {
+        const old = S.list.find(f => f.type === n.type && f.variante === n.variante);
         if (old) await save(Object.assign({}, n, { id: old.id, notes: old.notes || '', comments: old.comments || {} }));
       }
-      try { localStorage.setItem('mp_guide_seeded', '2'); } catch (e) {}
-      await loadList();
     }
+    try { localStorage.setItem('mp_guide_seeded', '3'); } catch (e) {}
+    await loadList();
   }
+  S.list.forEach(f => { if (!MODELS[f.type]) f.type = 'DR'; });
   const id = location.hash.slice(1);
-  if (id && S.list.some(f => f.id === id)) openFiche(id); else renderList();
+  if (id && (S.list.some(f => f.id === id) || /^defaut-/.test(id))) openFiche(id); else renderList();
 })();
 window.__guide = { S, P, openFiche, renderList };
 </script>
