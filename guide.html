@@ -700,7 +700,7 @@ const R_SECT = [
 ];
 const I_SECT = [['irm', 'Mode IRM', [['', ['irmMode', 'irmStim', 'irmFreq', 'irmAuto', 'irmMan']]]]];
 const mBrady = f => B_SECT.map(([id, t, g]) => mcard(f, id, t, g)).join('');
-const mRS = f => R_SECT.map(([id, t, g]) => mcard(f, id, t, g)).join('');
+const mRS = f => rsDefs(f).map(([id, t, g]) => mcard(f, id, t, g)).join('');
 const mIRM = f => I_SECT.map(([id, t, g]) => mcard(f, id, t, g)).join('');
 function therLine(f, label, keys, txt) {
   const o = keys.some(k => isMod(f, k)), c = keys.some(k => isChk(f, k));
@@ -908,7 +908,9 @@ function renderDisc(f) {
     <div>${['dCLall', 'dStabTV', 'dStabTVR', 'ecouteA'].filter(k => ks.includes(k)).map(k => field(f, k)).join('')}</div></div></div></div>`;
 }
 /* ---------- Suivi à distance / IRM ---------- */
-function renderRS(f) { return dSecs(f, R_SECT); }
+const RS_OFF = [['rsSys', 'Système', [['', ['rsSuivi']]]]];
+const rsDefs = f => val(f, 'rsSuivi') === 'Oui' ? R_SECT : RS_OFF;
+function renderRS(f) { if (val(f, 'rsSuivi') !== 'Oui') S.open.rsSys = true; return dSecs(f, rsDefs(f)); }
 function renderIRM(f) { return dSecs(f, I_SECT); }
 
 /* ---------- fenêtre de choix / détail ---------- */
