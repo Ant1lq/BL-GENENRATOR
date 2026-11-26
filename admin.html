@@ -525,10 +525,6 @@
 .msg{font-size:13px;font-weight:750;text-align:center;margin:10px 0;min-height:1.2em}
 .msg.ok{color:#15803d}.msg.bad{color:var(--palette-vibrant-red)}
 .help{font-size:12.5px;line-height:1.45;color:var(--text-muted);margin:0 0 12px}
-.sc-steps{margin:0 0 12px;padding-left:22px;display:grid;gap:12px;font-size:13px;line-height:1.4}
-.sc-copy{display:flex;gap:8px;align-items:center;margin-top:6px}
-.sc-copy code{flex:1;min-width:0;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:12.5px;overflow-x:auto;white-space:nowrap}
-.sc-copy button{padding:8px 14px;flex:0 0 auto;width:auto!important;min-width:0;font-size:13px}
 .kv{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:8px 0;border-bottom:1px solid #f1f5f9}
 .kv:last-child{border-bottom:none}.kv b{color:var(--blue-mp);text-align:right}
 .ok-t{color:#15803d}.warn-t{color:#b45309}
@@ -596,25 +592,6 @@ details.fold>.in{padding:0 18px 18px}
     <button class="btn-secondary-ios" style="padding:13px" onclick="document.getElementById('sy-file').click()">📥 Recevoir des données</button>
     <input type="file" id="sy-file" accept=".json,application/json" style="display:none">
     <div class="msg" id="sy-msg"></div>
-  </div>
-
-  <div class="card-title" id="raccourci" style="margin:24px 4px 10px">📧 Envoi par raccourci iPhone</div>
-  <div class="app-card stack">
-    <p class="help">BL envoyé en <b>un appui</b> par l'appli <b>Mail</b> : destinataires, objet, texte, et l'image du BL dans le corps du mail. Les inventaires (PDF) gardent leur méthode d'envoi. Condition : votre boîte pro doit être configurée dans Mail (Réglages › Apps › Mail › Comptes de mail).</p>
-    <button class="btn-primary-ios" id="sc-install" style="display:none" onclick="scInstall()">⬇️ INSTALLER LE RACCOURCI</button>
-    <button class="btn-primary-ios" id="sc-create" onclick="scGuide()">🛠️ CRÉER LE RACCOURCI (5 MIN)</button>
-    <div id="sc-guide" style="display:none">
-      <ol class="sc-steps"><li><span>Supprimez l'ancien raccourci s'il existe. Ouvrez <b>Raccourcis</b>, touchez <b>＋</b>, puis le nom en haut › <b>Renommer</b> :</span><div class="sc-copy"><code>Envoyer BL Cardioflow</code><button type="button" class="btn-secondary-ios" onclick="scCopy(this)">Copier</button></div></li><li><span>Ajoutez l'action <b>Obtenir le presse-papiers</b>.</span></li><li><span>Ajoutez <b>Faire correspondre le texte</b> : motif ci-dessous, dans <b>Presse-papiers</b>.</span><div class="sc-copy"><code>(?m)(?&lt;=^A: ).+$</code><button type="button" class="btn-secondary-ios" onclick="scCopy(this)">Copier</button></div></li><li><span>Ajoutez <b>Fractionner le texte</b> : entrée <b>Correspondances</b>, séparateur <b>Personnalisé</b> :</span><div class="sc-copy"><code>,</code><button type="button" class="btn-secondary-ios" onclick="scCopy(this)">Copier</button></div></li><li><span>Ajoutez <b>Faire correspondre le texte</b> : motif ci-dessous, dans <b>Presse-papiers</b> (touchez le champ bleu pour choisir la variable).</span><div class="sc-copy"><code>(?m)(?&lt;=^OBJET: ).+$</code><button type="button" class="btn-secondary-ios" onclick="scCopy(this)">Copier</button></div></li><li><span>Ajoutez <b>Faire correspondre le texte</b> : motif ci-dessous, dans <b>Presse-papiers</b>.</span><div class="sc-copy"><code>(?s)(?&lt;=---HTML---\n).*</code><button type="button" class="btn-secondary-ios" onclick="scCopy(this)">Copier</button></div></li><li><span>Ajoutez <b>Créer du RTF depuis HTML</b> : entrée = <b>Correspondances</b> de l'étape 6.</span></li><li><span>Ajoutez <b>Envoyer un e-mail</b> : message = <b>RTF depuis HTML</b> ; destinataires = <b>Texte fractionné</b> (étape 4) ; objet = <b>Correspondances</b> de l'étape 5. Gardez <b>Afficher la feuille de rédaction</b> activé pour les premiers essais, puis désactivez-le pour un envoi direct.</span></li></ol>
-      <button class="btn-secondary-ios" style="padding:13px;width:100%" onclick="location.href='shortcuts://create-shortcut'">Ouvrir l'appli Raccourcis</button>
-    </div>
-    <button class="btn-secondary-ios" style="padding:13px" onclick="scTest()">🧪 Tester le raccourci</button>
-    <button class="btn-secondary-ios" style="padding:13px" id="sc-use" onclick="scUse()">✅ Utiliser le raccourci pour mes BL</button>
-    <details class="fold" style="margin-top:4px"><summary>Partager le raccourci avec mes collègues</summary>
-      <p class="help" style="margin-top:8px">Dans Raccourcis : appui long sur « Envoyer BL Cardioflow » › Partager › <b>Copier le lien iCloud</b>, puis collez-le ici. Il sera joint quand vous partagez l'appli : vos collègues l'installent en un appui.</p>
-      <input type="url" id="sc-link" placeholder="https://www.icloud.com/shortcuts/…" style="width:100%">
-      <button class="btn-secondary-ios" style="padding:12px;width:100%;margin-top:8px" onclick="scSaveLink()">Enregistrer le lien</button>
-    </details>
-    <div class="msg" id="sc-msg"></div>
   </div>
 
   <div class="card-title" id="sauvegarde" style="margin:24px 4px 10px">💾 Sauvegarde</div>
@@ -1070,44 +1047,6 @@ $('sy-file').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return; const msg=$('sy-msg');
   try{ await receivePkg(f,msg); }catch(err){ console.error(err); say(msg,'❌ Réception impossible : '+(err.message||err),'bad'); }
 });
-
-/* ================= Raccourci iPhone ================= */
-function scLink(){ try{ return localStorage.getItem('mp_shortcut_link')||''; }catch(e){ return ''; } }
-function scPaint(){
-  const l=scLink(); $('sc-install').style.display=l?'block':'none'; $('sc-link').value=l;
-  $('sc-create').textContent=l?'🛠️ OU LE CRÉER SOI-MÊME':'🛠️ CRÉER LE RACCOURCI (5 MIN)';
-  let m=''; try{ m=localStorage.getItem('bl_send_method2'); }catch(e){}
-  $('sc-use').textContent=m==='raccourci'?'✅ Le raccourci est utilisé pour mes BL':'✅ Utiliser le raccourci pour mes BL';
-}
-function scGuide(){ const g=$('sc-guide'); g.style.display=g.style.display==='none'?'block':'none'; }
-async function scCopy(btn){
-  const t=btn.previousElementSibling.textContent;
-  try{ await navigator.clipboard.writeText(t); btn.textContent='Copié ✓'; setTimeout(()=>btn.textContent='Copier',1500); }catch(e){ say($('sc-msg'),'Copie impossible : sélectionnez le texte à la main.','bad'); }
-}
-function scInstall(){ const l=scLink(); if(l) location.href=l; }
-function scSaveLink(){
-  const v=$('sc-link').value.trim(), msg=$('sc-msg');
-  if(v && !/^https:\/\/(www\.)?icloud\.com\/shortcuts\//.test(v)){ say(msg,'Ce lien ne ressemble pas à un lien de raccourci iCloud.','bad'); return; }
-  try{ if(v) localStorage.setItem('mp_shortcut_link',v); else localStorage.removeItem('mp_shortcut_link'); }catch(e){}
-  scPaint(); say(msg,v?'✅ Lien enregistré : il sera joint au partage de l\'appli.':'Lien retiré.','ok');
-}
-function scUse(){
-  try{ localStorage.setItem('bl_send_method2','raccourci'); if(localStorage.getItem('inv_send_method')==='raccourci') localStorage.removeItem('inv_send_method'); }catch(e){}
-  scPaint(); say($('sc-msg'),'✅ Les BL seront envoyés par le raccourci (modifiable sous le bouton d\'envoi).','ok');
-}
-// Essai : mail adressé à soi-même avec une petite image, feuille de rédaction affichée par le raccourci
-async function scTest(){
-  const msg=$('sc-msg');
-  let me=''; try{ me=await LocalDB.me(); }catch(e){} if(/@local$/.test(me)) me='';
-  const c=document.createElement('canvas'); c.width=600; c.height=200; const x=c.getContext('2d');
-  x.fillStyle='#fff'; x.fillRect(0,0,600,200); x.strokeStyle='#0a2a8a'; x.lineWidth=4; x.strokeRect(4,4,592,192);
-  x.fillStyle='#0a2a8a'; x.font='bold 36px sans-serif'; x.fillText('Test Cardioflow',150,90); x.font='20px sans-serif'; x.fillText('image du BL dans le corps du mail',140,140);
-  const payload=LocalDB.shortcutPayload(me,'Test Cardioflow','Bonjour,\nCeci est un essai du raccourci « '+LocalDB.SHORTCUT_NAME+' ».\nVous devez voir ce texte puis une image en dessous.',c.toDataURL('image/jpeg',.85));
-  try{ await navigator.clipboard.writeText(payload); }catch(e){ say(msg,'Copie impossible : '+(e.message||e),'bad'); return; }
-  say(msg,'Lancement du raccourci…'+(me?'':' (Pas d\'adresse dans votre profil : ajoutez un destinataire à la main.)'));
-  location.href=LocalDB.shortcutRunUrl();
-}
-scPaint();
 
 /* ================= Stockage & hors ligne ================= */
 async function paintStorage(){

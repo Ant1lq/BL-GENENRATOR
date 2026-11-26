@@ -871,7 +871,6 @@
                     <option value="partage">Partage : BL joint, destinataires à coller</option>
                     <option value="outlook">Outlook : tout prérempli, BL à coller</option>
                     <option value="coller">Appli mail par défaut : tout prérempli, BL à coller</option>
-                    <option value="raccourci">Raccourci iPhone : tout automatique (BL dans le mail)</option>
                 </select>
             </div>
             <div class="act-group">
@@ -4393,7 +4392,7 @@ function removeBg(src,sens){
     //  • outlook : ouvre Outlook avec destinataires, objet et texte, l'image est dans le presse-papiers (à coller) ;
     //  • coller  : ouvre le mail complet, l'image est dans le presse-papiers (à coller) ;
     //  • partage : partage iOS (image jointe + texte ; destinataires et objet à saisir).
-    function getSendMethod() { try { return localStorage.getItem('bl_send_method2') || 'photos'; } catch (e) { return 'photos'; } }
+    function getSendMethod() { try { const v = localStorage.getItem('bl_send_method2'); return ['photos', 'partage', 'outlook', 'coller'].includes(v) ? v : 'photos'; } catch (e) { return 'photos'; } }
     function setSendMethod(v) { try { localStorage.setItem('bl_send_method2', v); } catch (e) {} paintSendHint(); }
     function paintSendHint() {
         const sel = document.getElementById('send-method'); if (sel) sel.value = getSendMethod();
@@ -4401,8 +4400,8 @@ function removeBg(src,sens){
         h.innerText = { photos: "1. Enregistrez l'image du BL. 2. Le mail s'ouvre tout rempli : ajoutez l'image en pièce jointe.",
                         outlook: "Outlook s'ouvre avec destinataires, objet et texte ; le BL est copié : appui long dans le message, puis Coller.",
                         coller: "L'appli mail par défaut s'ouvre complète ; le BL est copié : appui long dans le texte, puis Coller.",
-                        partage: "Le BL est joint avec le texte. Les destinataires sont copiés : à coller dans « À ».",
-                        raccourci: "Le raccourci « " + LocalDB.SHORTCUT_NAME + " » envoie le mail par Mail : destinataires, objet, texte et BL dans le corps du mail. (Création du raccourci : Réglages.)" }[getSendMethod()] || '';
+                        partage: "Le BL est joint avec le texte. Les destinataires sont copiés : à coller dans « À »."
+                        }[getSendMethod()] || '';
     }
     document.addEventListener('DOMContentLoaded', paintSendHint);
     // Texte du mail -> HTML : les caractères « gras Unicode » redeviennent du vrai gras
@@ -4458,20 +4457,6 @@ function removeBg(src,sens){
                 // Texte brut uniquement : Outlook n'interprète pas la mise en forme passée par ce lien
                 const q = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                 window.location.href = method === 'outlook' ? `ms-outlook://compose?to=${to}&${q}` : `mailto:${to}?${q}`;
-            } else if (method === 'raccourci') {
-                // Le mail complet (destinataires, objet, texte + image du BL en HTML) est copié pendant le geste
-                // (le contenu arrive ensuite), puis le raccourci est lancé : il l'envoie avec Mail.
-                if (!to) hint.innerText = "Aucun destinataire enregistré pour ce centre : le mail partira sans destinataire.";
-                const payload = getBlFileForSharing().then(f => {
-                    if (!f) throw new Error('image du BL impossible à générer');
-                    return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(new Error('image illisible')); fr.readAsDataURL(f); });
-                }).then(d => LocalDB.shortcutPayload(to, subject, body, d));
-                if (navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
-                    await navigator.clipboard.write([new ClipboardItem({ 'text/plain': payload.then(t => new Blob([t], { type: 'text/plain' })) })]);
-                } else {
-                    await navigator.clipboard.writeText(await payload);
-                }
-                window.location.href = LocalDB.shortcutRunUrl();
             } else if (method === 'partage') {
                 // Destinataires copiés tout de suite (pendant le geste), à coller dans « À »
                 const toPlain = to.split(',').filter(Boolean).map(a => decodeURIComponent(a)).join('; ');

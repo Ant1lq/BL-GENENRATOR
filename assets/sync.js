@@ -44,8 +44,7 @@
     let from = '';
     try { const me = await L.me(), p = (await L.rows('profils')).find(x => x.email === me); from = (p && p.nom) || (me && !/@local$/.test(me) ? me : ''); } catch (e) {}
     const prog = await R().invGet('prog');
-    let scLink = ''; try { scLink = localStorage.getItem('mp_shortcut_link') || ''; } catch (e) {}
-    const pkg = { app: 'mp-cardioflow', kind, format: 1, date: new Date().toISOString(), device: R().deviceId(), from, tables: t, inventaire: prog ? { prog } : {}, files, shortcut: scLink };
+    const pkg = { app: 'mp-cardioflow', kind, format: 1, date: new Date().toISOString(), device: R().deviceId(), from, tables: t, inventaire: prog ? { prog } : {}, files };
     const blob = new Blob([JSON.stringify(pkg)], { type: 'application/json' });
     const d = new Date(), pad = n => String(n).padStart(2, '0');
     const name = (kind === 'share' ? 'cardioflow-centres-' : 'cardioflow-synchro-') + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.json';
@@ -176,8 +175,6 @@
       }
     }
 
-    // Lien du raccourci iPhone : repris s'il n'y en a pas déjà un
-    try { if (data.shortcut && !localStorage.getItem('mp_shortcut_link')) { localStorage.setItem('mp_shortcut_link', data.shortcut); sum.raccourci = true; } } catch (e) {}
     // Fichier Excel des dépôts : le plus récent des deux
     const rp = data.inventaire && data.inventaire.prog;
     if (rp && rp.items) {
@@ -200,7 +197,6 @@
     if (s.secteur) parts.push(p(s.secteur, 'centre de secteur', 'centres de secteur'));
     if (s.profils) parts.push(p(s.profils, 'profil', 'profils'));
     if (s.excel) parts.push('Excel des dépôts mis à jour');
-    if (s.raccourci) parts.push('raccourci iPhone à installer (Réglages)');
     return parts.length ? parts.join(', ') : 'tout était déjà à jour';
   }
 
