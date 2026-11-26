@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  var DB_NAME = 'mp-cardioflow-local', DB_VERSION = 2;
+  var DB_NAME = 'mp-cardioflow-local', DB_VERSION = 3;
   var LOCAL_PREFIX = 'local://';
   var ME_KEY = 'mp_local_me';
 
@@ -26,7 +26,9 @@
     bons_livraison:      { key: 'id', uuid: true, defaults: function () { return { items: [], updated_at: new Date().toISOString() }; } },
     profils:             { key: 'email', defaults: function () { return { role: 'ingenieur', afficher_nom: false }; } },
     // Historique des inventaires générés (dépôt prog / dépôt prothèse), PDF conservé dans le stockage « inventaires »
-    inventaires:         { key: 'id', auto: true }
+    inventaires:         { key: 'id', auto: true },
+    // Guide de programmation : une fiche = un cas (centre / appareil / indication) et ses réglages
+    guide_fiches:        { key: 'id', uuid: true, defaults: function () { return { values: {}, comments: {}, updated_at: new Date().toISOString() }; } }
   };
   // Filtres ignorés : l'appli n'a plus qu'un seul utilisateur, ses listes d'envoi s'appliquent toujours.
   var IGNORED_FILTERS = { centre_mails_compte: { user_email: true } };

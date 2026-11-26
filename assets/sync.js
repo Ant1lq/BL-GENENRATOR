@@ -23,6 +23,7 @@
     t.medecins = await L.rows('medecins');
     t.centre_mails_compte = await L.rows('centre_mails_compte');
     t.inventaires = await L.rows('inventaires');
+    try { t.guide_fiches = await L.rows('guide_fiches'); } catch (e) { t.guide_fiches = []; }
     if (kind === 'sync') {
       t.engineer_centers = await L.rows('engineer_centers');
       t.bons_livraison = await L.rows('bons_livraison');
@@ -149,6 +150,17 @@
       await R().rowAdd('inventaires', o); invSet.add(key); sum.inventaires++;
     }
 
+    // Guide de programmation (même identifiant : la version la plus récente est gardée)
+    try {
+      const gf = await window.LocalDB.rows('guide_fiches'), gBy = new Map(gf.map(g => [g.id, g]));
+      for (const r of (T.guide_fiches || [])) {
+        const cur = gBy.get(r.id);
+        if (cur && String(cur.updated_at || '') >= String(r.updated_at || '')) continue;
+        await R().rowPut('guide_fiches', r); sum.guide = (sum.guide || 0) + 1;
+      }
+      if ((T.guide_fiches || []).length) { try { localStorage.setItem('mp_guide_seeded', '1'); } catch (e) {} }
+    } catch (e) { console.warn('guide', e); }
+
     if (data.kind === 'sync') {
       // Secteur
       const ec = await window.LocalDB.rows('engineer_centers'), ecSet = new Set(ec.map(x => x.engineer_name + '|' + x.center_name));
@@ -196,6 +208,7 @@
     if (s.bl) parts.push(p(s.bl, 'BL', 'BL'));
     if (s.secteur) parts.push(p(s.secteur, 'centre de secteur', 'centres de secteur'));
     if (s.profils) parts.push(p(s.profils, 'profil', 'profils'));
+    if (s.guide) parts.push(p(s.guide, 'fiche de programmation', 'fiches de programmation'));
     if (s.excel) parts.push('Excel des dépôts mis à jour');
     return parts.length ? parts.join(', ') : 'tout était déjà à jour';
   }

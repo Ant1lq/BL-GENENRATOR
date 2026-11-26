@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#25386a">
+<title>Guide de programmation</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<style>
+:root{
+  --navy:#25386a; --navy2:#2f4680; --bg:#cfdcf7; --bg2:#b9c9ee; --panel:#fff; --side:#bccbea;
+  --tab:#c4d0ec; --tabOn:#6e86c4; --val:#6189e6; --valDim:#c1d1f5; --lab:#4b6fd1; --txt:#1f2a44;
+  --org:#e18b2c; --red:#c3141f; --redTxt:#d0202a; --green:#24b45a;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:"Fira Sans","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif}
+button,input,select,textarea{font:inherit}
+.hidden{display:none!important}
+
+/* ---------- barre du haut (comme le programmateur) ---------- */
+.top{background:var(--navy);color:#fff;padding:calc(env(safe-area-inset-top) + 6px) 10px 6px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px;font-weight:600;position:sticky;top:0;z-index:20}
+.top a.home{color:#fff;text-decoration:none;font-size:20px;line-height:1;padding:2px 6px}
+.top .it{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.top .chip{background:#fff;color:var(--navy);border-radius:4px;padding:2px 9px;font-size:13px}
+.top .sp{flex:1}
+.top button{background:#fff;color:var(--navy);border:0;border-radius:6px;padding:7px 12px;font-weight:700;font-size:13px;cursor:pointer}
+.top button.on{background:var(--org);color:#fff}
+.band{background:#9db6ef;height:10px}
+
+/* ---------- liste des fiches ---------- */
+.wrap{max-width:1100px;margin:0 auto;padding:12px 10px 40px}
+.search{display:flex;gap:8px;margin-bottom:10px}
+.search input{flex:1;height:44px;border-radius:10px;border:1.5px solid #9fb3e6;padding:0 12px;font-size:15px;background:#fff}
+.btnP{background:var(--navy);color:#fff;border:0;border-radius:10px;padding:0 16px;height:44px;font-weight:700;font-size:14px;cursor:pointer}
+.btnS{background:#fff;color:var(--navy);border:1.5px solid #9fb3e6;border-radius:10px;padding:0 14px;height:40px;font-weight:700;font-size:13px;cursor:pointer}
+.grp{margin:16px 2px 8px;font-size:13px;font-weight:800;letter-spacing:.06em;color:var(--navy2);text-transform:uppercase}
+.card{display:flex;gap:12px;align-items:center;background:#fff;border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;border:1px solid #b5c6ee}
+.card .ic{width:44px;height:44px;border-radius:10px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:0 0 44px;text-align:center;line-height:1.1}
+.card .t{font-weight:800;font-size:15px;color:var(--navy)}
+.card .m{font-size:12.5px;color:#56627d;margin-top:2px}
+.card .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.tag{font-size:11px;font-weight:800;border-radius:6px;padding:2px 7px}
+.tag.o{background:#fdebd6;color:#b05c0c}.tag.r{background:#fde2e3;color:var(--red)}.tag.n{background:#e5ecfb;color:var(--navy2)}
+.empty{text-align:center;color:#56627d;padding:30px 10px;font-size:14px}
+
+/* ---------- écran fiche ---------- */
+.tabs{display:flex;gap:4px;align-items:stretch;padding:10px 8px 0;overflow-x:auto}
+.tab{background:var(--tab);color:var(--txt);border:0;padding:10px 18px;font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.tab.on{background:var(--tabOn);color:#fff}
+.tab.dis{opacity:.75;cursor:default}
+.pen{display:inline-flex;width:17px;height:17px;border-radius:50%;background:var(--org);color:#fff;font-size:10px;align-items:center;justify-content:center;border:2px solid #fff}
+.tools{display:flex;gap:8px;padding:8px 8px 0;flex-wrap:wrap}
+.tools .btnS{height:34px;font-size:12.5px}
+.tools .btnS.on{background:var(--org);color:#fff;border-color:var(--org)}
+.screen{padding:8px}
+
+/* sections Brady (colonne grise à gauche + panneau blanc) */
+.sec{display:flex;margin-bottom:6px}
+.sec .side{width:150px;flex:0 0 150px;background:var(--side);padding:14px 10px;font-size:15px;color:var(--txt);cursor:pointer;display:flex;gap:8px;align-items:flex-start;line-height:1.25}
+.sec .side .ar{font-weight:900;color:var(--navy);transform:translateY(1px)}
+.sec .side.mod{color:var(--org)}
+.sec .body{flex:1;background:var(--panel);padding:10px 14px;min-width:0}
+.sumrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 14px;padding:6px 0}
+.sumrow + .sumrow{border-top:1px dashed #b8c3dc}
+.si{padding:4px 6px;border:2px solid transparent;border-radius:2px;min-width:0}
+.si .l{color:var(--lab);font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.si .v{font-size:14.5px;margin-top:3px;font-weight:500}
+.si.o .v{color:var(--org)}
+.chk{border-color:var(--red)!important}
+.subh{font-weight:800;font-size:14px;margin:10px 0 2px;color:var(--txt)}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px 16px;padding:4px 0 8px}
+.grid4 + .grid4{border-top:1px dashed #b8c3dc;padding-top:8px}
+.colh{font-weight:800;font-size:13.5px;color:var(--txt);text-transform:uppercase;margin:2px 0 0}
+.f{padding:3px;border:2px solid transparent;border-radius:2px;margin-bottom:2px;min-width:0}
+.f .l{color:var(--lab);font-size:13px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.box{background:var(--val);color:#fff;font-weight:700;font-size:13px;padding:10px 9px;border-radius:2px;cursor:pointer;min-height:38px;display:flex;align-items:center;gap:6px;position:relative}
+.box.o{background:var(--org)}
+.box.dim{background:var(--valDim)}
+.box .cm{position:absolute;right:4px;top:2px;font-size:11px}
+.box.ro{cursor:default}
+
+/* mise en avant : le reste est atténué */
+.focus .box:not(.o):not(.hl), .focus .si:not(.o):not(.chk) .v, .focus .zv:not(.o){opacity:.35}
+.focus .f:not(.chk) .box:not(.o){opacity:.35}
+
+/* ---------- Tachy ---------- */
+.tachy{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:12px}
+.zgrid{background:#fff;padding:10px 10px 12px;overflow-x:auto}
+.zin{min-width:560px;display:grid;grid-template-columns:100px repeat(4,minmax(0,1fr));column-gap:6px;row-gap:12px;align-items:center;position:relative}
+.zh{font-weight:700;font-size:14px;text-align:center}
+.axis{grid-column:2/6;display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid var(--lab);font-size:13px;color:var(--lab);font-weight:600;padding-bottom:3px}
+.axis span{text-align:right;padding-right:2px}
+.zl{color:var(--lab);font-size:13px;font-weight:600;text-transform:uppercase}
+.tg{display:flex;align-items:center;gap:6px;justify-content:center;font-weight:700;font-size:14px;cursor:pointer}
+.sw{width:42px;height:24px;border-radius:12px;background:var(--val);position:relative;flex:0 0 42px}
+.sw::after{content:"";position:absolute;right:2px;top:2px;width:20px;height:20px;border-radius:50%;background:#fff}
+.sw.off{background:var(--redTxt)}.sw.off::after{left:2px;right:auto}
+.sw.o{background:var(--org)}
+.tg .y{color:var(--lab)}.tg .y.o{color:var(--org)}.tg .n{color:var(--redTxt)}
+.zv{background:var(--val);color:#fff;font-weight:700;font-size:13px;padding:10px 8px;border-radius:2px;cursor:pointer;min-height:38px;display:flex;align-items:center;border:2px solid transparent}
+.zv.o{background:var(--org)}
+.zdisc{border:1.5px solid #6a7590;background:#fff;color:var(--txt);font-weight:700;font-size:13.5px;padding:8px;border-radius:3px;cursor:pointer;display:flex;justify-content:space-between;gap:6px;min-height:38px;align-items:center}
+.zdisc.o{color:var(--org)}
+.ther{padding-right:22px!important;border:1.5px solid #6a7590;border-radius:3px;background:#fff;padding:6px 8px;cursor:pointer;font-weight:700;font-size:13.5px;line-height:1.95;position:relative}
+.ther .go,.zdisc .go{position:absolute;right:8px;top:4px;font-weight:900}
+.ther .x{color:var(--redTxt)}.ther .o{color:var(--org)}
+.vline{border-left:2px solid var(--lab);align-self:stretch}
+.right{background:#fff;padding:12px}
+.rr{display:grid;grid-template-columns:1fr 1.15fr;gap:8px;align-items:center;margin-bottom:10px}
+.rr .l{color:var(--lab);font-size:13.5px;font-weight:600}
+.rsep{border-top:1px dashed #8d98b4;margin:6px 0 14px}
+.sensrow{background:#fff;margin-top:8px;padding:10px;display:flex;align-items:center;gap:14px}
+.sensrow .l{color:var(--lab);font-weight:600;font-size:13.5px}
+.ztitle{display:flex;align-items:center;gap:12px;margin:4px 0 10px}
+.ztitle button{background:var(--tabOn);color:#fff;border:0;padding:8px 14px;font-weight:700;cursor:pointer}
+.ztitle h2{margin:0;font-size:20px;color:var(--txt)}
+.cols{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
+.colc{background:#fff;min-width:0}
+.colc .hd{background:#c4d0ec;text-align:center;padding:12px;font-size:14px}
+.colc .in{display:grid;gap:4px 12px;padding:10px 12px}
+
+/* ---------- notes ---------- */
+.notes{background:#fff;margin:10px 8px;padding:12px 14px;border-left:5px solid var(--org)}
+.notes h3{margin:0 0 6px;font-size:14px;color:var(--navy)}
+.notes .txt{white-space:pre-wrap;font-size:14px;line-height:1.45}
+.notes textarea{width:100%;min-height:90px;border:1.5px solid #9fb3e6;border-radius:8px;padding:8px;font-size:14px}
+.meta{background:#fff;margin:10px 8px 0;padding:12px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.meta label{font-size:12px;font-weight:700;color:var(--lab);display:block;margin-bottom:4px}
+.meta input,.meta select{width:100%;height:40px;border:1.5px solid #9fb3e6;border-radius:8px;padding:0 10px;font-size:14px;background:#fff}
+.legend{font-size:12px;color:#3d4a68;padding:6px 10px;display:flex;gap:14px;flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:4px}
+
+/* ---------- fenêtre de choix (comme le programmateur) ---------- */
+.ovl{position:fixed;inset:0;background:rgba(28,38,70,.6);z-index:50;display:flex;align-items:center;justify-content:center;padding:12px}
+.pop{background:#cfe0fb;width:100%;max-width:520px;max-height:92vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.pop .ph{background:var(--navy);color:#fff;display:flex;align-items:center;gap:10px;padding:14px 16px;font-weight:800;text-transform:uppercase;font-size:15px;position:sticky;top:0}
+.pop .ph .u{font-weight:600;text-transform:none;opacity:.9}
+.pop .ph .x{margin-left:auto;background:none;border:0;color:#fff;font-size:26px;line-height:1;cursor:pointer}
+.pop .pb{padding:16px}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}
+.opt{background:var(--val);color:#fff;border:0;padding:12px 6px;font-weight:700;font-size:14px;cursor:pointer;position:relative;min-height:46px}
+.opt.nom{text-decoration:underline}
+.opt.sel{background:var(--org)}
+.opt.ro{cursor:default}
+.leg{font-size:12px;color:#3a55a8;margin-top:12px;line-height:1.6}
+.pop .row{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+.pop input[type=text],.pop textarea{flex:1;min-width:0;border:1.5px solid #8aa2dc;border-radius:6px;padding:9px;font-size:14px;background:#fff}
+.pop textarea{width:100%;min-height:64px}
+.pop label.ck{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--txt);margin-top:10px}
+.pop label.ck input{width:20px;height:20px}
+.pop .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.pop .acts button{height:44px;border:0;font-weight:800;cursor:pointer}
+.pop .acts .a1{background:#fff;color:var(--navy);border:1.5px solid var(--navy)}
+.pop .acts .a2{background:var(--navy);color:#fff}
+.info{background:#fff;padding:10px;font-size:14px;line-height:1.5;margin-top:10px;white-space:pre-wrap}
+
+@media (max-width:760px){
+  .sec{flex-direction:column}
+  .sec .side{width:auto;flex:none;padding:10px 12px}
+  .sumrow,.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tachy{grid-template-columns:minmax(0,1fr)}
+  .f .l,.si .l{white-space:normal}
+  .zl{font-size:12px}
+  .tab{padding:9px 12px;font-size:14px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ovl" class="ovl hidden"></div>
+
+<script src="assets/local-db.js"></script>
+<script>
+'use strict';
+/* =====================================================================
+   Guide de programmation — fiches « comme sur le programmateur »
+   Orange : valeur à programmer (différente de la valeur nominale, ou marquée).
+   Cadre rouge : point à vérifier. Bulle 💬 : commentaire.
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const TABLE = 'guide_fiches';
+const TYPES = ['DAI DR', 'DAI VR', 'CRT-D', 'PM DR', 'PM VR', 'CRT-P'];
+const isDAI = t => /^DAI|CRT-D/.test(t), hasA = t => !/VR/.test(t), isCRT = t => /^CRT/.test(t);
+
+/* ---------- Paramètres : libellé, unité, valeur nominale, choix (relevés sur le programmateur) ---------- */
+const ONOFF = ['Oui', 'Non'];
+const P = {
+  // Brady — paramètres de base
+  mode: { l: 'Mode', t: 'Mode de stimulation', nom: 'SafeR (AAI - DDD)', o: ['SafeR (AAI - DDD)', 'SafeR-R (AAIR - DDDR)', 'DDD', 'DDDR', 'DDD/DDIR', 'DDI', 'DDIR', 'VVI', 'VVIR', 'DOO', 'VOO', 'OOO'] },
+  bav1: { l: 'Commutation BAV I', nom: 'Repos + Effort', o: ['Repos + Effort'], dim: 1, a: 1 },
+  prEff: { l: "PR long à l'effort", u: 'ms', nom: '250', a: 1 },
+  prRep: { l: 'PR long au repos', u: 'ms', nom: '450', o: ['250', '300', '350', '400', '450', '500'], a: 1 },
+  pause: { l: 'Pause max.', u: 's', nom: '2', a: 1 },
+  fbase: { l: 'Fréquence de base', u: 'min-1', nom: '60' },
+  fmax: { l: 'Fréquence max.', u: 'min-1', nom: '130', o: ['100', '105', '110', '115', '120', '125', '130', '135', '140', '145'], a: 1 },
+  hyst: { l: 'Hystérésis', u: '%', nom: '0' },
+  davRep: { l: 'DAV repos', u: 'ms', nom: '110', a: 1 },
+  davEff: { l: 'DAV effort', u: 'ms', nom: '70', o: ['30', '40', '45', '55', '65', '70', '80', '85', '95', '100', '110'], a: 1 },
+  extDav: { l: 'Extension DAV', u: 'ms', nom: '30', a: 1 },
+  cavV: { l: 'Cavité V', nom: 'D', o: ['D', 'G', 'D + G', 'G + D'] },
+  asserv: { l: 'Asservissement', nom: 'Non', o: ['Non', 'Apprentissage'] },
+  // Brady — paramètres avancés
+  lissage: { l: 'Lissage', nom: 'Non', o: ['Non', 'Très lent', 'Lent', 'Moyen', 'Rapide'] },
+  antiTRE: { l: 'Protection Anti-TRE', nom: 'Réduct.', a: 1 },
+  repli: { l: 'Repli', nom: 'Oui', o: ONOFF, dim: 1, a: 1 },
+  fRepli: { l: 'Fréquence de Repli', u: 'min-1', nom: '60', a: 1 },
+  sensBruit: { l: 'Sensibilité auto sur bruit', t: 'Adaptation auto de la sensibilité sur bruit V', nom: 'Oui', o: ONOFF },
+  stimBruit: { l: 'Stimulation V sur bruit', nom: 'Non', o: ONOFF },
+  pcMode: { l: 'Mode', t: 'Mode post-choc', nom: 'DDD', o: ['Non', 'DDD'], dai: 1 },
+  pcFreq: { l: 'Fréquence Post-Choc', u: 'min-1', nom: '80', dai: 1 },
+  pcDur: { l: 'Durée', t: 'Durée du mode post-choc', nom: '1 min', o: ['10 s', '20 s', '30 s', '1 min', '2 min', '3 min', '4 min', '5 min'], dai: 1 },
+  pcAmpA: { l: 'Amplitude A', t: 'Amplitude A post-choc', u: 'V', nom: '6', dai: 1, a: 1 },
+  pcLargA: { l: 'Largeur A', t: "Largeur d'impulsion A post-choc", u: 'ms', nom: '1', o: ['0,35', '0,5', '0,6', '0,75', '0,85', '1'], dai: 1, a: 1 },
+  pcAmpVD: { l: 'Amplitude VD', t: 'Amplitude VD post-choc', u: 'V', nom: '6', dai: 1 },
+  pcLargVD: { l: 'Largeur VD', t: "Largeur d'impulsion ventriculaire droite post-choc", u: 'ms', nom: '1', o: ['0,35', '0,5', '0,6', '0,75', '0,85', '1'], dai: 1 },
+  refAV: { l: 'Réfractaire A post V', t: 'Période réfractaire atriale post V', u: 'ms', nom: '80', o: ['80', '95', '110', '125', '140', '155'], a: 1 },
+  refAR: { l: 'Réfractaire A post R', u: 'ms', nom: '45', a: 1 },
+  margeA: { l: 'Marge A post V ou R', t: 'Marge A post stimulation / détection ventriculaire', u: 'mV', nom: '0,4', o: ['0', '0,2', '0,4', '0,6', '0,8', '1'], a: 1 },
+  margeV: { l: 'Marge V post V', u: 'mV', nom: '0,8' },
+  overdrive: { l: 'Overdrive', nom: 'Non', o: ONOFF, a: 1 },
+  suppPauseES: { l: 'Suppression de pause post ES', t: 'Suppression de pause post ESA', nom: 'Non', o: ['Non', 'Oui'], a: 1 },
+  accelESA: { l: 'Accél. sur ESA', nom: 'Non', o: ['Non', 'Oui'], a: 1 },
+  stimAESV: { l: 'Stimulation A sur ESV', t: 'Stimulation atriale sur extra-systoles ventriculaires', nom: 'Non', o: ['Non', 'Oui'], a: 1 },
+  suppPause: { l: 'Suppression de pause', nom: 'Non', o: ['Non', 'Oui'] },
+  accelESV: { l: 'Accélération sur ESV', t: 'Accélération sur extra-systoles ventriculaires', nom: 'Non', o: ['Non', 'Oui'] },
+  // Sondes
+  ampA: { l: 'Amp. A', t: 'Amplitude atriale', u: 'V', nom: '3,5', o: ['1', '1,5', '2', '2,5', '3', '3,5', '4', '4,5', '5', '6'], a: 1 },
+  largA: { l: 'Largeur A', t: "Largeur d'impulsion A", u: 'ms', nom: '0,35', o: ['0,12', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1'], a: 1 },
+  polA: { l: 'Polarité de stimulation A', nom: 'Bipolaire', dim: 1, a: 1 },
+  sensA: { l: 'Sensibilité A', u: 'mV', nom: '0,4', a: 1 },
+  autoA: { l: 'Auto-Seuil A', nom: 'Suivi', o: ['Non', 'Auto', 'Suivi'], a: 1 },
+  ampVD: { l: 'Amp. VD', t: 'Amplitude ventriculaire droite', u: 'V', nom: '3,5', o: ['1', '1,5', '2', '2,5', '3', '3,5', '4', '4,5', '5', '6'] },
+  largVD: { l: 'Largeur VD', t: "Largeur d'impulsion ventriculaire droite", u: 'ms', nom: '0,35', o: ['0,12', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1'] },
+  polVD: { l: 'Polarité de stimulation VD', nom: 'Bipolaire', dim: 1 },
+  sensVD: { l: 'Sensibilité VD', t: 'Sensibilité ventriculaire droite', u: 'mV', nom: '0,4', o: ['0,4', '0,6', '0,8', '1', '1,2', '1,4', '1,6', '1,8', '2', '2,2', '2,4', '2,6', '2,8', '3', '3,2', '3,4', '3,6', '3,8', '4'] },
+  autoVD: { l: 'Auto-Seuil VD', nom: 'Suivi', o: ['Non', 'Auto', 'Suivi'] },
+  asMarge: { l: 'Marge de sécurité', t: 'Auto-Seuil : marge de sécurité', nom: 'x2.0' },
+  asAmpMin: { l: 'Amplitude min.', t: 'Amplitude minimale ventriculaire', u: 'V', nom: '2,5', o: ['1', '1,5', '2', '2,5', '3', '3,5'] },
+  asAmpSec: { l: 'Amplitude de sécurité', t: 'Amplitude de sécurité ventriculaire', u: 'V', nom: '3,5', o: ['2,5', '3', '3,5', '4', '4,5', '5', '6'] },
+  asAmpMax: { l: 'Amplitude max.', u: 'V', nom: '6', dim: 1 },
+  asFmax: { l: 'Fréquence max.', t: 'Auto-Seuil : fréquence max.', u: 'min-1', nom: '100', dim: 1 },
+  asHeure: { l: 'Heure démarrage', nom: 'Toutes les 6 h', dim: 1 },
+  ampVG: { l: 'Amp. VG', u: 'V', nom: '3,5', o: ['0,1', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1', '1,1', '1,25', '1,35', '1,5', '1,6', '1,75', '1,85', '2', '2,1', '2,25', '2,35', '2,5', '2,6', '2,75', '2,85', '3', '3,1', '3,25', '3,35', '3,5', '3,6', '3,75', '3,85', '4', '4,1', '4,25', '4,35', '4,5'], crt: 1 },
+  largVG: { l: 'Largeur VG', u: 'ms', nom: '0,35', o: ['0,12', '0,25', '0,35', '0,5', '0,6', '0,75', '0,85', '1', '1,1', '1,25', '1,35', '1,5', '1,6', '1,75', '1,85', '2'], crt: 1 },
+  polVG: { l: 'Polarité stim. VG', t: 'Polarité de stimulation VG', nom: 'VG1 - VG2', o: (() => { const r = []; ['VG1', 'VG2', 'VG3', 'VG4'].forEach(d => ['VG2', 'VG4', 'Prox. VD', 'Coil VD', 'Boîtier'].forEach(a => { if (a !== d) r.push(d + ' - ' + a); })); return r; })(), crt: 1 },
+  mp: { l: 'Stim. MultiPoint', t: 'Stim. MultiPoint (MP)', nom: 'Non', o: ONOFF, crt: 1 },
+  // Tachy — zones
+  tvlOn: { l: 'Zone TV lente', nom: 'Non', o: ONOFF, dai: 1 },
+  tvOn: { l: 'Zone TV', nom: 'Oui', o: ONOFF, dai: 1 },
+  tvrOn: { l: 'Zone TV rapide', nom: 'Oui', o: ONOFF, dai: 1 },
+  fTVL: { l: 'Fréquence zone TV lente', u: 'min-1', nom: '', o: ['100', '105', '110', '115', '120', '125', '130', '135', '140', '145', '150', '155', '160', '165'], dai: 1 },
+  fTV: { l: 'Fréquence zone TV', u: 'min-1', nom: '170', dai: 1 },
+  fTVR: { l: 'Fréquence zone TV rapide', u: 'min-1', nom: '220', dai: 1 },
+  fFV: { l: 'Fréquence zone FV', u: 'min-1', nom: '240', dai: 1 },
+  pTVL: { l: 'Persistance TV lente', u: 'cycles', nom: '', dai: 1 },
+  pTV: { l: 'Persistance TV', u: 'cycles', nom: '30', dai: 1 },
+  pFV: { l: 'Persistance FV / TV rapide', u: 'cycles', nom: '20', dai: 1 },
+  discTV: { l: 'Discrimination TV lente / TV', t: 'Critères de discrimination', nom: 'PARAD+', o: ['PARAD+', 'Stabilité+ / Accélération'], dai: 1 },
+  discTVR: { l: 'Discrimination TV rapide', t: 'Critères de discrimination zone TV rapide', nom: 'Fréquence + stabilité', o: ['Fréquence + stabilité', 'Fréquence seule'], dai: 1 },
+  atpOn: { l: 'Activation des ATP', nom: 'Oui', o: ONOFF, dai: 1 },
+  chocOn: { l: 'Activation des chocs', nom: 'Oui', o: ONOFF, dai: 1 },
+  cavATP: { l: 'Cavité stimulée en ATP', nom: 'D', o: ['D', 'D + G'], dai: 1 },
+  autoComATP: { l: 'Auto-Commutation ATP', nom: 'Non', o: ONOFF, dai: 1 },
+  polAlt: { l: 'Polarité alternée (42 J)', nom: 'Oui', o: ONOFF, dai: 1 },
+  coilVCS: { l: 'Coil VCS', nom: 'Non', o: ONOFF, dai: 1 },
+  boitier: { l: 'Boîtier actif', nom: 'Oui', o: ONOFF, dim: 1, dai: 1 },
+  vecteur: { l: 'Vecteur des chocs', nom: 'VD vers Boîtier', dai: 1 },
+  // Suivi à distance
+  rsSuivi: { l: 'Suivi à distance', nom: 'Oui', o: ONOFF }, rsAlertes: { l: 'Alertes système', nom: 'Oui', o: ONOFF },
+  rsIRM: { l: 'Notifications IRM', nom: 'Oui', o: ONOFF }, rsAsync: { l: 'Mode asynchrone', nom: 'Oui', o: ONOFF },
+  rsImpA: { l: 'Impédance A anormale', nom: 'Oui', o: ONOFF, a: 1 }, rsImpAH: { l: 'Limite Haute', u: 'Ω', nom: '2000', a: 1 }, rsImpAB: { l: 'Limite Basse', u: 'Ω', nom: '200', a: 1 },
+  rsASA: { l: 'Alerte Auto-Seuil A', nom: 'Oui', o: ONOFF, a: 1 }, rsASAs: { l: 'Seuil limite', u: 'V', nom: '2', a: 1 },
+  rsImpVD: { l: 'Impédance VD anormale', nom: 'Oui', o: ONOFF }, rsImpVDH: { l: 'Limite Haute', u: 'Ω', nom: '2000' }, rsImpVDB: { l: 'Limite Basse', u: 'Ω', nom: '200' },
+  rsASVD: { l: 'Alerte Auto-Seuil VD', nom: 'Oui', o: ONOFF }, rsASVDs: { l: 'Seuil limite', u: 'V', nom: '2,5' },
+  rsLPE: { l: 'Alerte LPE', nom: 'Oui', o: ONOFF, dai: 1 }, rsImpChoc: { l: 'Imp. choc anormale', nom: 'Oui', o: ONOFF, dai: 1 }, rsCoil: { l: 'Coil VD anormal', nom: 'Oui', o: ONOFF, dai: 1 },
+  rsImpVG: { l: 'Impédance VG anormale', nom: 'Oui', o: ONOFF, crt: 1 }, rsImpVGH: { l: 'Limite Haute', u: 'Ω', nom: '2000', crt: 1 }, rsImpVGB: { l: 'Limite Basse', u: 'Ω', nom: '200', crt: 1 },
+  rsChocDes: { l: 'Choc désactivé', nom: 'Oui', o: ONOFF, dai: 1 }, rsChocDel: { l: 'Choc délivré', nom: 'Tous les chocs', dai: 1 }, rsATP: { l: 'ATP délivré', nom: 'Oui', o: ONOFF, dai: 1 },
+  rsFA: { l: 'Charge en FA / TA élevée', nom: 'Oui', o: ONOFF }, rsSurdet: { l: 'Surdétection V', nom: 'Oui', o: ONOFF, dai: 1 },
+  irm: { l: 'Mode IRM', nom: 'Non' }
+};
+// Thérapies par zone : ATP 1, ATP 2, chocs (zones TV lente, TV, FV ; l'ATP de la zone FV est celle de la TV rapide)
+const ATP_FIELDS = [['prog', 'Programme ATP', '', ['Non', 'SALVE', 'SALVE + SCAN', 'RAMPE', 'RAMPE + SCAN']], ['decR', 'Décrément rampe (/cycle)', 'ms', ['0', '4', '8', '12', '16', '20', '30', '40', '50', '60']],
+  ['nb', 'Nombre de séquences', '', null], ['decS', 'Décrément scan (/séquence)', 'ms', null], ['prem', 'Première séquence', 'cycles', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15']],
+  ['dur', 'Durée max. autorisée', 'min', null], ['ajout', 'Ajout par séquence', 'cycles', ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15']], ['coupl', 'Couplage min. autorisé', 'ms', null],
+  ['interv', 'Intervalle de couplage', '%', ['50', '55', '60', '65', '70', '75', '80', '85', '90', '95']]];
+const ATP_NOM = { prog: 'Non', decR: '0', nb: '3', decS: '0', prem: '8', dur: '2', ajout: '0', coupl: '220', interv: '80' };
+const CHOCS = ['Non', '0,5', '0,8', '1', '1,3', '1,5', '2', '2,5', '3', '3,5', '4', '5', '6', '7', '8', '9', '10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30', '32', '34', '42'];
+const ZONES = { TVL: 'TV lente', TV: 'TV', FV: 'FV / TV rapide' };
+const ZNOM = { FV: { a1prog: 'SALVE', a1nb: '1', c1: '42', c2: '42', c42: '4' } };
+Object.keys(ZONES).forEach(z => {
+  ['a1', 'a2'].forEach((a, ai) => {
+    if (z === 'FV' && a === 'a2') return;
+    ATP_FIELDS.forEach(([k, l, u, o]) => {
+      const nom = (ZNOM[z] && ZNOM[z][a + k]) || ATP_NOM[k];
+      P[z + '_' + a + k] = { l, t: (z === 'FV' ? 'ATP TV rapide' : 'ATP ' + (ai + 1) + ' zone ' + ZONES[z]) + ' : ' + l, u, nom, o, dai: 1 };
+    });
+  });
+  P[z + '_c1'] = { l: 'Choc 1', t: 'Choc 1 zone ' + ZONES[z], u: 'J', nom: (ZNOM[z] && ZNOM[z].c1) || 'Non', o: CHOCS, dai: 1 };
+  P[z + '_c2'] = { l: 'Choc 2', t: 'Choc 2 zone ' + ZONES[z], u: 'J', nom: (ZNOM[z] && ZNOM[z].c2) || 'Non', o: CHOCS, dai: 1 };
+  P[z + '_c42'] = { l: 'Choc 42 J', t: 'Choc 42 J zone ' + ZONES[z], nom: (ZNOM[z] && ZNOM[z].c42) || 'Non', o: ['Non', '1', '2', '3', '4'], dai: 1 };
+});
+// pas d'unité affichée pour « Non »
+const fmt = (k, v) => { const p = P[k]; if (v === '' || v == null) return '—'; return (p.u && !/^(Non|Oui)$/.test(v)) ? v + '  ' + p.u : v; };
+const avail = (k, t) => { const p = P[k]; if (!p) return false; if (p.a && !hasA(t)) return false; if (p.dai && !isDAI(t)) return false; if (p.crt && !isCRT(t)) return false; return true; };
+
+/* ---------- état ---------- */
+const S = { list: [], cur: null, tab: 'brady', edit: false, focus: false, open: {}, zone: null, q: '' };
+const val = (f, k) => (f.values && f.values[k] != null) ? f.values[k] : P[k].nom;
+const isMod = (f, k) => !!((f.values && f.values[k] != null && f.values[k] !== P[k].nom) || (f.mark && f.mark[k]));
+const isChk = (f, k) => !!(f.chk && f.chk[k]);
+const hasCm = (f, k) => !!(f.comments && f.comments[k]);
+const keysOfTab = (tab, t) => Object.keys(P).filter(k => avail(k, t) && tabOf(k) === tab);
+function tabOf(k) { if (/^rs/.test(k)) return 'rs'; if (k === 'irm') return 'irm'; if (/^(TVL|TV|FV)_|^(tvlOn|tvOn|tvrOn|fTVL|fTV|fTVR|fFV|pTVL|pTV|pFV|discTV|discTVR|atpOn|chocOn|cavATP|autoComATP|polAlt|coilVCS|boitier|vecteur)$/.test(k)) return 'tachy'; return 'brady'; }
+const titleOf = f => 'PROG_' + String(f.type || '').replace(/[^A-Za-z0-9]+/g, '_') + '_' + String(f.variante || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+
+/* ---------- stockage ---------- */
+async function loadList() { S.list = (await LocalDB.rows(TABLE)).sort((a, b) => TYPES.indexOf(a.type) - TYPES.indexOf(b.type) || String(a.variante).localeCompare(String(b.variante), 'fr')); }
+async function save(f) { f.updated_at = new Date().toISOString(); await LocalDB.raw.rowPut(TABLE, JSON.parse(JSON.stringify(f))); }
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'g' + Date.now() + Math.random().toString(16).slice(2));
+
+/* ---------- fiches d'exemple (reprises des captures fournies) ---------- */
+function seedFiches() {
+  const tvTher = { TV_a1prog: 'SALVE + SCAN', TV_a1nb: '3', TV_a1prem: '8', TV_a1ajout: '0', TV_a1interv: '85', TV_a1decR: '0', TV_a1decS: '8', TV_a1dur: '4', TV_a1coupl: '190',
+    TV_a2prog: 'SALVE + SCAN', TV_a2nb: '3', TV_a2prem: '8', TV_a2ajout: '0', TV_a2interv: '80', TV_a2decR: '0', TV_a2decS: '8', TV_a2dur: '4', TV_a2coupl: '190', TV_c1: '42', TV_c2: '42', TV_c42: '4' };
+  const reco = Object.assign({ tvlOn: 'Oui', fTVL: '160', fTV: '185', fTVR: '230', fFV: '255', pTVL: '50', autoComATP: 'Oui' }, tvTher);
+  const chkBrady = { pcMode: 1, autoA: 1, autoVD: 1 };
+  const chkTher = { TV_a1dur: 1, TV_a1coupl: 1, TV_a2dur: 1, TV_a2coupl: 1, TV_a1interv: 1 };
+  const base = (type, variante, values, extra) => Object.assign({ id: uid(), type, variante, appareil: 'TALENTIA 4LV SonR CRT-D', values, chk: Object.assign({}, chkBrady), mark: {}, comments: {}, notes: '' }, extra || {});
+  return [
+    base('DAI DR', 'RECO', Object.assign({}, reco), { chk: Object.assign({}, chkBrady, chkTher) }),
+    base('DAI DR', 'TOURS', { cavATP: 'D' }, { mark: { cavATP: 1 } }),
+    base('DAI VR', 'RECO', Object.assign({ mode: 'VVI', fbase: '70', discTV: 'Stabilité+ / Accélération' }, reco), { chk: { pcMode: 1, autoVD: 1 }, open: { sondes: 1 } }),
+    base('DAI VR', 'TOURS', { mode: 'VVI', fbase: '70', discTV: 'Stabilité+ / Accélération' }, { chk: { pcMode: 1, autoVD: 1 }, open: { sondes: 1 } })
+  ];
+}
+
+/* ====================== LISTE ====================== */
+function renderList() {
+  S.cur = null;
+  const q = S.q.trim().toLowerCase();
+  const l = S.list.filter(f => !q || (titleOf(f) + ' ' + (f.appareil || '') + ' ' + (f.notes || '') + ' ' + f.type + ' ' + f.variante).toLowerCase().includes(q));
+  let html = `<div class="top"><a class="home" href="index.html" aria-label="Accueil">‹</a><div class="it">📘 Guide de programmation</div><div class="sp"></div></div><div class="band"></div>
+  <div class="wrap"><div class="search"><input id="q" type="search" placeholder="🔎 Rechercher (DAI DR, TOURS, RECO…)" value="${esc(S.q)}"><button class="btnP" id="new">＋ Fiche</button></div>`;
+  if (!l.length) html += `<div class="empty">${S.list.length ? 'Aucune fiche ne correspond.' : 'Aucune fiche. Touchez « ＋ Fiche » pour en créer une.'}</div>`;
+  TYPES.concat(['Autre']).forEach(t => {
+    const g = l.filter(f => (TYPES.includes(f.type) ? f.type : 'Autre') === t); if (!g.length) return;
+    html += `<div class="grp">${esc(t)}</div>`;
+    g.forEach(f => {
+      const ks = Object.keys(P).filter(k => avail(k, f.type)), nm = ks.filter(k => isMod(f, k)).length, nc = ks.filter(k => isChk(f, k)).length;
+      html += `<div class="card" data-id="${esc(f.id)}"><div class="ic">${esc(f.type).replace(' ', '<br>')}</div><div style="flex:1;min-width:0"><div class="t">${esc(titleOf(f))}</div>
+        <div class="m">${esc(f.variante)}${f.appareil ? ' · ' + esc(f.appareil) : ''}</div>
+        <div class="tags">${nm ? `<span class="tag o">${nm} réglage${nm > 1 ? 's' : ''} à programmer</span>` : '<span class="tag n">Réglages nominaux</span>'}${nc ? `<span class="tag r">${nc} à vérifier</span>` : ''}${f.notes ? '<span class="tag n">📝 notes</span>' : ''}</div></div><div style="font-size:22px;color:#8a98bd">›</div></div>`;
+    });
+  });
+  html += `<div class="legend" style="margin-top:14px"><span><i style="background:var(--org)"></i>à programmer</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span><span>💬 commentaire</span></div></div>`;
+  $('#app').innerHTML = html;
+  $('#q').addEventListener('input', e => { S.q = e.target.value; const p = e.target.selectionStart; renderList(); const i = $('#q'); i.focus(); try { i.setSelectionRange(p, p); } catch (_) {} });
+  $('#new').addEventListener('click', newFiche);
+  document.querySelectorAll('.card').forEach(c => c.addEventListener('click', () => openFiche(c.dataset.id)));
+}
+async function newFiche() {
+  const f = { id: uid(), type: 'DAI DR', variante: 'RECO', appareil: '', values: {}, chk: {}, mark: {}, comments: {}, notes: '' };
+  await save(f); await loadList(); S.edit = true; openFiche(f.id);
+}
+
+/* ====================== FICHE ====================== */
+function openFiche(id) {
+  const f = S.list.find(x => x.id === id); if (!f) return renderList();
+  S.cur = f; S.zone = null; S.open = Object.assign({}, f.open || {}); if (S.tab === 'tachy' && !isDAI(f.type)) S.tab = 'brady';
+  history.replaceState(null, '', '#' + id);
+  renderFiche();
+}
+function tabMod(f, tab) { return keysOfTab(tab, f.type).some(k => isMod(f, k)); }
+function renderFiche() {
+  const f = S.cur, t = f.type;
+  const tabs = [['brady', 'Brady'], ['tachy', 'Tachy'], ['rs', 'Suivi à distance'], ['irm', 'IRM']].filter(([k]) => k !== 'tachy' || isDAI(t));
+  let h = `<div class="top"><a class="home" href="#" id="back" aria-label="Retour à la liste">‹</a>
+    <div class="it">👤 ${esc(f.variante || '—')}</div><div class="it">❤ ${esc(f.appareil || t)}</div><div class="it"><span class="chip">${esc(t)}</span></div>
+    ${isDAI(t) ? `<div class="it"><span class="chip">ATP ${val(f, 'atpOn') === 'Oui' ? 'activés' : 'désactivés'}</span><span class="chip">Chocs ${val(f, 'chocOn') === 'Oui' ? 'activés' : 'désactivés'}</span></div>` : ''}
+    <div class="sp"></div><button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ Terminé' : '✎ Modifier'}</button></div><div class="band"></div>`;
+  if (S.edit) h += `<div class="meta"><div><label>Catégorie (appareil)</label><select id="mType">${TYPES.map(x => `<option ${x === t ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div><label>Centre ou « RECO »</label><input id="mVar" value="${esc(f.variante)}" placeholder="RECO, TOURS, CHU…" autocapitalize="characters"></div>
+    <div><label>Appareil affiché</label><input id="mApp" value="${esc(f.appareil)}" placeholder="TALENTIA 4LV SonR CRT-D"></div>
+    <div style="display:flex;gap:8px;align-items:flex-end"><button class="btnS" id="dup">Dupliquer</button><button class="btnS" id="del" style="color:#c3141f">Supprimer</button></div></div>`;
+  h += `<div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${S.tab === k ? 'on' : ''}" data-tab="${k}">${l}${tabMod(f, k) ? '<span class="pen">✎</span>' : ''}</button>`).join('')}<button class="tab dis">Modes pré-programmés</button></div>
+    <div class="tools"><button class="btnS ${S.focus ? 'on' : ''}" id="focus">🔦 Mettre en avant</button><span class="legend"><span><i style="background:var(--org)"></i>à programmer</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span>${S.edit ? '<span>Touchez une valeur pour la modifier</span>' : '<span>Touchez une valeur pour le détail</span>'}</span></div>
+    <div class="screen ${S.focus ? 'focus' : ''}" id="screen"></div>
+    <div class="notes"><h3>📝 Recommandations / indication</h3>${S.edit ? `<textarea id="mNotes" placeholder="Indication, contexte, consignes du centre…">${esc(f.notes)}</textarea>` : `<div class="txt">${f.notes ? esc(f.notes) : '<span style="color:#8a94ad">Aucune note.</span>'}</div>`}</div>`;
+  $('#app').innerHTML = h;
+  $('#back').addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', location.pathname); S.edit = false; loadList().then(renderList); });
+  $('#edit').addEventListener('click', async () => { if (S.edit) { await save(f); } S.edit = !S.edit; renderFiche(); });
+  $('#focus').addEventListener('click', () => { S.focus = !S.focus; renderFiche(); });
+  document.querySelectorAll('.tab[data-tab]').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.tab; S.zone = null; renderFiche(); }));
+  if (S.edit) {
+    $('#mType').addEventListener('change', async e => { f.type = e.target.value; await save(f); renderFiche(); });
+    $('#mVar').addEventListener('change', async e => { f.variante = e.target.value.trim().toUpperCase(); await save(f); renderFiche(); });
+    $('#mApp').addEventListener('change', async e => { f.appareil = e.target.value.trim(); await save(f); renderFiche(); });
+    $('#mNotes').addEventListener('change', async e => { f.notes = e.target.value; await save(f); });
+    $('#dup').addEventListener('click', async () => { const c = JSON.parse(JSON.stringify(f)); c.id = uid(); c.variante = (f.variante || '') + ' COPIE'; await save(c); await loadList(); openFiche(c.id); });
+    $('#del').addEventListener('click', async () => { if (!confirm('Supprimer la fiche ' + titleOf(f) + ' ?')) return; await supabase.createClient().from(TABLE).delete().eq('id', f.id); S.edit = false; history.replaceState(null, '', location.pathname); await loadList(); renderList(); });
+  }
+  const scr = $('#screen');
+  if (S.tab === 'brady') scr.innerHTML = renderBrady(f);
+  else if (S.tab === 'tachy') scr.innerHTML = S.zone ? renderZone(f, S.zone) : renderTachy(f);
+  else if (S.tab === 'rs') scr.innerHTML = renderRS(f);
+  else scr.innerHTML = renderIRM(f);
+  scr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('click', ev => { ev.stopPropagation(); openPop(el.dataset.k); }));
+  scr.querySelectorAll('[data-sec]').forEach(el => el.addEventListener('click', () => { const s = el.dataset.sec; S.open[s] = !S.open[s]; renderFiche(); }));
+  scr.querySelectorAll('[data-zone]').forEach(el => el.addEventListener('click', () => { S.zone = el.dataset.zone; renderFiche(); window.scrollTo(0, 0); }));
+  scr.querySelectorAll('[data-zback]').forEach(el => el.addEventListener('click', () => { S.zone = null; renderFiche(); }));
+}
+
+/* ---------- briques d'affichage ---------- */
+function field(f, k, lab) {
+  if (!avail(k, f.type)) return '';
+  const p = P[k], v = val(f, k), cls = isMod(f, k) ? 'o' : (p.dim ? 'dim' : '');
+  return `<div class="f ${isChk(f, k) ? 'chk' : ''}"><div class="l">${esc(lab || p.l)}</div><div class="box ${cls}" data-k="${k}">${esc(fmt(k, v))}${hasCm(f, k) ? '<span class="cm">💬</span>' : ''}</div></div>`;
+}
+function sumItem(f, label, keys, sep) {
+  keys = keys.filter(k => avail(k, f.type)); if (!keys.length) return '<div></div>';
+  const o = keys.some(k => isMod(f, k)), c = keys.some(k => isChk(f, k)), cm = keys.some(k => hasCm(f, k));
+  return `<div class="si ${o ? 'o' : ''} ${c ? 'chk' : ''}" data-k="${keys[0]}"><div class="l">${esc(label)}</div><div class="v">${keys.map(k => esc(fmt(k, val(f, k)))).join(sep || ' / ')}${cm ? ' 💬' : ''}</div></div>`;
+}
+function section(f, id, title, keys, sumHtml, openHtml) {
+  const mod = keys.some(k => avail(k, f.type) && isMod(f, k)), op = !!S.open[id];
+  return `<div class="sec"><div class="side ${mod ? 'mod' : ''}" data-sec="${id}"><span class="ar">${op ? '⌃' : '⌄'}</span><span>${title}${mod ? ' <span class="pen">✎</span>' : ''}</span></div><div class="body">${op ? openHtml : sumHtml}</div></div>`;
+}
+const col = (f, head, keys) => `<div>${head ? `<div class="colh">${head}</div>` : ''}${keys.map(k => field(f, k)).join('')}</div>`;
+
+/* ---------- Brady ---------- */
+function renderBrady(f) {
+  const t = f.type, A = hasA(t), D = isDAI(t), C = isCRT(t);
+  const baseK = ['mode', 'bav1', 'prEff', 'prRep', 'pause', 'fbase', 'fmax', 'hyst', 'davRep', 'davEff', 'extDav', 'cavV', 'asserv'];
+  const baseSum = `<div class="sumrow">${sumItem(f, 'Mode', ['mode'])}${A ? sumItem(f, 'Fréquence de base / Fréquence max.', ['fbase', 'fmax']) : sumItem(f, 'Fréquence de base', ['fbase'])}${A ? sumItem(f, 'DAV repos / DAV effort', ['davRep', 'davEff']) : '<div></div>'}${C || D ? sumItem(f, 'Cavité V', ['cavV']) : '<div></div>'}</div><div class="sumrow">${sumItem(f, 'Asservissement', ['asserv'])}</div>`;
+  const baseOpen = `<div class="grid4">${col(f, '', ['mode', 'bav1', 'prEff', 'prRep', 'pause'])}${col(f, '', ['fbase', 'fmax', 'hyst'])}${col(f, '', ['davRep', 'davEff', 'extDav'])}${C || D ? col(f, '', ['cavV']) : '<div></div>'}</div><div class="grid4">${col(f, '', ['asserv'])}</div>`;
+  const advK = ['lissage', 'antiTRE', 'repli', 'fRepli', 'sensBruit', 'stimBruit', 'pcMode', 'pcFreq', 'pcDur', 'pcAmpA', 'pcLargA', 'pcAmpVD', 'pcLargVD', 'refAV', 'refAR', 'margeA', 'margeV', 'overdrive', 'suppPauseES', 'accelESA', 'stimAESV', 'suppPause', 'accelESV'];
+  const advSum = `<div class="sumrow">${sumItem(f, 'Lissage', ['lissage'])}${A ? sumItem(f, 'Repli', ['repli']) : '<div></div>'}${sumItem(f, 'Sensibilité auto sur bruit / Stimulation V sur bruit', ['sensBruit', 'stimBruit'])}${D ? sumItem(f, 'Paramètres post-choc', ['pcMode', 'pcFreq', 'pcDur']) : '<div></div>'}</div>`;
+  const advOpen = `<div class="grid4">${col(f, '', ['lissage', 'antiTRE'])}${col(f, '', ['repli', 'fRepli'])}${col(f, 'Gestion du bruit', ['sensBruit', 'stimBruit'])}${D ? col(f, 'Paramètres post-choc', ['pcMode', 'pcFreq', 'pcDur', 'pcAmpA', 'pcLargA', 'pcAmpVD', 'pcLargVD']) : '<div></div>'}</div>
+    <div class="grid4">${col(f, 'Périodes réfractaires', ['refAV', 'refAR'])}${col(f, 'Marges de sensibilité', ['margeA', 'margeV'])}${A ? col(f, 'Prévention arythmies A', ['overdrive', 'suppPauseES', 'accelESA']) : '<div></div>'}${col(f, 'Prévention arythmies V', ['stimAESV', 'suppPause', 'accelESV'])}</div>`;
+  const sondK = ['ampA', 'largA', 'polA', 'sensA', 'autoA', 'ampVD', 'largVD', 'polVD', 'sensVD', 'autoVD', 'asMarge', 'asAmpMin', 'asAmpSec', 'asAmpMax', 'asFmax', 'asHeure', 'ampVG', 'largVG', 'polVG', 'mp'];
+  const sondSum = (A ? `<div class="sumrow">${sumItem(f, 'Amp. A / Largeur A', ['ampA', 'largA'])}${sumItem(f, 'Polarité de stimulation A', ['polA'])}${sumItem(f, 'Sensibilité A', ['sensA'])}${sumItem(f, 'Auto-Seuil A', ['autoA'])}</div>` : '') +
+    `<div class="sumrow">${sumItem(f, 'Amp. VD / Largeur VD', ['ampVD', 'largVD'])}${sumItem(f, 'Polarité de stimulation VD', ['polVD'])}${sumItem(f, 'Sensibilité VD', ['sensVD'])}${sumItem(f, 'Auto-Seuil VD', ['autoVD'])}</div>` +
+    (C ? `<div class="sumrow">${sumItem(f, 'Amp. VG / Largeur VG', ['ampVG', 'largVG'])}${sumItem(f, 'Polarité stim. VG', ['polVG'])}${sumItem(f, 'Stim. MultiPoint', ['mp'])}<div></div></div>` : '');
+  const asBlock = `<div><div class="colh" style="font-size:12px;margin-top:6px">Paramètres Auto-Seuil</div>${['asMarge', 'asAmpMin', 'asAmpSec', 'asAmpMax', 'asFmax', 'asHeure'].map(k => field(f, k)).join('')}</div>`;
+  const sondOpen = (A ? `<div class="subh">SONDE A</div><div class="grid4">${col(f, '', ['ampA', 'largA'])}${col(f, '', ['polA'])}${col(f, '', ['sensA'])}${col(f, '', ['autoA'])}</div>` : '') +
+    `<div class="subh">SONDE VD</div><div class="grid4">${col(f, '', ['ampVD', 'largVD'])}${col(f, '', ['polVD'])}${col(f, '', ['sensVD'])}<div>${field(f, 'autoVD')}${asBlock}</div></div>` +
+    (C ? `<div class="subh">SONDE VG</div><div class="grid4">${col(f, '', ['ampVG', 'largVG'])}${col(f, '', ['polVG'])}${col(f, '', ['mp'])}<div></div></div>` : '');
+  return section(f, 'base', 'Paramètres de base', baseK, baseSum, baseOpen) + section(f, 'adv', 'Paramètres avancés', advK, advSum, advOpen) + section(f, 'sondes', 'Sondes', sondK, sondSum, sondOpen);
+}
+
+/* ---------- Tachy ---------- */
+function therSummary(f, z) {
+  const line = (k, html) => `<div>${html}</div>`;
+  const atp = a => { const p = val(f, z + '_' + a + 'prog'), k = z + '_' + a + 'prog'; const m = [k, z + '_' + a + 'nb'].some(x => isMod(f, x)); return p === 'Non' ? `<span class="${m ? 'o' : 'x'}">Non</span>` : `<span class="${m ? 'o' : ''}">${esc((val(f, z + '_' + a + 'nb') || '') + ' ' + p)}</span>`; };
+  const ch = k => { const v = val(f, k), m = isMod(f, k); if (v === 'Non') return `<span class="${m ? 'o' : 'x'}">Non</span>`; return `<span class="${m ? 'o' : ''}">${k.endsWith('c42') ? esc(v) + ' × 42 J' : esc(v) + ' J'}</span>`; };
+  if (z === 'FV') return '';
+  return line(0, atp('a1')) + line(0, atp('a2')) + line(0, ch(z + '_c1')) + line(0, ch(z + '_c2')) + line(0, ch(z + '_c42'));
+}
+function zbox(f, k, span) { const o = isMod(f, k); return `<div class="zv ${o ? 'o' : ''} ${isChk(f, k) ? 'chk' : ''}" style="${span || ''}" data-k="${k}">${esc(fmt(k, val(f, k)))}${hasCm(f, k) ? ' 💬' : ''}</div>`; }
+function ztog(f, k, label) {
+  const on = val(f, k) === 'Oui', o = isMod(f, k);
+  return `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-k="${k}">${label ? `<span style="color:var(--txt)">${label}</span>` : ''}<span class="sw ${on ? (o ? 'o' : '') : 'off'}"></span><span class="${on ? 'y ' + (o ? 'o' : '') : 'n'}">${on ? 'OUI' : 'NON'}</span></div>`;
+}
+function renderTachy(f) {
+  const tvl = val(f, 'tvlOn') === 'Oui', tvr = val(f, 'tvrOn') === 'Oui';
+  const anyMod = keys => keys.some(k => isMod(f, k)), anyChk = keys => keys.some(k => isChk(f, k));
+  const zKeys = z => Object.keys(P).filter(k => k.startsWith(z + '_'));
+  const ther = z => `<div class="ther ${anyChk(zKeys(z)) ? 'chk' : ''}" data-zone="${z}"><span class="go">»</span>${therSummary(f, z)}</div>`;
+  const fvATP = (() => { const p = val(f, 'FV_a1prog'), m = isMod(f, 'FV_a1prog') || isMod(f, 'FV_a1nb'); return p === 'Non' ? `<span class="${m ? 'o' : 'x'}">Non</span>` : `<span class="${m ? 'o' : ''}">${esc(val(f, 'FV_a1nb') + ' ' + p)}</span>`; })();
+  const fvCh = ['FV_c1', 'FV_c2', 'FV_c42'].map(k => { const v = val(f, k), m = isMod(f, k); return `<div class="${v === 'Non' ? (m ? 'o' : 'x') : (m ? 'o' : '')}">${v === 'Non' ? 'Non' : (k.endsWith('c42') ? esc(v) + ' × 42 J' : esc(v) + ' J')}</div>`; }).join('');
+  const ax = [tvl ? val(f, 'fTVL') : '', val(f, 'fTV'), tvr ? val(f, 'fTVR') : '', val(f, 'fFV')];
+  const g = `<div class="zgrid"><div class="zin">
+    <div></div><div class="zh">TV lente</div><div class="zh">TV</div><div class="zh" style="grid-column:4/6">FV</div>
+    <div></div><div class="axis"><span>${esc(ax[0])}</span><span>${esc(ax[1])}</span><span>${esc(ax[2])}</span><span>${esc(ax[3])}</span></div>
+    <div class="zl">Zones</div><div>${ztog(f, 'tvlOn')}</div><div>${ztog(f, 'tvOn')}</div><div style="grid-column:4/6">${ztog(f, 'tvrOn', 'TV Rapide')}</div>
+    <div class="zl">Fréquence</div><div>${tvl ? zbox(f, 'fTVL') : ''}</div><div>${zbox(f, 'fTV')}</div><div>${tvr ? zbox(f, 'fTVR') : ''}</div><div>${zbox(f, 'fFV')}</div>
+    <div class="zl">Persistance</div><div>${tvl ? zbox(f, 'pTVL') : ''}</div><div>${zbox(f, 'pTV')}</div><div style="grid-column:4/6">${zbox(f, 'pFV')}</div>
+    <div class="zl">Discrimination</div><div style="grid-column:${tvl ? '2/4' : '3/4'}" class="zdisc ${isMod(f, 'discTV') ? 'o' : ''} ${isChk(f, 'discTV') ? 'chk' : ''}" data-k="discTV">${esc(val(f, 'discTV'))}<span>»</span></div>${tvl ? '' : ''}<div>${tvr ? zbox(f, 'discTVR') : ''}</div><div></div>
+    <div class="zl" style="line-height:2.05;align-self:start;padding-top:6px">ATP 1<br>ATP 2<br>CHOC 1<br>CHOC 2<br>CHOC 42 J</div>
+    <div style="align-self:start">${tvl ? ther('TVL') : ''}</div><div style="align-self:start">${ther('TV')}</div>
+    <div style="grid-column:4/6;align-self:start"><div class="ther ${anyChk(zKeys('FV')) ? 'chk' : ''}" data-zone="FV" style="display:inline-block;min-width:48%;margin-bottom:8px"><span class="go">»</span>${tvr ? fvATP : '<span class="x">—</span>'}</div>
+      <div class="ther" data-zone="FV"><span class="go">»</span>${fvCh}</div></div>
+  </div></div>`;
+  const rr = k => avail(k, f.type) ? `<div class="rr"><div class="l">${esc(P[k].l)}</div>${['atpOn', 'chocOn'].includes(k) ? `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-k="${k}" style="justify-content:flex-start"><span class="sw ${val(f, k) === 'Oui' ? '' : 'off'}" style="${val(f, k) === 'Oui' ? 'background:var(--green)' : ''}"></span><span style="color:${val(f, k) === 'Oui' ? 'var(--green)' : 'var(--redTxt)'}">${esc(val(f, k))}</span></div>` : `<div class="f ${isChk(f, k) ? 'chk' : ''}" style="margin:0"><div class="box ${isMod(f, k) ? 'o' : (P[k].dim ? 'dim' : '')}" data-k="${k}">${esc(fmt(k, val(f, k)))}${hasCm(f, k) ? '<span class="cm">💬</span>' : ''}</div></div>`}</div>` : '';
+  const right = `<div class="right">${rr('atpOn')}${rr('chocOn')}<div class="rsep"></div>${rr('cavATP')}${rr('autoComATP')}${rr('polAlt')}${rr('coilVCS')}${rr('boitier')}${rr('vecteur')}</div>`;
+  return `<div class="tachy"><div>${g}<div class="sensrow"><span class="l">Sensibilité VD</span><div class="f ${isChk(f, 'sensVD') ? 'chk' : ''}" style="margin:0;min-width:120px"><div class="box ${isMod(f, 'sensVD') ? 'o' : ''}" data-k="sensVD">${esc(fmt('sensVD', val(f, 'sensVD')))}</div></div></div></div>${right}</div>`;
+}
+function renderZone(f, z) {
+  const atpCol = (a, title) => `<div class="colc" style="flex:2 1 300px"><div class="hd">${title}</div><div class="in" style="grid-template-columns:1fr 1fr">${ATP_FIELDS.map(([k]) => field(f, z + '_' + a + k)).join('')}</div></div>`;
+  const chocs = `<div class="colc" style="flex:1 1 160px"><div class="hd">Chocs</div><div class="in">${field(f, z + '_c1')}${field(f, z + '_c2')}${field(f, z + '_c42')}</div></div>`;
+  const title = z === 'FV' ? 'Thérapies en zone FV / TV rapide' : 'Thérapies en zone ' + ZONES[z];
+  return `<div class="ztitle"><button data-zback="1">‹ Retour</button><h2>${title}</h2></div><div class="cols">${z === 'FV' ? atpCol('a1', 'ATP (TV rapide)') : atpCol('a1', 'ATP 1') + atpCol('a2', 'ATP 2')}${chocs}</div>`;
+}
+
+/* ---------- Suivi à distance / IRM ---------- */
+function renderRS(f) {
+  const t = f.type, A = hasA(t), D = isDAI(t), C = isCRT(t);
+  const sys = ['rsSuivi', 'rsAlertes', 'rsIRM', 'rsAsync'], sond = ['rsImpA', 'rsImpAH', 'rsImpAB', 'rsASA', 'rsASAs', 'rsImpVD', 'rsImpVDH', 'rsImpVDB', 'rsASVD', 'rsASVDs', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsImpVG', 'rsImpVGH', 'rsImpVGB'], th = ['rsChocDes', 'rsChocDel', 'rsATP'], cl = ['rsFA', 'rsSurdet'];
+  const sum = keys => `<div class="sumrow">${keys.filter(k => avail(k, t)).map(k => sumItem(f, P[k].l, [k])).join('')}</div>`;
+  const sondOpen = (A ? `<div class="subh">SONDE A</div><div class="grid4">${col(f, '', ['rsImpA', 'rsImpAH', 'rsImpAB'])}${col(f, '', ['rsASA', 'rsASAs'])}<div></div><div></div></div>` : '') +
+    `<div class="subh">SONDE VD</div><div class="grid4">${col(f, '', ['rsImpVD', 'rsImpVDH', 'rsImpVDB'])}${col(f, '', ['rsASVD', 'rsASVDs'])}${D ? col(f, '', ['rsLPE']) : '<div></div>'}<div></div></div>` +
+    (D ? `<div class="grid4">${col(f, '', ['rsImpChoc'])}${col(f, '', ['rsCoil'])}<div></div><div></div></div>` : '') +
+    (C ? `<div class="subh">SONDE VG</div><div class="grid4">${col(f, '', ['rsImpVG', 'rsImpVGH', 'rsImpVGB'])}<div></div><div></div><div></div></div>` : '');
+  const sondSum = `<div class="sumrow">${['rsImpA', 'rsASA', 'rsImpVD', 'rsASVD', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsImpVG'].filter(k => avail(k, t)).map(k => sumItem(f, P[k].l, [k])).join('')}</div>`;
+  return section(f, 'rsSys', 'Système', sys, sum(sys), `<div class="grid4">${sys.map(k => col(f, '', [k])).join('')}</div>`) +
+    section(f, 'rsSond', 'Sondes', sond, sondSum, sondOpen) +
+    (D ? section(f, 'rsTh', 'Thérapies', th, sum(th), `<div class="grid4">${th.map(k => col(f, '', [k])).join('')}<div></div></div>`) : '') +
+    section(f, 'rsCl', 'Alertes cliniques', cl, sum(cl), `<div class="grid4">${cl.filter(k => avail(k, t)).map(k => col(f, '', [k])).join('')}</div>`);
+}
+function renderIRM(f) { return `<div class="sec"><div class="side"> </div><div class="body"><div class="grid4">${col(f, '', ['irm'])}</div></div></div>`; }
+
+/* ---------- fenêtre de choix / détail ---------- */
+function openPop(k) {
+  const f = S.cur, p = P[k], v = val(f, k), ovl = $('#ovl');
+  const opts = (p.o || []).slice(); if (p.o && v && !opts.includes(v)) opts.push(v);
+  const title = (p.t || p.l);
+  let b = '';
+  if (S.edit) {
+    b = `${opts.length ? `<div class="opts">${opts.map(o => `<button class="opt ${o === p.nom ? 'nom' : ''} ${o === v && v !== p.nom ? 'sel' : ''}" data-v="${esc(o)}">${esc(o)}${o === v ? ' •' : ''}</button>`).join('')}</div>` : ''}
+      <div class="row"><input type="text" id="pVal" placeholder="${opts.length ? 'Autre valeur' : 'Valeur'}" value="${opts.includes(v) ? '' : esc(v)}" ${p.u && !p.o ? 'inputmode="decimal"' : ''}><span>${esc(p.u || '')}</span></div>
+      <div class="leg">Valeur soulignée : valeur nominale (${esc(fmt(k, p.nom))}) · orange : valeur à programmer</div>
+      <label class="ck"><input type="checkbox" id="pMark" ${f.mark && f.mark[k] ? 'checked' : ''}> Mettre en orange même si c'est la valeur nominale</label>
+      <label class="ck"><input type="checkbox" id="pChk" ${isChk(f, k) ? 'checked' : ''}> Encadrer en rouge (à vérifier)</label>
+      <div style="margin-top:10px;font-size:12.5px;font-weight:700;color:var(--lab)">Commentaire</div><textarea id="pCm" placeholder="Pourquoi ce réglage, à quoi faire attention…">${esc((f.comments || {})[k] || '')}</textarea>
+      <div class="acts"><button class="a1" id="pNom">Valeur nominale</button><button class="a2" id="pOk">OK</button></div>`;
+  } else {
+    b = `${opts.length ? `<div class="opts">${opts.map(o => `<button class="opt ro ${o === p.nom ? 'nom' : ''} ${o === v && isMod(f, k) ? 'sel' : ''}">${esc(o)}${o === v ? ' •' : ''}</button>`).join('')}</div>` : ''}
+      <div class="info"><b>Réglage : ${esc(fmt(k, v))}</b>${isMod(f, k) ? ' — <span style="color:var(--org);font-weight:800">à programmer</span>' : ''}${isChk(f, k) ? ' — <span style="color:var(--red);font-weight:800">à vérifier</span>' : ''}\nValeur nominale : ${esc(fmt(k, p.nom))}${hasCm(f, k) ? '\n\n💬 ' + esc(f.comments[k]) : ''}</div>`;
+  }
+  ovl.innerHTML = `<div class="pop" role="dialog" aria-modal="true"><div class="ph"><span>${esc(title)}</span>${p.u ? `<span class="u">(${esc(p.u)})</span>` : ''}<button class="x" id="pX" aria-label="Fermer">✕</button></div><div class="pb">${b}</div></div>`;
+  ovl.classList.remove('hidden');
+  const close = () => { ovl.classList.add('hidden'); ovl.innerHTML = ''; };
+  $('#pX').addEventListener('click', close);
+  ovl.onclick = e => { if (e.target === ovl) close(); };
+  if (!S.edit) return;
+  let chosen = v;
+  ovl.querySelectorAll('.opt').forEach(o => o.addEventListener('click', () => { chosen = o.dataset.v; $('#pVal').value = ''; ovl.querySelectorAll('.opt').forEach(x => x.classList.toggle('sel', x === o && chosen !== p.nom)); }));
+  const apply = async (newV) => {
+    f.values = f.values || {}; f.mark = f.mark || {}; f.chk = f.chk || {}; f.comments = f.comments || {};
+    if (newV === p.nom) delete f.values[k]; else f.values[k] = newV;
+    if ($('#pMark').checked) f.mark[k] = 1; else delete f.mark[k];
+    if ($('#pChk').checked) f.chk[k] = 1; else delete f.chk[k];
+    const c = $('#pCm').value.trim(); if (c) f.comments[k] = c; else delete f.comments[k];
+    await save(f); close(); renderFiche();
+  };
+  $('#pOk').addEventListener('click', () => { const t = $('#pVal').value.trim(); apply(t || chosen); });
+  $('#pNom').addEventListener('click', () => apply(p.nom));
+}
+
+/* ---------- démarrage ---------- */
+(async function start() {
+  await loadList();
+  let seeded = false; try { seeded = localStorage.getItem('mp_guide_seeded') === '1'; } catch (e) {}
+  if (!S.list.length && !seeded) { for (const f of seedFiches()) await save(f); try { localStorage.setItem('mp_guide_seeded', '1'); } catch (e) {} await loadList(); }
+  const id = location.hash.slice(1);
+  if (id && S.list.some(f => f.id === id)) openFiche(id); else renderList();
+})();
+window.__guide = { S, P, openFiche, renderList };
+</script>
+</body>
+</html>
