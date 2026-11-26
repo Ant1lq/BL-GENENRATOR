@@ -969,14 +969,28 @@ const markDeleted = id => { try { const l = delList(); if (!l.includes(id)) { l.
 async function applyShipped() {
   let data; try { data = await (await fetch('assets/guide-fiches.json', { cache: 'no-cache' })).json(); } catch (e) { return; }
   const del = delList(); let changed = false;
+  const OLD_SHIP = '2026-11-26T21:30:00.000Z';
+  const untouched = f => f.shipped && (f.updated_at === f.shippedAt || f.updated_at === OLD_SHIP);
+  // fiches retirées de l'application : supprimées si elles n'ont pas été modifiées sur ce téléphone
+  for (const id of (data.retired || [])) {
+    const f = S.list.find(x => x.id === id);
+    if (f && untouched(f)) { await supabase.createClient().from(TABLE).delete().eq('id', id); changed = true; }
+  }
   for (const sf of (data.fiches || [])) {
-    if (S.list.some(f => f.id === sf.id) || del.includes(sf.id)) continue;
+    if (del.includes(sf.id)) continue;
+    const ship = Object.assign({}, sf, { shipped: true, shippedAt: sf.updated_at });
+    const cur = S.list.find(f => f.id === sf.id);
+    if (cur) {
+      // nouvelle version livrée : remplace l'ancienne si elle n'a pas été modifiée sur ce téléphone
+      if (untouched(cur) && cur.updated_at !== sf.updated_at) { await LocalDB.raw.rowPut(TABLE, ship); changed = true; }
+      continue;
+    }
     // même fiche déjà créée sur ce téléphone avec un autre identifiant : on garde son contenu, on aligne l'identifiant
     const twin = S.list.find(f => !f.shipped && f.type === sf.type && (titleOf(f) === titleOf(sf) || f.variante === sf.variante));
     if (twin) {
       await supabase.createClient().from(TABLE).delete().eq('id', twin.id);
       await LocalDB.raw.rowPut(TABLE, Object.assign({}, twin, { id: sf.id, shipped: true }));
-    } else await LocalDB.raw.rowPut(TABLE, Object.assign({}, sf, { shipped: true }));
+    } else await LocalDB.raw.rowPut(TABLE, ship);
     changed = true;
   }
   if (changed) await loadList();
