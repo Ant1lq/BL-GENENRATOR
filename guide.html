@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#25386a">
@@ -302,6 +302,10 @@ button,input,select,textarea{font:inherit}
   .prog .colc{flex:1 1 100%!important}
   .prog .ztitle h2{font-size:16px}
 }
+
+/* pas de zoom involontaire */
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}
+input,select,textarea{font-size:16px!important}
 </style>
 </head>
 <body>
@@ -601,7 +605,7 @@ function renderList() {
     any = true;
     html += `<section class="mdl"><div class="mhd"><div class="mic">${esc(t)}</div><div><b>${esc(M.name)}</b><span>${esc(M.cat)} · ${esc(M.conn)} · réf. ${esc(M.ref)}</span></div></div>
       <div class="frow def" data-id="defaut-${t}"><span class="ico">📄</span><div class="fi"><b>Page par défaut</b><small>${esc(titleOf(defaultFiche(t)))} · valeurs à l'expédition</small></div><span class="ch">›</span></div>
-      ${fs.map(f => `<div class="frow" data-id="${esc(f.id)}"><span class="ico">🗂️</span><div class="fi"><b>${esc(titleOf(f))}</b>${ficheTags(f)}</div><button class="ren" data-ren="${esc(f.id)}" aria-label="Renommer">✎</button><span class="ch">›</span></div>`).join('')}
+      ${fs.map(f => `<div class="frow" data-id="${esc(f.id)}"><span class="ico">${f.locked ? '🔒' : '🗂️'}</span><div class="fi"><b>${esc(titleOf(f))}</b></div><button class="ren" data-ren="${esc(f.id)}" aria-label="Renommer">✎</button><span class="ch">›</span></div>`).join('')}
       <button class="addr" data-new="${t}">＋ Nouvelle reco ${esc(M.name)}</button></section>`;
   });
   if (!any) html += `<div class="empty">Aucune fiche ne correspond.</div>`;
@@ -978,6 +982,9 @@ function openPop(k) {
   const id = location.hash.slice(1);
   if (id && (S.list.some(f => f.id === id) || /^defaut-/.test(id))) openFiche(id); else renderList();
 })();
+// bloque le zoom au pincement et au double-toucher (Safari iPhone)
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
 window.__guide = { S, P, openFiche, renderList };
 </script>
 </body>
