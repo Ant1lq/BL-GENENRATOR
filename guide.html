@@ -261,6 +261,46 @@ button,input,select,textarea{font:inherit}
 .addr{display:block;width:calc(100% - 28px);margin:10px 14px 14px;border:1.5px dashed #8aa2dc;background:#fff;color:var(--navy);border-radius:10px;padding:11px;font-weight:800;font-size:14px;cursor:pointer}
 .defnote{background:#fff7ea;border-left:4px solid var(--org);padding:9px 12px;font-size:13px;color:#5b4520;margin:10px 8px 0;border-radius:0 8px 8px 0}
 @media (max-width:760px){ .defnote{margin:8px 10px 0} }
+
+/* listes déroulantes du programmateur (Stim. post-choc, Paramètres Auto-Seuil) */
+.dd{margin-top:10px;border:2px solid transparent}
+.ddh{border:1.5px solid #3b4560;background:#fff;color:var(--txt);font-weight:700;font-size:13px;padding:10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;border-radius:3px}
+.ddh.o{color:var(--org)}
+.nohl .ddh.o{color:var(--txt)}
+.ddb{background:#cfdcf7;padding:8px 7px 4px}
+.lockb{background:#fff;color:var(--navy);border:0;border-radius:6px;padding:7px 12px;font-weight:700;font-size:13px;cursor:pointer}
+.tag.l{background:#e6e9f2;color:#3c4766}
+/* iPhone : même écran que le programmateur, en plus compact */
+@media (max-width:760px){
+  .mtabs{background:var(--bg);gap:3px;padding:8px 6px 0;border:0}
+  .mtabs button{background:var(--tab);color:var(--txt);border:0;font-size:13.5px;padding:10px 2px}
+  .mtabs button.on{background:var(--tabOn);color:#fff}
+  .mscr.prog{padding:6px 6px 10px}
+  .prog .sec{margin-bottom:5px}
+  .prog .sec .side{font-size:14px;padding:9px 10px}
+  .prog .sec .body{padding:8px 9px}
+  .prog .grid4,.prog .sumrow{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px}
+  .prog .box{font-size:12.5px;padding:9px 7px;min-height:36px}
+  .prog .f .l,.prog .si .l{font-size:12px;white-space:normal}
+  .prog .si .v{font-size:13.5px}
+  .prog .tachy{grid-template-columns:minmax(0,1fr);gap:6px}
+  .prog .zgrid{padding:8px 4px 10px;overflow:visible}
+  .prog .zin{min-width:0;grid-template-columns:56px repeat(4,minmax(0,1fr));column-gap:3px;row-gap:9px}
+  .prog .zh{font-size:12px}
+  .prog .axis{font-size:11px}
+  .prog .zl{font-size:10.5px;word-break:break-word}
+  .prog .zv{font-size:11px;padding:8px 4px;min-height:34px}
+  .prog .zdisc{font-size:11px;padding:6px 4px;min-height:34px}
+  .prog .ther{font-size:11px;padding:5px 16px 5px 4px!important;line-height:1.9}
+  .prog .ther .go,.prog .zdisc .go{right:3px}
+  .prog .tg{font-size:11px;gap:3px;flex-wrap:wrap}
+  .prog .sw{width:34px;height:20px;flex:0 0 34px}.prog .sw::after{width:16px;height:16px}
+  .prog .right{padding:10px}
+  .prog .rr{grid-template-columns:1fr 1fr}
+  .prog .sensrow{flex-wrap:wrap;gap:8px}
+  .prog .colc{flex:1 1 100%!important}
+  .prog .ztitle h2{font-size:16px}
+}
 </style>
 </head>
 <body>
@@ -544,7 +584,7 @@ function seedFiches() {
 /* ====================== LISTE ====================== */
 function ficheTags(f) {
   const ks = Object.keys(P).filter(k => avail(k, f.type)), nm = ks.filter(k => isMod(f, k)).length, nc = ks.filter(k => isChk(f, k)).length;
-  return `<div class="tags">${nm ? `<span class="tag o">${nm} réglage${nm > 1 ? 's' : ''} modifié${nm > 1 ? 's' : ''}</span>` : '<span class="tag n">Valeurs par défaut</span>'}${nc ? `<span class="tag r">${nc} à vérifier</span>` : ''}${f.notes ? '<span class="tag n">📝 notes</span>' : ''}</div>`;
+  return `<div class="tags">${nm ? `<span class="tag o">${nm} réglage${nm > 1 ? 's' : ''} modifié${nm > 1 ? 's' : ''}</span>` : '<span class="tag n">Valeurs par défaut</span>'}${nc ? `<span class="tag r">${nc} à vérifier</span>` : ''}${f.notes ? '<span class="tag n">📝 notes</span>' : ''}${f.locked ? '<span class="tag l">🔒 lecture seule</span>' : ''}</div>`;
 }
 function renderList() {
   S.cur = null; document.body.classList.remove('nohl');
@@ -582,7 +622,7 @@ function openFiche(id) {
   const f = dm && MODELS[dm[1]] ? defaultFiche(dm[1]) : S.list.find(x => x.id === id); if (!f) return renderList();
   if (f.isDefault) S.edit = false;
   if (f.isDefault) setTimeout(() => {}, 0);
-  S.cur = f; S.zone = null; S.only = false; S.mopen = {}; S.open = Object.assign(f.isDefault ? { base: 1, adv: 1, sondes: 1, rsSys: 1, rsSond: 1, rsTh: 1, rsCl: 1, irm: 1 } : {}, f.open || {}); if (S.tab === 'tachy' && !isDAI(f.type)) S.tab = 'brady';
+  S.cur = f; S.zone = null; S.only = false; S.mopen = {}; S.open = Object.assign({}, f.open || {}); if (S.tab === 'tachy' && !isDAI(f.type)) S.tab = 'brady';
   history.replaceState(null, '', '#' + id);
   renderFiche();
 }
@@ -594,25 +634,28 @@ function renderFiche() {
   let h = `<div class="top"><a class="home" href="#" id="back" aria-label="Retour à la liste">‹</a>
     <div class="it">👤 ${esc(titleOf(f))}</div><div class="it">❤ ${esc(MODELS[t].name)}</div><div class="it"><span class="chip">${esc(MODELS[t].ref)} · ${esc(MODELS[t].conn)}</span></div>
     ${isDAI(t) ? `<div class="it"><span class="chip">ATP ${val(f, 'atpOn') === 'Oui' ? 'activés' : 'désactivés'}</span><span class="chip">Chocs ${val(f, 'chocOn') === 'Oui' ? 'activés' : 'désactivés'}</span></div>` : ''}
-    <div class="sp"></div>${f.isDefault ? '<button id="mkReco">＋ Créer une reco</button>' : `<button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ Terminé' : '✎ Modifier'}</button>`}</div><div class="band"></div>${f.isDefault ? `<div class="defnote">Page par défaut du ${esc(MODELS[t].name)} : valeurs d'un boîtier neuf (à l'expédition). Touchez une valeur pour voir tous les choix possibles et la valeur nominale.</div>` : ''}`;
+    <div class="sp"></div>${f.isDefault ? '<button id="mkReco">＋ Créer une reco</button>' : f.locked ? '<button id="dupRO">⧉ Dupliquer</button><button id="unlock">🔒 Lecture seule</button>' : `<button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ Terminé' : '✎ Modifier'}</button>`}</div><div class="band"></div>${f.isDefault ? `<div class="defnote">Page par défaut du ${esc(MODELS[t].name)} : valeurs d'un boîtier neuf (à l'expédition). Touchez une valeur pour voir tous les choix possibles et la valeur nominale.</div>` : ''}`;
   if (S.edit) h += `<div class="meta"><div><label>Défibrillateur</label><select id="mType">${TYPES.map(x => `<option value="${x}" ${x === t ? 'selected' : ''}>${MODELS[x].name}</option>`).join('')}</select></div>
     <div><label>Centre ou « RECO »</label><input id="mVar" value="${esc(f.variante)}" placeholder="RECO, TOURS, CHU…" autocapitalize="characters"></div>
-    <div style="display:flex;gap:8px;align-items:flex-end"><button class="btnS" id="dup">Dupliquer</button><button class="btnS" id="del" style="color:#c3141f">Supprimer</button></div></div>`;
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap"><button class="btnS" id="lock">🔒 Enregistrer en lecture seule</button><button class="btnS" id="dup">Dupliquer</button><button class="btnS" id="del" style="color:#c3141f">Supprimer</button></div></div>`;
   h += `<div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${S.tab === k ? 'on' : ''}" data-tab="${k}">${l}${tabMod(f, k) ? '<span class="pen">✎</span>' : ''}</button>`).join('')}<button class="tab dis">Modes pré-programmés</button></div>
     <div class="tools"><button class="btnS ${S.focus ? 'on' : ''}" id="focus">🔦 Mettre en avant</button>${f.isDefault ? '' : `<button class="btnS hlbtn ${S.hl ? 'on' : ''}" data-hl="1">${S.hl ? '🟧 Modifications affichées' : '⬜ Modifications masquées'}</button>`}<span class="legend"><span class="lg-o"><i style="background:var(--org)"></i>modifié</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span>${S.edit ? '<span>Touchez une valeur pour la modifier</span>' : '<span>Touchez une valeur pour le détail</span>'}</span></div>
     <div class="screen ${S.focus ? 'focus' : ''}" id="screen"></div>
     <div class="notes"><h3>📝 Recommandations / indication</h3>${S.edit ? `<textarea id="mNotes" placeholder="Indication, contexte, consignes du centre…">${esc(f.notes)}</textarea>` : `<div class="txt">${f.notes ? esc(f.notes) : '<span style="color:#8a94ad">Aucune note.</span>'}</div>`}</div>`;
   $('#app').innerHTML = h;
+  $('#screen').innerHTML = progScreen(f);
   bindFiche();
-  const scr = $('#screen');
-  if (S.tab === 'brady') scr.innerHTML = renderBrady(f);
-  else if (S.tab === 'tachy') scr.innerHTML = S.zone ? renderZone(f, S.zone) : renderTachy(f);
-  else if (S.tab === 'rs') scr.innerHTML = renderRS(f);
-  else scr.innerHTML = renderIRM(f);
-  scr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('click', ev => { ev.stopPropagation(); openPop(el.dataset.k); }));
-  scr.querySelectorAll('[data-sec]').forEach(el => el.addEventListener('click', () => { const s = el.dataset.sec; S.open[s] = !S.open[s]; renderFiche(); }));
-  scr.querySelectorAll('[data-zone]').forEach(el => el.addEventListener('click', () => { S.zone = el.dataset.zone; renderFiche(); window.scrollTo(0, 0); }));
-  scr.querySelectorAll('[data-zback]').forEach(el => el.addEventListener('click', () => { S.zone = null; renderFiche(); }));
+}
+function progScreen(f) {
+  if (S.tab === 'brady') return renderBrady(f);
+  if (S.tab === 'tachy') return S.zone ? renderZone(f, S.zone) : renderTachy(f);
+  if (S.tab === 'rs') return renderRS(f);
+  return renderIRM(f);
+}
+async function toggleSw(k) {
+  const f = S.cur, p = PT(f.type, k), nv = val(f, k) === 'Oui' ? 'Non' : 'Oui';
+  f.values = f.values || {}; if (nv === p.nom) delete f.values[k]; else f.values[k] = nv;
+  await save(f); renderFiche();
 }
 
 
@@ -665,7 +708,7 @@ function mTachy(f) {
   if (on('tvrOn')) seg.push(['z2', 'TV rapide', 'fTVR']);
   seg.push(['z3', 'FV', 'fFV']);
   const ruler = `<div class="ruler">${seg.map(([c, l, k]) => `<div class="${c} ${isMod(f, k) ? 'o' : ''}" data-k="${k}">${l}<b>≥ ${esc(val(f, k) || '—')}</b></div>`).join('')}</div>`;
-  const tog = k => { const v = on(k), o = isMod(f, k); return `<span class="onoff ${v ? (o ? 'o' : '') : 'n'} ${isChk(f, k) ? 'chk' : ''}" data-k="${k}">${v ? 'ACTIVÉE' : 'DÉSACTIVÉE'}</span>`; };
+  const tog = k => { const v = on(k), o = isMod(f, k); return `<span class="onoff ${v ? (o ? 'o' : '') : 'n'} ${isChk(f, k) ? 'chk' : ''}" data-sw="1" data-k="${k}">${v ? 'ACTIVÉE' : 'DÉSACTIVÉE'}</span>`; };
   const zk = z => Object.keys(P).filter(k => k.startsWith(z + '_'));
   const zcard = (id, title, onKey, rows, ther, zone, extraRow) => {
     const active = !onKey || on(onKey);
@@ -705,13 +748,13 @@ function renderFicheMobile() {
   const f = S.cur, t = f.type;
   const tabs = [['brady', 'Brady'], ['tachy', 'Tachy'], ['rs', 'Suivi'], ['irm', 'IRM']].filter(([k]) => k !== 'tachy' || isDAI(t));
   const sub = MODELS[t].name + (isDAI(t) ? ` · ATP ${val(f, 'atpOn') === 'Oui' ? 'ON' : 'OFF'} · Chocs ${val(f, 'chocOn') === 'Oui' ? 'ON' : 'OFF'}` : '');
-  let h = `<div class="head"><div class="mtop"><a href="#" id="back" aria-label="Retour">‹</a><div class="tt"><b>${esc(titleOf(f))}</b><span>${esc(sub)}</span></div>${f.isDefault ? '<button id="mkReco">＋ Reco</button>' : `<button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ OK' : '✎ Modifier'}</button>`}</div>
+  let h = `<div class="head"><div class="mtop"><a href="#" id="back" aria-label="Retour">‹</a><div class="tt"><b>${esc(titleOf(f))}</b><span>${esc(sub)}</span></div>${f.isDefault ? '<button id="mkReco">＋ Reco</button>' : f.locked ? '<button id="unlock">🔒</button>' : `<button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ OK' : '✎ Modifier'}</button>`}</div>
     ${S.only ? '' : `<div class="mtabs" style="grid-template-columns:repeat(${tabs.length},1fr)">${tabs.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-tab="${k}">${l}${tabMod(f, k) ? '<span class="dot"></span>' : ''}</button>`).join('')}</div>`}</div>`;
   if (S.edit) h += `<div class="meta"><div style="grid-column:1/3"><label>Défibrillateur</label><select id="mType">${TYPES.map(x => `<option value="${x}" ${x === t ? 'selected' : ''}>${MODELS[x].name}</option>`).join('')}</select></div>
     <div style="grid-column:1/3"><label>Centre ou « RECO »</label><input id="mVar" value="${esc(f.variante)}" autocapitalize="characters"></div>
-    <div style="display:flex;gap:8px"><button class="btnS" id="dup" style="flex:1">Dupliquer</button><button class="btnS" id="del" style="flex:1;color:#c3141f">Supprimer</button></div></div>`;
+    <div style="grid-column:1/3;display:flex;gap:8px;flex-wrap:wrap"><button class="btnS" id="lock" style="flex:1 1 100%">🔒 Enregistrer en lecture seule</button><button class="btnS" id="dup" style="flex:1">Dupliquer</button><button class="btnS" id="del" style="flex:1;color:#c3141f">Supprimer</button></div></div>`;
   const n = countAll(f);
-  h += f.isDefault ? `<div class="defnote">Page par défaut : valeurs d'un boîtier neuf. Touchez une ligne pour voir les choix et la valeur nominale MicroPort.</div><div class="mscr" id="screen"></div>` : `<div class="mtool"><div class="seg"><button id="vAll" class="${S.only ? '' : 'on'}">Tous les réglages</button><button id="vOnly" class="${S.only ? 'on' : ''}">${f.isDefault ? 'Récap' : 'À régler'} (${n})</button></div><button class="btnS hlbtn ${S.hl ? 'on' : ''}" data-hl="1" style="height:40px;padding:0 10px" aria-label="Afficher les modifications en orange">🟧</button></div>
+  h += f.isDefault ? `<div class="defnote">Page par défaut : valeurs d'un boîtier neuf. Touchez une ligne pour voir les choix et la valeur nominale MicroPort.</div><div class="mscr" id="screen"></div>` : `<div class="mtool"><div class="seg"><button id="vAll" class="${S.only ? '' : 'on'}">Écran programmateur</button><button id="vOnly" class="${S.only ? 'on' : ''}">${f.isDefault ? 'Récap' : 'À régler'} (${n})</button></div><button class="btnS hlbtn ${S.hl ? 'on' : ''}" data-hl="1" style="height:40px;padding:0 10px" aria-label="Afficher les modifications en orange">🟧</button></div>
 
     <div class="mleg"><span class="lg-o"><i style="background:var(--org)"></i>modifié</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span><span>${S.edit ? 'Touchez une ligne pour la modifier' : 'Touchez une ligne pour le détail'}</span></div>
     <div class="mscr" id="screen"></div>
@@ -721,10 +764,7 @@ function renderFicheMobile() {
   if ($('#vOnly')) $('#vOnly').addEventListener('click', () => { S.only = true; S.zone = null; renderFiche(); window.scrollTo(0, 0); });
   const scr = $('#screen');
   if (S.only) scr.innerHTML = mAll(f);
-  else if (S.tab === 'brady') scr.innerHTML = mBrady(f);
-  else if (S.tab === 'tachy') scr.innerHTML = S.zone ? mZone(f, S.zone) : mTachy(f);
-  else if (S.tab === 'rs') scr.innerHTML = mRS(f);
-  else scr.innerHTML = mIRM(f);
+  else { scr.classList.add('prog'); scr.innerHTML = progScreen(f); }
   scr.querySelectorAll('[data-msec]').forEach(el => el.addEventListener('click', () => { if (S.only) return; const id = el.dataset.msec; el.parentNode.classList.toggle('cl'); S.mopen[id] = !el.parentNode.classList.contains('cl'); }));
 }
 
@@ -734,6 +774,13 @@ function bindFiche() {
   document.body.classList.toggle('nohl', !S.hl);
   if ($('#edit')) $('#edit').addEventListener('click', async () => { if (S.edit) { await save(f); } S.edit = !S.edit; renderFiche(); });
   if ($('#mkReco')) $('#mkReco').addEventListener('click', () => newFiche(f.type));
+  if ($('#unlock')) $('#unlock').addEventListener('click', async () => {
+    const r = confirm('Cette fiche est en lecture seule.\n\nOK : la déverrouiller pour la modifier.\nAnnuler : la laisser telle quelle.');
+    if (!r) return; f.locked = false; await save(f); S.edit = true; renderFiche();
+  });
+  const dupe = async () => { const c = JSON.parse(JSON.stringify(f)); c.id = uid(); c.locked = false; c.variante = (f.variante || '') + ' COPIE'; await save(c); await loadList(); S.edit = true; openFiche(c.id); };
+  if ($('#dupRO')) $('#dupRO').addEventListener('click', dupe);
+  if ($('#lock')) $('#lock').addEventListener('click', async () => { if ($('#mNotes')) f.notes = $('#mNotes').value; f.locked = true; S.edit = false; await save(f); renderFiche(); });
   document.querySelectorAll('[data-hl]').forEach(b => b.addEventListener('click', () => { S.hl = !S.hl; try { localStorage.setItem('mp_guide_hl', S.hl ? '1' : '0'); } catch (e) {} renderFiche(); }));
   if ($('#focus')) $('#focus').addEventListener('click', () => { S.focus = !S.focus; renderFiche(); });
   document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.tab; S.zone = null; renderFiche(); }));
@@ -741,16 +788,16 @@ function bindFiche() {
     $('#mType').addEventListener('change', async e => { f.type = e.target.value; await save(f); renderFiche(); });
     $('#mVar').addEventListener('change', async e => { f.variante = e.target.value.trim().toUpperCase(); await save(f); renderFiche(); });
     $('#mNotes').addEventListener('change', async e => { f.notes = e.target.value; await save(f); });
-    $('#dup').addEventListener('click', async () => { const c = JSON.parse(JSON.stringify(f)); c.id = uid(); c.variante = (f.variante || '') + ' COPIE'; await save(c); await loadList(); openFiche(c.id); });
+    $('#dup').addEventListener('click', dupe);
     $('#del').addEventListener('click', async () => { if (!confirm('Supprimer la fiche ' + titleOf(f) + ' ?')) return; await supabase.createClient().from(TABLE).delete().eq('id', f.id); S.edit = false; history.replaceState(null, '', location.pathname); await loadList(); renderList(); });
   }
   const scr = $('#screen'); if (!scr) return;
+  scr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('click', ev => { ev.stopPropagation(); if (S.edit && el.dataset.sw) toggleSw(el.dataset.k); else openPop(el.dataset.k); }));
+  scr.querySelectorAll('[data-sec]').forEach(el => el.addEventListener('click', () => { const s = el.dataset.sec; S.open[s] = !S.open[s]; renderFiche(); }));
+  scr.querySelectorAll('[data-dd]').forEach(el => el.addEventListener('click', ev => { ev.stopPropagation(); const s = 'dd_' + el.dataset.dd; S.open[s] = !S.open[s]; renderFiche(); }));
+  scr.querySelectorAll('[data-zone]').forEach(el => el.addEventListener('click', () => { S.zone = el.dataset.zone; renderFiche(); window.scrollTo(0, 0); }));
+  scr.querySelectorAll('[data-zback]').forEach(el => el.addEventListener('click', () => { S.zone = null; renderFiche(); window.scrollTo(0, 0); }));
   scr.querySelectorAll('[data-sondes]').forEach(el => el.addEventListener('click', () => { S.tab = 'brady'; S.zone = null; S.open.sondes = true; S.mopen.sondes = true; renderFiche(); setTimeout(() => { const t = document.querySelector('[data-sec=sondes],[data-msec=sondes]'); if (t) t.scrollIntoView({ block: 'start' }); }, 50); }));
-  if (mob()) {
-    scr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('click', ev => { ev.stopPropagation(); openPop(el.dataset.k); }));
-    scr.querySelectorAll('[data-zone]').forEach(el => el.addEventListener('click', () => { S.zone = el.dataset.zone; renderFiche(); window.scrollTo(0, 0); }));
-    scr.querySelectorAll('[data-zback]').forEach(el => el.addEventListener('click', () => { S.zone = null; renderFiche(); window.scrollTo(0, 0); }));
-  }
 }
 /* ---------- briques d'affichage ---------- */
 function field(f, k, lab) {
@@ -772,16 +819,31 @@ const col = (f, head, keys) => !keys.some(k => avail(k, f.type)) ? '<div></div>'
 /* ---------- Brady ---------- */
 function dOpen(f, groups) { const g = groups.filter(([, ks]) => ks.some(k => avail(k, f.type))); return `<div class="grid4">${g.map(([sub, ks]) => col(f, sub, ks)).join('')}</div>`; }
 function dSecs(f, defs, sums) { return defs.map(([id, t, g]) => { const keys = g.flatMap(x => x[1]).filter(k => avail(k, f.type)); if (!keys.length) return ''; const sm = (sums && sums[id]) ? sums[id] : `<div class="sumrow">${g.map(([sub, ks]) => { const k = ks.find(x => avail(x, f.type)); return k ? sumItem(f, sub || P[k].l, [k]) : ''; }).filter(Boolean).slice(0, 8).join('')}</div>`; return section(f, id, t, keys, sm, dOpen(f, g)); }).join(''); }
+const F = (f, keys, head) => { const h = keys.filter(k => avail(k, f.type)).map(k => field(f, k)).join(''); return h ? (head ? `<div class="colh">${head}</div>` : '') + h : ''; };
+const C4 = (...c) => c.some(Boolean) ? `<div class="grid4">${c.map(x => `<div>${x || ''}</div>`).join('')}</div>` : '';
+function dd(f, id, title, keys) {
+  keys = keys.filter(k => avail(k, f.type)); if (!keys.length) return '';
+  const op = !!S.open['dd_' + id], mod = keys.some(k => isMod(f, k)), c = keys.some(k => isChk(f, k));
+  return `<div class="dd ${c ? 'chk' : ''}"><div class="ddh ${mod ? 'o' : ''}" data-dd="${id}">${esc(title)}<span>${op ? '⌃' : '⌄'}</span></div>${op ? `<div class="ddb">${keys.map(k => field(f, k)).join('')}</div>` : ''}</div>`;
+}
 function renderBrady(f) {
   const t = f.type, A = hasA(t), C = isCRT(t);
+  const g = id => B_SECT.find(x => x[0] === id)[2].flatMap(x => x[1]);
   const sums = {
-    base: `<div class="sumrow">${sumItem(f, 'Mode', ['mode'])}${sumItem(f, 'Fréquence de base / Fréquence max.', ['fbase', 'fmax'])}${A ? sumItem(f, 'DAV repos / DAV effort', ['davRep', 'davEff']) : sumItem(f, 'Hystérésis', ['hyst'])}${C ? sumItem(f, 'Cavités stimulées', ['cavV']) : sumItem(f, 'Asservissement', ['asserv'])}</div>${C ? `<div class="sumrow">${sumItem(f, 'Asservissement', ['asserv'])}${sumItem(f, 'Délai VV', ['delaiVV'])}${sumItem(f, 'Optimisation CRT SonR', ['sonrOpt'])}</div>` : ''}`,
+    base: `<div class="sumrow">${sumItem(f, 'Mode', ['mode'])}${sumItem(f, 'Fréquence de base / Fréquence max.', ['fbase', 'fmax'])}${A ? sumItem(f, 'DAV repos / DAV effort', ['davRep', 'davEff']) : '<div></div>'}${C ? sumItem(f, 'Cavités stimulées', ['cavV']) : '<div></div>'}</div><div class="sumrow">${sumItem(f, 'Asservissement', ['asserv'])}${C ? sumItem(f, 'Délai VV', ['delaiVV']) + sumItem(f, 'Optimisation CRT SonR', ['sonrOpt']) : ''}</div>`,
     adv: `<div class="sumrow">${sumItem(f, 'Lissage', ['lissage'])}${A ? sumItem(f, 'Repli', ['repli']) : '<div></div>'}${sumItem(f, 'Sensibilité auto sur bruit / Stimulation V sur bruit', ['sensBruit', 'stimBruit'])}${sumItem(f, 'Paramètres post-choc', ['pcMode', 'pcFreq', 'pcDur'])}</div>`,
     sondes: (A ? `<div class="sumrow">${sumItem(f, 'Amp. A / Largeur A', ['ampA', 'largA'])}${sumItem(f, 'Polarité de stimulation A', ['polA'])}${sumItem(f, 'Sensibilité A', ['sensA'])}${sumItem(f, 'Auto-Seuil A', ['autoA'])}</div>` : '') +
       `<div class="sumrow">${sumItem(f, 'Amp. VD / Largeur VD', ['ampVD', 'largVD'])}${sumItem(f, 'Polarité de stimulation VD', ['polVD'])}${sumItem(f, 'Sensibilité VD', ['sensVD'])}${sumItem(f, 'Auto-Seuil VD', ['autoVD'])}</div>` +
       (C ? `<div class="sumrow">${sumItem(f, 'Amp. VG / Largeur VG', ['ampVG', 'largVG'])}${sumItem(f, 'Polarité de stimulation VG', ['polVG'])}${t === '4LV' ? sumItem(f, 'Stim. MultiPoint', ['mp']) : '<div></div>'}${sumItem(f, 'Auto-Seuil VG', ['autoVG'])}</div>` : '')
   };
-  return dSecs(f, B_SECT, sums);
+  const base = C4(F(f, ['mode', 'bav1', 'prEff', 'prRep', 'pause']), F(f, ['fbase', 'fmax', 'hyst']), F(f, ['davRep', 'davEff', 'extDav', 'delaiVV', 'stimVGs']), F(f, ['cavV'])) + C4(F(f, ['asserv', 'actPhys']), F(f, ['sonrOpt', 'sonrFreq']), '', '');
+  const adv = C4(F(f, ['lissage', 'antiTRE']), F(f, ['repli', 'fRepli']), F(f, ['sensBruit', 'stimBruit'], 'Gestion du bruit'),
+      F(f, ['pcMode', 'pcFreq', 'pcDur'], 'Paramètres post-choc') + dd(f, 'pc', 'Stim. post-choc', ['pcDavRep', 'pcDavEff', 'pcExtDav', 'pcAmpA', 'pcLargA', 'pcAmpVD', 'pcLargVD', 'pcAmpVG', 'pcLargVG'])) +
+    C4(F(f, ['refAV', 'refAR'], 'Périodes réfractaires'), F(f, ['margeA', 'margeV'], 'Marges de sensibilité'), F(f, ['overdrive', 'fOverdrive', 'suppPauseES', 'accelESA'], 'Prévention arythmies A'), F(f, ['stimAESV', 'suppPause', 'accelESV', 'fAccel'], 'Prévention arythmies V'));
+  const sond = (A ? `<div class="subh">SONDE A</div>` + C4(F(f, ['ampA', 'largA']), F(f, ['polA']), F(f, ['sensA']), F(f, ['autoA']) + dd(f, 'asA', 'Paramètres Auto-Seuil', ['asAMarge', 'asAMin', 'asASec', 'asAMax', 'asAFmax', 'asAHeure'])) : '') +
+    `<div class="subh">SONDE VD</div>` + C4(F(f, ['ampVD', 'largVD']), F(f, ['polVD']), F(f, ['sensVD']), F(f, ['autoVD']) + dd(f, 'asVD', 'Paramètres Auto-Seuil', ['asMarge', 'asAmpMin', 'asAmpSec', 'asAmpMax', 'asFmax'])) +
+    (C ? `<div class="subh">SONDE VG</div>` + C4(F(f, ['ampVG', 'largVG']), F(f, ['polVG']), F(f, ['mp', 'polMP1', 'polMP2']), F(f, ['autoVG']) + dd(f, 'asVG', 'Paramètres Auto-Seuil', ['asVGMarge', 'asVGMin', 'asVGSec', 'asVGMax', 'asVGHeure'])) : '');
+  return section(f, 'base', 'Paramètres de base', g('base'), sums.base, base) + section(f, 'adv', 'Paramètres avancés', g('adv'), sums.adv, adv) + section(f, 'sondes', 'Sondes', g('sondes'), sums.sondes, sond);
 }
 
 /* ---------- Tachy ---------- */
@@ -795,7 +857,7 @@ function therSummary(f, z) {
 function zbox(f, k, span) { const o = isMod(f, k); return `<div class="zv ${o ? 'o' : ''} ${isChk(f, k) ? 'chk' : ''}" style="${span || ''}" data-k="${k}">${esc(fmt(k, val(f, k)))}${hasCm(f, k) ? ' 💬' : ''}</div>`; }
 function ztog(f, k, label) {
   const on = val(f, k) === 'Oui', o = isMod(f, k);
-  return `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-k="${k}">${label ? `<span style="color:var(--txt)">${label}</span>` : ''}<span class="sw ${on ? (o ? 'o' : '') : 'off'}"></span><span class="${on ? 'y ' + (o ? 'o' : '') : 'n'}">${on ? 'OUI' : 'NON'}</span></div>`;
+  return `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-sw="1" data-k="${k}">${label ? `<span style="color:var(--txt)">${label}</span>` : ''}<span class="sw ${on ? (o ? 'o' : '') : 'off'}"></span><span class="${on ? 'y ' + (o ? 'o' : '') : 'n'}">${on ? 'OUI' : 'NON'}</span></div>`;
 }
 function renderTachy(f) {
   const tvl = val(f, 'tvlOn') === 'Oui', tvr = val(f, 'tvrOn') === 'Oui';
@@ -817,7 +879,7 @@ function renderTachy(f) {
     <div style="grid-column:4/6;align-self:start"><div class="ther ${anyChk(zKeys('FV')) ? 'chk' : ''}" data-zone="FV" style="display:inline-block;min-width:48%;margin-bottom:8px"><span class="go">»</span>${tvr ? fvATP : '<span class="x">—</span>'}</div>
       <div class="ther" data-zone="FV"><span class="go">»</span>${fvCh}</div></div>
   </div></div>`;
-  const rr = k => avail(k, f.type) ? `<div class="rr"><div class="l">${esc(P[k].l)}</div>${['atpOn', 'chocOn'].includes(k) ? `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-k="${k}" style="justify-content:flex-start"><span class="sw ${val(f, k) === 'Oui' ? '' : 'off'}" style="${val(f, k) === 'Oui' ? 'background:var(--green)' : ''}"></span><span style="color:${val(f, k) === 'Oui' ? 'var(--green)' : 'var(--redTxt)'}">${esc(val(f, k))}</span></div>` : `<div class="f ${isChk(f, k) ? 'chk' : ''}" style="margin:0"><div class="box ${isMod(f, k) ? 'o' : (PT(f.type, k).dim ? 'dim' : '')}" data-k="${k}">${esc(fmt(k, val(f, k)))}${hasCm(f, k) ? '<span class="cm">💬</span>' : ''}</div></div>`}</div>` : '';
+  const rr = k => avail(k, f.type) ? `<div class="rr"><div class="l">${esc(P[k].l)}</div>${['atpOn', 'chocOn'].includes(k) ? `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-sw="1" data-k="${k}" style="justify-content:flex-start"><span class="sw ${val(f, k) === 'Oui' ? '' : 'off'}" style="${val(f, k) === 'Oui' ? 'background:var(--green)' : ''}"></span><span style="color:${val(f, k) === 'Oui' ? 'var(--green)' : 'var(--redTxt)'}">${esc(val(f, k))}</span></div>` : `<div class="f ${isChk(f, k) ? 'chk' : ''}" style="margin:0"><div class="box ${isMod(f, k) ? 'o' : (PT(f.type, k).dim ? 'dim' : '')}" data-k="${k}">${esc(fmt(k, val(f, k)))}${hasCm(f, k) ? '<span class="cm">💬</span>' : ''}</div></div>`}</div>` : '';
   const right = `<div class="right">${rr('atpOn')}${rr('chocOn')}<div class="rsep"></div>${rr('cavATP')}${rr('autoComATP')}${rr('polAlt')}${rr('coilVCS')}${rr('boitier')}${rr('vecteur')}${rr('exclVCS')}</div>`;
   return `<div class="tachy"><div>${g}<div class="sensrow"><span class="l">Sensibilité VD</span><div class="f ${isChk(f, 'sensVD') ? 'chk' : ''}" style="margin:0;min-width:120px"><div class="box ${isMod(f, 'sensVD') ? 'o' : ''}" data-k="sensVD">${esc(fmt('sensVD', val(f, 'sensVD')))}</div></div><span style="flex:1"></span><button class="btnS" data-sondes="1">Paramètres sondes »</button></div></div>${right}</div>`;
 }
@@ -849,12 +911,12 @@ function openPop(k) {
   let b = '';
   if (S.edit) {
     b = `${opts.length ? `<div class="opts">${opts.map(o => `<button class="opt ${o === p.nom ? 'nom' : ''} ${o === v && v !== p.nom ? 'sel' : ''}" data-v="${esc(o)}">${esc(o)}${o === v ? ' •' : ''}</button>`).join('')}</div>` : ''}
-      <div class="row"><input type="text" id="pVal" placeholder="${opts.length ? 'Autre valeur' : 'Valeur'}" value="${opts.includes(v) ? '' : esc(v)}" ${p.u && !p.o ? 'inputmode="decimal"' : ''}><span>${esc(p.u || '')}</span></div>
+      <div class="row"><input type="text" id="pVal" placeholder="${opts.length ? 'Autre valeur' : 'Valeur'}" value="${opts.includes(v) ? '' : esc(v)}" ${p.u && !p.o ? 'inputmode="decimal"' : ''}><span>${esc(p.u || '')}</span><button class="btnS" id="pSet" style="height:38px">Valider</button></div>
       <div class="leg">Valeur soulignée : valeur par défaut, boîtier neuf (${esc(fmt(k, p.nom))})${p.nomi && p.nomi !== p.nom ? ` · valeur nominale MicroPort : ${esc(fmt(k, p.nomi))}` : ''}</div>
       <label class="ck"><input type="checkbox" id="pMark" ${f.mark && f.mark[k] ? 'checked' : ''}> Compter comme réglage à faire même si c'est la valeur par défaut</label>
       <label class="ck"><input type="checkbox" id="pChk" ${isChk(f, k) ? 'checked' : ''}> Encadrer en rouge (à vérifier)</label>
       <div style="margin-top:10px;font-size:12.5px;font-weight:700;color:var(--lab)">Commentaire</div><textarea id="pCm" placeholder="Pourquoi ce réglage, à quoi faire attention…">${esc((f.comments || {})[k] || '')}</textarea>
-      <div class="acts"><button class="a1" id="pNom">Valeur par défaut</button><button class="a2" id="pOk">OK</button></div>`;
+      <div class="acts"><button class="a1" id="pNom">Valeur par défaut</button><button class="a2" id="pOk">Fermer</button></div>`;
   } else {
     b = `${opts.length ? `<div class="opts">${opts.map(o => `<button class="opt ro ${o === p.nom ? 'nom' : ''} ${o === v && isMod(f, k) ? 'sel' : ''}">${esc(o)}${o === v ? ' •' : ''}</button>`).join('')}</div>` : ''}
       <div class="info"><b>Réglage : ${esc(fmt(k, v))}</b>${isMod(f, k) ? ' — <span style="color:var(--org);font-weight:800">à programmer</span>' : ''}${isChk(f, k) ? ' — <span style="color:var(--red);font-weight:800">à vérifier</span>' : ''}\nValeur par défaut (boîtier neuf) : ${esc(fmt(k, p.nom))}${p.nomi && p.nomi !== p.nom ? '\nValeur nominale MicroPort : ' + esc(fmt(k, p.nomi)) : ''}${hasCm(f, k) ? '\n\n💬 ' + esc(f.comments[k]) : ''}</div>`;
@@ -865,17 +927,21 @@ function openPop(k) {
   $('#pX').addEventListener('click', close);
   ovl.onclick = e => { if (e.target === ovl) close(); };
   if (!S.edit) return;
-  let chosen = v;
-  ovl.querySelectorAll('.opt').forEach(o => o.addEventListener('click', () => { chosen = o.dataset.v; $('#pVal').value = ''; ovl.querySelectorAll('.opt').forEach(x => x.classList.toggle('sel', x === o && chosen !== p.nom)); }));
-  const apply = async (newV) => {
+  const keepExtras = () => {
     f.values = f.values || {}; f.mark = f.mark || {}; f.chk = f.chk || {}; f.comments = f.comments || {};
-    if (newV === p.nom) delete f.values[k]; else f.values[k] = newV;
     if ($('#pMark').checked) f.mark[k] = 1; else delete f.mark[k];
     if ($('#pChk').checked) f.chk[k] = 1; else delete f.chk[k];
     const c = $('#pCm').value.trim(); if (c) f.comments[k] = c; else delete f.comments[k];
-    await save(f); close(); renderFiche();
   };
-  $('#pOk').addEventListener('click', () => { const t = $('#pVal').value.trim(); apply(t || chosen); });
+  const apply = async (newV) => { keepExtras(); if (newV === p.nom) delete f.values[k]; else f.values[k] = newV; await save(f); close(); renderFiche(); };
+  const done = async () => { keepExtras(); await save(f); close(); renderFiche(); };
+  ovl.querySelectorAll('.opt').forEach(o => o.addEventListener('click', () => apply(o.dataset.v)));
+  $('#pSet').addEventListener('click', () => { const t = $('#pVal').value.trim(); if (t) apply(t); });
+  $('#pVal').addEventListener('keydown', e => { if (e.key === 'Enter') { const t = e.target.value.trim(); if (t) apply(t); } });
+  ['#pMark', '#pChk'].forEach(id => $(id).addEventListener('change', async () => { keepExtras(); await save(f); }));
+  $('#pOk').addEventListener('click', done);
+  $('#pX').addEventListener('click', done);
+  ovl.onclick = e => { if (e.target === ovl) done(); };
   $('#pNom').addEventListener('click', () => apply(p.nom));
 }
 
