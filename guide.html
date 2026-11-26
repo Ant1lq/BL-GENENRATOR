@@ -166,6 +166,73 @@ button,input,select,textarea{font:inherit}
   .zl{font-size:12px}
   .tab{padding:9px 12px;font-size:14px}
 }
+
+/* ================= iPhone (portrait) ================= */
+.head{position:sticky;top:0;z-index:20}
+.mtop{background:var(--navy);color:#fff;padding:calc(env(safe-area-inset-top) + 8px) 8px 8px;display:flex;align-items:center;gap:8px}
+.mtop a{color:#fff;text-decoration:none;font-size:28px;line-height:1;padding:0 8px 2px 4px}
+.mtop .tt{flex:1;min-width:0}
+.mtop .tt b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mtop .tt span{display:block;font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.mtop button{background:#fff;color:var(--navy);border:0;border-radius:18px;padding:8px 13px;font-weight:800;font-size:13px}
+.mtop button.on{background:var(--org);color:#fff}
+.mtabs{display:grid;grid-template-columns:repeat(4,1fr);background:#dfe7fa;border-bottom:1px solid #b6c5ea}
+.mtabs button{border:0;background:none;padding:11px 2px 9px;font-size:13.5px;font-weight:700;color:#53608a;border-bottom:3px solid transparent;position:relative}
+.mtabs button.on{color:var(--navy);border-bottom-color:var(--navy);background:#fff}
+.mtabs .dot{position:absolute;top:6px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--org)}
+.mtool{display:flex;gap:8px;padding:10px 10px 4px;align-items:center}
+.seg{display:flex;flex:1;background:#fff;border:1.5px solid #9fb3e6;border-radius:10px;overflow:hidden}
+.seg button{flex:1;border:0;background:none;padding:9px 4px;font-weight:700;font-size:13px;color:var(--navy)}
+.seg button.on{background:var(--navy);color:#fff}
+.mleg{font-size:11.5px;color:#4a5676;padding:2px 12px 6px;display:flex;gap:12px;flex-wrap:wrap}
+.mleg i{display:inline-block;width:11px;height:11px;vertical-align:-1px;margin-right:4px;border-radius:2px}
+.mscr{padding:4px 10px 10px}
+.mc{background:#fff;border-radius:12px;margin-bottom:10px;overflow:hidden;border:1px solid #c3d0ef}
+.mh{display:flex;align-items:center;gap:8px;padding:13px 14px;font-weight:800;font-size:15px;color:var(--navy)}
+.mh .tl{flex:1}
+.mh .chev{color:#8a98bd;font-size:15px;transition:transform .15s}
+.mc.cl .mh .chev{transform:rotate(-90deg)}
+.mc.cl .mb{display:none}
+.bd{font-size:11.5px;font-weight:800;border-radius:10px;padding:2px 8px;min-width:22px;text-align:center}
+.bd.o{background:var(--org);color:#fff}.bd.r{background:#fff;color:var(--red);border:1.5px solid var(--red)}
+.mb{border-top:1px solid #e1e7f6}
+.msub{font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#6b78a0;padding:10px 14px 4px;background:#f5f7fd}
+.mr{display:flex;align-items:center;gap:10px;padding:9px 12px 9px 14px;border-bottom:1px solid #eef1f9;min-height:48px;cursor:pointer}
+.mr:last-child{border-bottom:0}
+.mr .ml{flex:1;font-size:14px;color:#2b3554;line-height:1.25}
+.mr .mv{flex:0 0 auto;max-width:56%;background:var(--val);color:#fff;font-weight:700;font-size:13.5px;padding:7px 10px;border-radius:6px;text-align:right;line-height:1.2}
+.mr .mv.o{background:var(--org)}
+.mr .mv.dim{background:var(--valDim)}
+.mr.chk{box-shadow:inset 0 0 0 2.5px var(--red);border-radius:6px}
+.mr.chk .ml{color:var(--red);font-weight:700}
+.mr .ml small{display:block;color:#7c87a6;font-size:12px;font-weight:500;margin-top:2px}
+.mcm{font-size:12px}
+.mgo{display:block;width:calc(100% - 24px);margin:8px 12px 12px;background:#e9effd;color:var(--navy);border:0;border-radius:9px;padding:11px;font-weight:800;font-size:14px}
+.ruler{display:flex;border-radius:10px;overflow:hidden;margin-bottom:10px;border:1px solid #9fb3e6}
+.ruler div{flex:1;text-align:center;padding:8px 2px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;line-height:1.25}
+.ruler div b{display:block;font-size:14px}
+.ruler .z0{background:#7d97d6}.ruler .z1{background:#5c79c4}.ruler .z2{background:#3f5ba8}.ruler .z3{background:#25386a}
+.ruler div.o b{color:#ffc47e}
+.mc.off .mb{opacity:.45}
+.onoff{font-size:12px;font-weight:800;border-radius:12px;padding:4px 10px;color:#fff;background:var(--val)}
+.onoff.n{background:var(--redTxt)}.onoff.o{background:var(--org)}
+.onoff.chk{box-shadow:0 0 0 2px var(--red)}
+.mback{display:flex;align-items:center;gap:10px;margin:2px 0 10px}
+.mback button{background:var(--navy);color:#fff;border:0;border-radius:9px;padding:9px 13px;font-weight:800}
+.mback b{font-size:17px;color:var(--navy)}
+.mtab{font-size:13px;font-weight:900;color:var(--navy2);text-transform:uppercase;letter-spacing:.06em;margin:14px 4px 8px}
+.mempty{background:#fff;border-radius:12px;padding:22px 14px;text-align:center;color:#56627d;font-size:14px}
+@media (max-width:760px){
+  .ovl{align-items:flex-end;padding:0}
+  .pop{max-width:none;border-radius:16px 16px 0 0;max-height:88vh;padding-bottom:env(safe-area-inset-bottom)}
+  .pop .ph{border-radius:16px 16px 0 0;font-size:14px;padding:14px}
+  .opts{grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px}
+  .opt{min-height:44px;font-size:13.5px;border-radius:6px}
+  .meta{grid-template-columns:1fr 1fr;margin:10px 10px 0;border-radius:12px}
+  .meta>div:last-child{grid-column:1/3}
+  .notes{margin:6px 10px 20px;border-radius:0 12px 12px 0}
+  .wrap .card{padding:10px}
+}
 </style>
 </head>
 <body>
@@ -308,7 +375,7 @@ const fmt = (k, v) => { const p = P[k]; if (v === '' || v == null) return '—';
 const avail = (k, t) => { const p = P[k]; if (!p) return false; if (p.a && !hasA(t)) return false; if (p.dai && !isDAI(t)) return false; if (p.crt && !isCRT(t)) return false; return true; };
 
 /* ---------- état ---------- */
-const S = { list: [], cur: null, tab: 'brady', edit: false, focus: false, open: {}, zone: null, q: '' };
+const S = { list: [], cur: null, tab: 'brady', edit: false, focus: false, open: {}, mopen: {}, only: false, zone: null, q: '' };
 const val = (f, k) => (f.values && f.values[k] != null) ? f.values[k] : P[k].nom;
 const isMod = (f, k) => !!((f.values && f.values[k] != null && f.values[k] !== P[k].nom) || (f.mark && f.mark[k]));
 const isChk = (f, k) => !!(f.chk && f.chk[k]);
@@ -370,12 +437,13 @@ async function newFiche() {
 /* ====================== FICHE ====================== */
 function openFiche(id) {
   const f = S.list.find(x => x.id === id); if (!f) return renderList();
-  S.cur = f; S.zone = null; S.open = Object.assign({}, f.open || {}); if (S.tab === 'tachy' && !isDAI(f.type)) S.tab = 'brady';
+  S.cur = f; S.zone = null; S.only = false; S.mopen = {}; S.open = Object.assign({}, f.open || {}); if (S.tab === 'tachy' && !isDAI(f.type)) S.tab = 'brady';
   history.replaceState(null, '', '#' + id);
   renderFiche();
 }
 function tabMod(f, tab) { return keysOfTab(tab, f.type).some(k => isMod(f, k)); }
 function renderFiche() {
+  if (mob()) { renderFicheMobile(); bindFiche(); return; }
   const f = S.cur, t = f.type;
   const tabs = [['brady', 'Brady'], ['tachy', 'Tachy'], ['rs', 'Suivi à distance'], ['irm', 'IRM']].filter(([k]) => k !== 'tachy' || isDAI(t));
   let h = `<div class="top"><a class="home" href="#" id="back" aria-label="Retour à la liste">‹</a>
@@ -391,18 +459,7 @@ function renderFiche() {
     <div class="screen ${S.focus ? 'focus' : ''}" id="screen"></div>
     <div class="notes"><h3>📝 Recommandations / indication</h3>${S.edit ? `<textarea id="mNotes" placeholder="Indication, contexte, consignes du centre…">${esc(f.notes)}</textarea>` : `<div class="txt">${f.notes ? esc(f.notes) : '<span style="color:#8a94ad">Aucune note.</span>'}</div>`}</div>`;
   $('#app').innerHTML = h;
-  $('#back').addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', location.pathname); S.edit = false; loadList().then(renderList); });
-  $('#edit').addEventListener('click', async () => { if (S.edit) { await save(f); } S.edit = !S.edit; renderFiche(); });
-  $('#focus').addEventListener('click', () => { S.focus = !S.focus; renderFiche(); });
-  document.querySelectorAll('.tab[data-tab]').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.tab; S.zone = null; renderFiche(); }));
-  if (S.edit) {
-    $('#mType').addEventListener('change', async e => { f.type = e.target.value; await save(f); renderFiche(); });
-    $('#mVar').addEventListener('change', async e => { f.variante = e.target.value.trim().toUpperCase(); await save(f); renderFiche(); });
-    $('#mApp').addEventListener('change', async e => { f.appareil = e.target.value.trim(); await save(f); renderFiche(); });
-    $('#mNotes').addEventListener('change', async e => { f.notes = e.target.value; await save(f); });
-    $('#dup').addEventListener('click', async () => { const c = JSON.parse(JSON.stringify(f)); c.id = uid(); c.variante = (f.variante || '') + ' COPIE'; await save(c); await loadList(); openFiche(c.id); });
-    $('#del').addEventListener('click', async () => { if (!confirm('Supprimer la fiche ' + titleOf(f) + ' ?')) return; await supabase.createClient().from(TABLE).delete().eq('id', f.id); S.edit = false; history.replaceState(null, '', location.pathname); await loadList(); renderList(); });
-  }
+  bindFiche();
   const scr = $('#screen');
   if (S.tab === 'brady') scr.innerHTML = renderBrady(f);
   else if (S.tab === 'tachy') scr.innerHTML = S.zone ? renderZone(f, S.zone) : renderTachy(f);
@@ -414,6 +471,137 @@ function renderFiche() {
   scr.querySelectorAll('[data-zback]').forEach(el => el.addEventListener('click', () => { S.zone = null; renderFiche(); }));
 }
 
+
+/* ================= iPhone : affichage en listes ================= */
+const MQ = window.matchMedia('(max-width: 760px)');
+const mob = () => MQ.matches;
+try { MQ.addEventListener('change', () => { if (S.cur) renderFiche(); }); } catch (e) { MQ.addListener(() => { if (S.cur) renderFiche(); }); }
+const keep = (f, k) => avail(k, f.type) && (!S.only || isMod(f, k) || isChk(f, k));
+function mrow(f, k, lab) {
+  if (!keep(f, k)) return '';
+  const p = P[k], v = val(f, k), o = isMod(f, k);
+  return `<div class="mr ${isChk(f, k) ? 'chk' : ''}" data-k="${k}"><div class="ml">${esc(lab || p.l)}${hasCm(f, k) ? ' <span class="mcm">💬</span>' : ''}${p.u && v !== '' && S.edit && !o ? '' : ''}</div><div class="mv ${o ? 'o' : (p.dim ? 'dim' : '')}">${esc(fmt(k, v))}</div></div>`;
+}
+function mcard(f, id, title, groups, extra) {
+  const all = groups.flatMap(g => g[1]).filter(k => avail(k, f.type));
+  const keys = all.filter(k => keep(f, k)); if (!keys.length && !extra) return '';
+  const nm = all.filter(k => isMod(f, k)).length, nc = all.filter(k => isChk(f, k)).length;
+  const open = S.only ? true : (S.mopen[id] != null ? S.mopen[id] : (nm + nc > 0));
+  const body = groups.map(([sub, ks, labs]) => { const r = ks.map((k, i) => mrow(f, k, labs && labs[i])).join(''); return r ? (sub ? `<div class="msub">${esc(sub)}</div>` : '') + r : ''; }).join('');
+  return `<div class="mc ${open ? '' : 'cl'}"><div class="mh" data-msec="${id}"><span class="tl">${esc(title)}</span>${nm ? `<span class="bd o">${nm}</span>` : ''}${nc ? `<span class="bd r">${nc}</span>` : ''}${S.only ? '' : '<span class="chev">⌄</span>'}</div><div class="mb">${body}${extra || ''}</div></div>`;
+}
+const B_SECT = [
+  ['base', 'Paramètres de base', [['', ['mode', 'bav1', 'prEff', 'prRep', 'pause', 'fbase', 'fmax', 'hyst', 'davRep', 'davEff', 'extDav', 'cavV', 'asserv']]]],
+  ['adv', 'Paramètres avancés', [['', ['lissage', 'antiTRE', 'repli', 'fRepli']], ['Gestion du bruit', ['sensBruit', 'stimBruit']], ['Post-choc', ['pcMode', 'pcFreq', 'pcDur', 'pcAmpA', 'pcLargA', 'pcAmpVD', 'pcLargVD'], ['Mode post-choc', 'Fréquence post-choc', 'Durée post-choc', 'Amplitude A', 'Largeur A', 'Amplitude VD', 'Largeur VD']], ['Périodes réfractaires', ['refAV', 'refAR']], ['Marges de sensibilité', ['margeA', 'margeV']], ['Prévention arythmies A', ['overdrive', 'suppPauseES', 'accelESA']], ['Prévention arythmies V', ['stimAESV', 'suppPause', 'accelESV']]]],
+  ['sondes', 'Sondes', [['Sonde A', ['ampA', 'largA', 'polA', 'sensA', 'autoA'], ['Amplitude', 'Largeur', 'Polarité', 'Sensibilité', 'Auto-Seuil A']], ['Sonde VD', ['ampVD', 'largVD', 'polVD', 'sensVD', 'autoVD'], ['Amplitude', 'Largeur', 'Polarité', 'Sensibilité', 'Auto-Seuil VD']], ['Auto-Seuil (réglages)', ['asMarge', 'asAmpMin', 'asAmpSec', 'asAmpMax', 'asFmax', 'asHeure']], ['Sonde VG', ['ampVG', 'largVG', 'polVG', 'mp'], ['Amplitude', 'Largeur', 'Polarité', 'Stim. MultiPoint']]]]
+];
+const T_GEN = [['', ['atpOn', 'chocOn']], ['', ['cavATP', 'autoComATP', 'polAlt', 'coilVCS', 'boitier', 'vecteur']], ['', ['sensVD']]];
+const thGroups = z => (z === 'FV' ? [['ATP en TV rapide', ATP_FIELDS.map(a => z + '_a1' + a[0])]] : [['ATP 1', ATP_FIELDS.map(a => z + '_a1' + a[0])], ['ATP 2', ATP_FIELDS.map(a => z + '_a2' + a[0])]]).concat([['Chocs', [z + '_c1', z + '_c2', z + '_c42']]]);
+const R_SECT = [
+  ['rsSys', 'Système', [['', ['rsSuivi', 'rsAlertes', 'rsIRM', 'rsAsync']]]],
+  ['rsSond', 'Sondes', [['Sonde A', ['rsImpA', 'rsImpAH', 'rsImpAB', 'rsASA', 'rsASAs']], ['Sonde VD', ['rsImpVD', 'rsImpVDH', 'rsImpVDB', 'rsASVD', 'rsASVDs', 'rsLPE', 'rsImpChoc', 'rsCoil']], ['Sonde VG', ['rsImpVG', 'rsImpVGH', 'rsImpVGB']]]],
+  ['rsTh', 'Thérapies', [['', ['rsChocDes', 'rsChocDel', 'rsATP']]]],
+  ['rsCl', 'Alertes cliniques', [['', ['rsFA', 'rsSurdet']]]]
+];
+const mBrady = f => B_SECT.map(([id, t, g]) => mcard(f, id, t, g)).join('');
+const mRS = f => R_SECT.map(([id, t, g]) => mcard(f, id, t, g)).join('');
+const mIRM = f => mcard(f, 'irm', 'IRM', [['', ['irm']]]);
+function therLine(f, label, keys, txt) {
+  const o = keys.some(k => isMod(f, k)), c = keys.some(k => isChk(f, k));
+  return `<div class="mr ${c ? 'chk' : ''}" data-k="${keys[0]}"><div class="ml">${label}</div><div class="mv ${o ? 'o' : ''}">${esc(txt)}</div></div>`;
+}
+function atpTxt(f, z, a) { const p = val(f, z + '_' + a + 'prog'); return p === 'Non' ? 'Non' : val(f, z + '_' + a + 'nb') + ' × ' + p; }
+function chTxt(f, k) { const v = val(f, k); return v === 'Non' ? 'Non' : (k.endsWith('c42') ? v + ' × 42 J' : v + ' J'); }
+function mTachy(f) {
+  const on = k => val(f, k) === 'Oui';
+  const seg = [];
+  if (on('tvlOn')) seg.push(['z0', 'TV lente', 'fTVL']);
+  if (on('tvOn')) seg.push(['z1', 'TV', 'fTV']);
+  if (on('tvrOn')) seg.push(['z2', 'TV rapide', 'fTVR']);
+  seg.push(['z3', 'FV', 'fFV']);
+  const ruler = `<div class="ruler">${seg.map(([c, l, k]) => `<div class="${c} ${isMod(f, k) ? 'o' : ''}" data-k="${k}">${l}<b>≥ ${esc(val(f, k) || '—')}</b></div>`).join('')}</div>`;
+  const tog = k => { const v = on(k), o = isMod(f, k); return `<span class="onoff ${v ? (o ? 'o' : '') : 'n'} ${isChk(f, k) ? 'chk' : ''}" data-k="${k}">${v ? 'ACTIVÉE' : 'DÉSACTIVÉE'}</span>`; };
+  const zk = z => Object.keys(P).filter(k => k.startsWith(z + '_'));
+  const zcard = (id, title, onKey, rows, ther, zone) => {
+    const active = !onKey || on(onKey);
+    const keys = rows.concat(zone ? zk(zone) : []).concat(onKey ? [onKey] : []);
+    const nm = keys.filter(k => isMod(f, k)).length, nc = keys.filter(k => isChk(f, k)).length;
+    return `<div class="mc ${active ? '' : 'off'}"><div class="mh" style="cursor:default"><span class="tl">${title}</span>${nm ? `<span class="bd o">${nm}</span>` : ''}${nc ? `<span class="bd r">${nc}</span>` : ''}${onKey ? tog(onKey) : ''}</div>${active ? `<div class="mb">${rows.map(k => mrow(f, k)).join('')}${ther ? '<div class="msub">Thérapies</div>' + ther : ''}${zone ? `<button class="mgo" data-zone="${zone}">Détail des thérapies ›</button>` : ''}</div>` : ''}</div>`;
+  };
+  const thTV = z => therLine(f, 'ATP 1', zk(z).filter(k => k.includes('_a1')), atpTxt(f, z, 'a1')) + therLine(f, 'ATP 2', zk(z).filter(k => k.includes('_a2')), atpTxt(f, z, 'a2')) + therLine(f, 'Choc 1', [z + '_c1'], chTxt(f, z + '_c1')) + therLine(f, 'Choc 2', [z + '_c2'], chTxt(f, z + '_c2')) + therLine(f, 'Chocs 42 J', [z + '_c42'], chTxt(f, z + '_c42'));
+  const thFV = therLine(f, 'Choc 1', ['FV_c1'], chTxt(f, 'FV_c1')) + therLine(f, 'Choc 2', ['FV_c2'], chTxt(f, 'FV_c2')) + therLine(f, 'Chocs 42 J', ['FV_c42'], chTxt(f, 'FV_c42'));
+  const thTVR = therLine(f, 'ATP', zk('FV').filter(k => k.includes('_a1')), atpTxt(f, 'FV', 'a1'));
+  return ruler +
+    zcard('zTVL', 'Zone TV lente', 'tvlOn', ['fTVL', 'pTVL', 'discTV'], thTV('TVL'), 'TVL') +
+    zcard('zTV', 'Zone TV', 'tvOn', ['fTV', 'pTV', 'discTV'], thTV('TV'), 'TV') +
+    zcard('zTVR', 'Zone TV rapide', 'tvrOn', ['fTVR', 'discTVR'], thTVR, null) +
+    zcard('zFV', 'Zone FV', null, ['fFV', 'pFV'], (on('tvrOn') ? '' : '') + thFV, 'FV') +
+    mcard(f, 'tgen', 'Réglages des thérapies', T_GEN);
+}
+function mZone(f, z) {
+  const title = z === 'FV' ? 'Thérapies FV / TV rapide' : 'Thérapies ' + ZONES[z];
+  return `<div class="mback"><button data-zback="1">‹ Zones</button><b>${title}</b></div>` + thGroups(z).map(([t, ks], i) => { const sv = S.only; S.only = false; const h = mcard(f, 'th' + z + i, t, [['', ks]]); S.only = sv; return h.replace('class="mc cl"', 'class="mc"'); }).join('');
+}
+function mAll(f) {
+  const t = f.type, D = isDAI(t);
+  const zTitle = { TVL: 'Thérapies zone TV lente', TV: 'Thérapies zone TV', FV: 'Thérapies FV / TV rapide' };
+  const parts = [
+    ['Brady', mBrady(f)],
+    ['Tachy', D ? mcard(f, 'tz', 'Zones', [['Zones actives', ['tvlOn', 'tvOn', 'tvrOn']], ['Fréquences', ['fTVL', 'fTV', 'fTVR', 'fFV']], ['Persistance', ['pTVL', 'pTV', 'pFV']], ['Discrimination', ['discTV', 'discTVR']]]) + Object.keys(ZONES).map(z => mcard(f, 'th' + z, zTitle[z], thGroups(z))).join('') + mcard(f, 'tgen', 'Réglages des thérapies', T_GEN) : ''],
+    ['Suivi à distance', mRS(f)], ['IRM', mIRM(f)]
+  ].filter(p => p[1]);
+  if (!parts.length) return `<div class="mempty">Tous les réglages sont aux valeurs nominales.<br>Rien de particulier à programmer.</div>`;
+  return parts.map(([t, h]) => `<div class="mtab">${t}</div>${h}`).join('');
+}
+function countAll(f) { const ks = Object.keys(P).filter(k => avail(k, f.type)); return ks.filter(k => isMod(f, k) || isChk(f, k)).length; }
+function renderFicheMobile() {
+  const f = S.cur, t = f.type;
+  const tabs = [['brady', 'Brady'], ['tachy', 'Tachy'], ['rs', 'Suivi'], ['irm', 'IRM']].filter(([k]) => k !== 'tachy' || isDAI(t));
+  const sub = [t, f.appareil].filter(Boolean).join(' · ') + (isDAI(t) ? ` · ATP ${val(f, 'atpOn') === 'Oui' ? 'ON' : 'OFF'} · Chocs ${val(f, 'chocOn') === 'Oui' ? 'ON' : 'OFF'}` : '');
+  let h = `<div class="head"><div class="mtop"><a href="#" id="back" aria-label="Retour">‹</a><div class="tt"><b>${esc(titleOf(f))}</b><span>${esc(sub)}</span></div><button id="edit" class="${S.edit ? 'on' : ''}">${S.edit ? '✓ OK' : '✎ Modifier'}</button></div>
+    ${S.only ? '' : `<div class="mtabs" style="grid-template-columns:repeat(${tabs.length},1fr)">${tabs.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-tab="${k}">${l}${tabMod(f, k) ? '<span class="dot"></span>' : ''}</button>`).join('')}</div>`}</div>`;
+  if (S.edit) h += `<div class="meta"><div><label>Catégorie</label><select id="mType">${TYPES.map(x => `<option ${x === t ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div><label>Centre ou « RECO »</label><input id="mVar" value="${esc(f.variante)}" autocapitalize="characters"></div>
+    <div style="grid-column:1/3"><label>Appareil affiché</label><input id="mApp" value="${esc(f.appareil)}" placeholder="TALENTIA 4LV SonR CRT-D"></div>
+    <div style="display:flex;gap:8px"><button class="btnS" id="dup" style="flex:1">Dupliquer</button><button class="btnS" id="del" style="flex:1;color:#c3141f">Supprimer</button></div></div>`;
+  const n = countAll(f);
+  h += `<div class="mtool"><div class="seg"><button id="vAll" class="${S.only ? '' : 'on'}">Tous les réglages</button><button id="vOnly" class="${S.only ? 'on' : ''}">À régler (${n})</button></div></div>
+    <div class="mleg"><span><i style="background:var(--org)"></i>à programmer</span><span><i style="border:2px solid var(--red)"></i>à vérifier</span><span>${S.edit ? 'Touchez une ligne pour la modifier' : 'Touchez une ligne pour le détail'}</span></div>
+    <div class="mscr" id="screen"></div>
+    <div class="notes"><h3>📝 Recommandations / indication</h3>${S.edit ? `<textarea id="mNotes" placeholder="Indication, contexte, consignes du centre…">${esc(f.notes)}</textarea>` : `<div class="txt">${f.notes ? esc(f.notes) : '<span style="color:#8a94ad">Aucune note.</span>'}</div>`}</div>`;
+  $('#app').innerHTML = h;
+  $('#vAll').addEventListener('click', () => { S.only = false; renderFiche(); });
+  $('#vOnly').addEventListener('click', () => { S.only = true; S.zone = null; renderFiche(); window.scrollTo(0, 0); });
+  const scr = $('#screen');
+  if (S.only) scr.innerHTML = mAll(f);
+  else if (S.tab === 'brady') scr.innerHTML = mBrady(f);
+  else if (S.tab === 'tachy') scr.innerHTML = S.zone ? mZone(f, S.zone) : mTachy(f);
+  else if (S.tab === 'rs') scr.innerHTML = mRS(f);
+  else scr.innerHTML = mIRM(f);
+  scr.querySelectorAll('[data-msec]').forEach(el => el.addEventListener('click', () => { if (S.only) return; const id = el.dataset.msec; el.parentNode.classList.toggle('cl'); S.mopen[id] = !el.parentNode.classList.contains('cl'); }));
+}
+
+function bindFiche() {
+  const f = S.cur;
+  $('#back').addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', location.pathname); S.edit = false; loadList().then(renderList); });
+  $('#edit').addEventListener('click', async () => { if (S.edit) { await save(f); } S.edit = !S.edit; renderFiche(); });
+  if ($('#focus')) $('#focus').addEventListener('click', () => { S.focus = !S.focus; renderFiche(); });
+  document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.tab; S.zone = null; renderFiche(); }));
+  if (S.edit) {
+    $('#mType').addEventListener('change', async e => { f.type = e.target.value; await save(f); renderFiche(); });
+    $('#mVar').addEventListener('change', async e => { f.variante = e.target.value.trim().toUpperCase(); await save(f); renderFiche(); });
+    $('#mApp').addEventListener('change', async e => { f.appareil = e.target.value.trim(); await save(f); renderFiche(); });
+    $('#mNotes').addEventListener('change', async e => { f.notes = e.target.value; await save(f); });
+    $('#dup').addEventListener('click', async () => { const c = JSON.parse(JSON.stringify(f)); c.id = uid(); c.variante = (f.variante || '') + ' COPIE'; await save(c); await loadList(); openFiche(c.id); });
+    $('#del').addEventListener('click', async () => { if (!confirm('Supprimer la fiche ' + titleOf(f) + ' ?')) return; await supabase.createClient().from(TABLE).delete().eq('id', f.id); S.edit = false; history.replaceState(null, '', location.pathname); await loadList(); renderList(); });
+  }
+  const scr = $('#screen'); if (!scr) return;
+  if (mob()) {
+    scr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('click', ev => { ev.stopPropagation(); openPop(el.dataset.k); }));
+    scr.querySelectorAll('[data-zone]').forEach(el => el.addEventListener('click', () => { S.zone = el.dataset.zone; renderFiche(); window.scrollTo(0, 0); }));
+    scr.querySelectorAll('[data-zback]').forEach(el => el.addEventListener('click', () => { S.zone = null; renderFiche(); window.scrollTo(0, 0); }));
+  }
+}
 /* ---------- briques d'affichage ---------- */
 function field(f, k, lab) {
   if (!avail(k, f.type)) return '';
