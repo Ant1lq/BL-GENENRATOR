@@ -610,9 +610,10 @@ function renderList() {
       <button class="addr" data-new="${t}">＋ Nouvelle reco ${esc(M.name)}</button></section>`;
   });
   if (!any) html += `<div class="empty">Aucune fiche ne correspond.</div>`;
-  html += `</div>`;
+  html += `<button class="addr" id="exp" style="width:100%;margin:4px 0 20px">⤴︎ Exporter mes fiches en lecture seule (pour les intégrer à l'application)</button></div>`;
   $('#app').innerHTML = html;
   $('#q').addEventListener('input', e => { S.q = e.target.value; const p = e.target.selectionStart; renderList(); const i = $('#q'); i.focus(); try { i.setSelectionRange(p, p); } catch (_) {} });
+  $('#exp').addEventListener('click', exportFiches);
   document.querySelectorAll('[data-new]').forEach(b => b.addEventListener('click', () => newFiche(b.dataset.new)));
   document.querySelectorAll('.frow[data-id]').forEach(c => c.addEventListener('click', () => openFiche(c.dataset.id)));
   document.querySelectorAll('[data-ren]').forEach(b => b.addEventListener('click', async ev => {
@@ -802,7 +803,7 @@ function bindFiche() {
     $('#mVar').addEventListener('change', async e => { const v = e.target.value.trim(); if (v) f.name = v; else delete f.name; await save(f); renderFiche(); });
     $('#mNotes').addEventListener('change', async e => { f.notes = e.target.value; await save(f); });
     $('#dup').addEventListener('click', dupe);
-    $('#del').addEventListener('click', async () => { if (!confirm('Supprimer la fiche ' + titleOf(f) + ' ?')) return; await supabase.createClient().from(TABLE).delete().eq('id', f.id); S.edit = false; history.replaceState(null, '', location.pathname); await loadList(); renderList(); });
+    $('#del').addEventListener('click', async () => { if (!confirm('Supprimer la fiche ' + titleOf(f) + ' ?')) return; await supabase.createClient().from(TABLE).delete().eq('id', f.id); markDeleted(f.id); S.edit = false; history.replaceState(null, '', location.pathname); await loadList(); renderList(); });
   }
   const scr = $('#screen'); if (!scr) return;
   scr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('click', ev => { ev.stopPropagation(); if (S.edit && el.dataset.sw) toggleSw(el.dataset.k); else openPop(el.dataset.k); }));
@@ -961,6 +962,33 @@ function openPop(k) {
 }
 
 /* ---------- démarrage ---------- */
+/* ---------- fiches livrées avec l'application (assets/guide-fiches.json) ----------
+   Ajoutées si absentes ; modifiables et supprimables ; une fiche supprimée ne revient pas. */
+const delList = () => { try { return JSON.parse(localStorage.getItem('mp_guide_deleted') || '[]'); } catch (e) { return []; } };
+const markDeleted = id => { try { const l = delList(); if (!l.includes(id)) { l.push(id); localStorage.setItem('mp_guide_deleted', JSON.stringify(l)); } } catch (e) {} };
+async function applyShipped() {
+  let data; try { data = await (await fetch('assets/guide-fiches.json', { cache: 'no-cache' })).json(); } catch (e) { return; }
+  const del = delList(); let changed = false;
+  for (const sf of (data.fiches || [])) {
+    if (S.list.some(f => f.id === sf.id) || del.includes(sf.id)) continue;
+    // même fiche déjà créée sur ce téléphone avec un autre identifiant : on garde son contenu, on aligne l'identifiant
+    const twin = S.list.find(f => !f.shipped && f.type === sf.type && (titleOf(f) === titleOf(sf) || f.variante === sf.variante));
+    if (twin) {
+      await supabase.createClient().from(TABLE).delete().eq('id', twin.id);
+      await LocalDB.raw.rowPut(TABLE, Object.assign({}, twin, { id: sf.id, shipped: true }));
+    } else await LocalDB.raw.rowPut(TABLE, Object.assign({}, sf, { shipped: true }));
+    changed = true;
+  }
+  if (changed) await loadList();
+}
+async function exportFiches() {
+  const locked = S.list.filter(f => f.locked);
+  const fiches = (locked.length ? locked : S.list).map(f => { const c = JSON.parse(JSON.stringify(f)); delete c.shipped; return c; });
+  const blob = new Blob([JSON.stringify({ app: 'mp-guide', date: new Date().toISOString(), fiches }, null, 1)], { type: 'application/json' });
+  const file = new File([blob], 'guide-fiches.json', { type: 'application/json' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Guides de programmation' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'guide-fiches.json'; document.body.appendChild(a); a.click(); a.remove();
+}
 (async function start() {
   await loadList();
   let v = ''; try { v = localStorage.getItem('mp_guide_seeded') || ''; } catch (e) {}
@@ -968,8 +996,7 @@ function openPop(k) {
     const fresh = seedFiches();
     // anciens types → modèles
     for (const f of S.list) if (LEGACY[f.type]) { f.type = LEGACY[f.type]; delete f.appareil; await save(f); }
-    if (!v && !S.list.length) { for (const f of fresh) await save(f); }
-    else if (v) {
+    if (v) {
       // exemples DR / VR recalés sur les fiches techniques (notes et commentaires conservés)
       for (const n of fresh) {
         const old = S.list.find(f => f.type === n.type && f.variante === n.variante);
@@ -979,6 +1006,7 @@ function openPop(k) {
     try { localStorage.setItem('mp_guide_seeded', '3'); } catch (e) {}
     await loadList();
   }
+  await applyShipped();
   S.list.forEach(f => { if (!MODELS[f.type]) f.type = 'DR'; });
   const id = location.hash.slice(1);
   if (id && (S.list.some(f => f.id === id) || /^defaut-/.test(id))) openFiche(id); else renderList();
@@ -986,7 +1014,7 @@ function openPop(k) {
 // bloque le zoom au pincement et au double-toucher (Safari iPhone)
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
 document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
-window.__guide = { S, P, openFiche, renderList };
+window.__guide = { S, P, openFiche, renderList, seedFiches, titleOf };
 </script>
 </body>
 </html>
