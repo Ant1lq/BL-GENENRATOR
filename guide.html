@@ -868,23 +868,23 @@ function ztog(f, k, label) {
   return `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-sw="1" data-k="${k}">${label ? `<span style="color:var(--txt)">${label}</span>` : ''}<span class="sw ${on ? (o ? 'o' : '') : 'off'}"></span><span class="${on ? 'y ' + (o ? 'o' : '') : 'n'}">${on ? 'OUI' : 'NON'}</span></div>`;
 }
 function renderTachy(f) {
-  const tvl = val(f, 'tvlOn') === 'Oui', tvr = val(f, 'tvrOn') === 'Oui';
+  const tvl = val(f, 'tvlOn') === 'Oui', tv = val(f, 'tvOn') === 'Oui', tvr = val(f, 'tvrOn') === 'Oui';
   const anyMod = keys => keys.some(k => isMod(f, k)), anyChk = keys => keys.some(k => isChk(f, k));
   const zKeys = z => Object.keys(P).filter(k => k.startsWith(z + '_'));
   const ther = z => `<div class="ther ${anyChk(zKeys(z)) ? 'chk' : ''}" data-zone="${z}"><span class="go">»</span>${therSummary(f, z)}</div>`;
   const fvATP = (() => { const p = val(f, 'FV_a1prog'), m = isMod(f, 'FV_a1prog') || isMod(f, 'FV_a1nb'); return p === 'Non' ? `<span class="${m ? 'o' : 'x'}">Non</span>` : `<span class="${m ? 'o' : ''}">${esc(val(f, 'FV_a1nb') + ' ' + p)}</span>`; })();
   const fvCh = ['FV_c1', 'FV_c2', 'FV_c42'].map(k => { const v = val(f, k), m = isMod(f, k); return `<div class="${v === 'Non' ? (m ? 'o' : 'x') : (m ? 'o' : '')}">${v === 'Non' ? 'Non' : (k.endsWith('c42') ? esc(v) + ' × 42 J' : esc(v) + ' J')}</div>`; }).join('');
-  const ax = [tvl ? val(f, 'fTVL') : '', val(f, 'fTV'), tvr ? val(f, 'fTVR') : '', val(f, 'fFV')];
+  const ax = [tvl ? val(f, 'fTVL') : '', tv ? val(f, 'fTV') : '', tvr ? val(f, 'fTVR') : '', val(f, 'fFV')];
   const g = `<div class="zgrid"><div class="zin">
     <div></div><div class="zh">TV lente</div><div class="zh">TV</div><div class="zh" style="grid-column:4/6">FV</div>
     <div></div><div class="axis"><span>${esc(ax[0])}</span><span>${esc(ax[1])}</span><span>${esc(ax[2])}</span><span>${esc(ax[3])}</span></div>
     <div class="zl">Zones</div><div>${ztog(f, 'tvlOn')}</div><div>${ztog(f, 'tvOn')}</div><div style="grid-column:4/6">${ztog(f, 'tvrOn', 'TV Rapide')}</div>
-    <div class="zl">Fréquence</div><div>${tvl ? zbox(f, 'fTVL') : ''}</div><div>${zbox(f, 'fTV')}</div><div>${tvr ? zbox(f, 'fTVR') : ''}</div><div>${zbox(f, 'fFV')}</div>
-    <div class="zl">Persistance</div><div>${tvl ? zbox(f, 'pTVL') : ''}</div><div>${zbox(f, 'pTV')}</div><div style="grid-column:4/6">${zbox(f, 'pFV')}</div>
-    <div class="zl">Discrimination</div><div style="grid-column:${tvl ? '2/4' : '3/4'}" class="zdisc ${['discTV'].concat(DISC_KEYS).some(k => isMod(f, k)) ? 'o' : ''} ${['discTV'].concat(DISC_KEYS).some(k => isChk(f, k)) ? 'chk' : ''}" data-zone="DISC">${esc(val(f, 'discTV'))}<span>»</span></div>${tvl ? '' : ''}<div>${tvr ? zbox(f, 'discTVR') : ''}</div><div></div>
+    <div class="zl">Fréquence</div><div>${tvl ? zbox(f, 'fTVL') : ''}</div><div>${tv ? zbox(f, 'fTV') : ''}</div><div>${tvr ? zbox(f, 'fTVR') : ''}</div><div>${zbox(f, 'fFV')}</div>
+    <div class="zl">Persistance</div><div>${tvl ? zbox(f, 'pTVL') : ''}</div><div>${tv ? zbox(f, 'pTV') : ''}</div><div style="grid-column:4/6">${zbox(f, 'pFV')}</div>
+    <div class="zl">Discrimination</div>${!(tvl || tv) ? '<div style="grid-column:2/4"></div>' : `<div style="grid-column:${tvl && tv ? '2/4' : tvl ? '2/3' : '3/4'}" class="zdisc ${['discTV'].concat(DISC_KEYS).some(k => isMod(f, k)) ? 'o' : ''} ${['discTV'].concat(DISC_KEYS).some(k => isChk(f, k)) ? 'chk' : ''}" data-zone="DISC">${esc(val(f, 'discTV'))}<span>»</span></div>`}${tvl && !tv ? '<div></div>' : ''}<div>${tvr ? zbox(f, 'discTVR') : ''}</div><div></div>
     <div class="zl" style="line-height:2.05;align-self:start;padding-top:6px">ATP 1<br>ATP 2<br>CHOC 1<br>CHOC 2<br>CHOC 42 J</div>
-    <div style="align-self:start">${tvl ? ther('TVL') : ''}</div><div style="align-self:start">${ther('TV')}</div>
-    <div style="grid-column:4/6;align-self:start"><div class="ther ${anyChk(zKeys('FV')) ? 'chk' : ''}" data-zone="FV" style="display:inline-block;min-width:48%;margin-bottom:8px"><span class="go">»</span>${tvr ? fvATP : '<span class="x">—</span>'}</div>
+    <div style="align-self:start">${tvl ? ther('TVL') : ''}</div><div style="align-self:start">${tv ? ther('TV') : ''}</div>
+    <div style="grid-column:4/6;align-self:start">${tvr ? `<div class="ther ${anyChk(zKeys('FV')) ? 'chk' : ''}" data-zone="FV" style="display:inline-block;min-width:48%;margin-bottom:8px"><span class="go">»</span>${fvATP}</div>` : ''}
       <div class="ther" data-zone="FV"><span class="go">»</span>${fvCh}</div></div>
   </div></div>`;
   const rr = k => avail(k, f.type) ? `<div class="rr"><div class="l">${esc(P[k].l)}</div>${['atpOn', 'chocOn'].includes(k) ? `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-sw="1" data-k="${k}" style="justify-content:flex-start"><span class="sw ${val(f, k) === 'Oui' ? '' : 'off'}" style="${val(f, k) === 'Oui' ? 'background:var(--green)' : ''}"></span><span style="color:${val(f, k) === 'Oui' ? 'var(--green)' : 'var(--redTxt)'}">${esc(val(f, k))}</span></div>` : `<div class="f ${isChk(f, k) ? 'chk' : ''}" style="margin:0"><div class="box ${isMod(f, k) ? 'o' : (PT(f.type, k).dim ? 'dim' : '')}" data-k="${k}">${esc(fmt(k, val(f, k)))}${hasCm(f, k) ? '<span class="cm">💬</span>' : ''}</div></div>`}</div>` : '';
