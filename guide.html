@@ -370,18 +370,54 @@ Object.keys(ZONES).forEach(z => {
   P[z + '_c2'] = { l: 'Choc 2', t: 'Choc 2 zone ' + ZONES[z], u: 'J', nom: (ZNOM[z] && ZNOM[z].c2) || 'Non', o: CHOCS, dai: 1 };
   P[z + '_c42'] = { l: 'Choc 42 J', t: 'Choc 42 J zone ' + ZONES[z], nom: (ZNOM[z] && ZNOM[z].c42) || 'Non', o: ['Non', '1', '2', '3', '4'], dai: 1 };
 });
+// Critères de discrimination (écran « Critères de discrimination »)
+Object.assign(P, {
+  dAccel: { l: 'Accélération (Prématurité)', u: '%', nom: '19', o: ['6', '9', '13', '16', '19', '22', '25', '28', '31', '34'], dai: 1, tab: 'tachy' },
+  dMajY: { l: 'Majorité (X/Y), Y', u: 'cycles', nom: '8', o: ['4', '6', '8', '10', '12', '14', '16'], dai: 1, tab: 'tachy' },
+  dCLext: { l: 'Cycle long (Extension de la persistance)', u: 'cycles', nom: '10', dai: 1, tab: 'tachy' },
+  dMajX: { l: 'Majorité (X/Y), X', u: '%', nom: '75', o: ['50', '63', '75', '88', '100'], dai: 1, tab: 'tachy' },
+  dCLall: { l: 'Cycle long (Allongement)', u: 'ms', nom: '170', dai: 1, tab: 'tachy' },
+  dStabTV: { l: 'Stabilité RR TV / TV lente', u: 'ms', nom: '65', o: ['30', '45', '55', '65', '80', '95', '110', '125'], dai: 1, tab: 'tachy' },
+  dStabTVR: { l: 'Stabilité RR TV rapide', u: 'ms', nom: '30', o: ['30', '45', '55', '65', '80', '95', '110', '125'], dai: 1, tab: 'tachy' },
+  rsCoilVCS: { l: 'Coil VCS anormal', nom: 'Oui', o: ONOFF, dai: 1, only: ['DAI VR'] }
+});
+P.discTV.o = ['PARAD+', 'PARAD', 'Fréquence seule', 'Stabilité', 'Stabilité+', 'Stabilité / Accélération', 'Stabilité+ / Accélération'];
+const DISC_KEYS = ['dAccel', 'dMajY', 'dCLext', 'dMajX', 'dCLall', 'dStabTV', 'dStabTVR'];
+/* Différences par appareil, relevées sur les vidéos TALENTIA DF4 DR / DF4 VR (le CRT-D garde les valeurs ci-dessus).
+   nom : valeur de départ ; o : choix ; dim : grisé ; hide : paramètres absents de l'interface de cet appareil. */
+const TYPE = {
+  'DAI DR': {
+    nom: { antiTRE: 'Réduct. + Reprog.', pcDur: '30 s', ampA: '2', ampVD: '2,5', fTV: '180', fTVR: '220', fFV: '240' },
+    hide: ['cavV', 'cavATP', 'rsCoilVCS']
+  },
+  'DAI VR': {
+    nom: { mode: 'VVI', fbase: '40', pcMode: 'VVI', pcDur: '30 s', fTV: '180', fTVR: '220', fFV: '240', discTV: 'Stabilité+ / Accélération' },
+    o: { mode: ['VVI', 'VVIR', 'VOO', 'OOO'], pcMode: ['Non', 'VVI'], discTV: ['Fréquence seule', 'Stabilité', 'Stabilité+', 'Stabilité / Accélération', 'Stabilité+ / Accélération'] },
+    dim: { hyst: 1 },
+    hide: ['cavV', 'cavATP', 'autoComATP', 'stimAESV', 'suppPause', 'accelESV', 'rsFA']
+  }
+};
+const _pt = {};
+function PT(t, k) {
+  const id = t + '|' + k; if (_pt[id]) return _pt[id];
+  const d = TYPE[t] || {}, p = Object.assign({}, P[k]);
+  if (d.nom && d.nom[k] != null) p.nom = d.nom[k];
+  if (d.o && d.o[k]) p.o = d.o[k];
+  if (d.dim && d.dim[k]) p.dim = 1;
+  return (_pt[id] = p);
+}
 // pas d'unité affichée pour « Non »
 const fmt = (k, v) => { const p = P[k]; if (v === '' || v == null) return '—'; return (p.u && !/^(Non|Oui)$/.test(v)) ? v + '  ' + p.u : v; };
-const avail = (k, t) => { const p = P[k]; if (!p) return false; if (p.a && !hasA(t)) return false; if (p.dai && !isDAI(t)) return false; if (p.crt && !isCRT(t)) return false; return true; };
+const avail = (k, t) => { const p = P[k]; if (!p) return false; if (TYPE[t] && (TYPE[t].hide || []).includes(k)) return false; if (p.only && !p.only.includes(t)) return false; if (p.a && !hasA(t)) return false; if (p.dai && !isDAI(t)) return false; if (p.crt && !isCRT(t)) return false; return true; };
 
 /* ---------- état ---------- */
 const S = { list: [], cur: null, tab: 'brady', edit: false, focus: false, open: {}, mopen: {}, only: false, zone: null, q: '' };
-const val = (f, k) => (f.values && f.values[k] != null) ? f.values[k] : P[k].nom;
-const isMod = (f, k) => !!((f.values && f.values[k] != null && f.values[k] !== P[k].nom) || (f.mark && f.mark[k]));
+const val = (f, k) => (f.values && f.values[k] != null) ? f.values[k] : PT(f.type, k).nom;
+const isMod = (f, k) => !!((f.values && f.values[k] != null && f.values[k] !== PT(f.type, k).nom) || (f.mark && f.mark[k]));
 const isChk = (f, k) => !!(f.chk && f.chk[k]);
 const hasCm = (f, k) => !!(f.comments && f.comments[k]);
 const keysOfTab = (tab, t) => Object.keys(P).filter(k => avail(k, t) && tabOf(k) === tab);
-function tabOf(k) { if (/^rs/.test(k)) return 'rs'; if (k === 'irm') return 'irm'; if (/^(TVL|TV|FV)_|^(tvlOn|tvOn|tvrOn|fTVL|fTV|fTVR|fFV|pTVL|pTV|pFV|discTV|discTVR|atpOn|chocOn|cavATP|autoComATP|polAlt|coilVCS|boitier|vecteur)$/.test(k)) return 'tachy'; return 'brady'; }
+function tabOf(k) { if (P[k] && P[k].tab) return P[k].tab; if (/^rs/.test(k)) return 'rs'; if (k === 'irm') return 'irm'; if (/^(TVL|TV|FV)_|^(tvlOn|tvOn|tvrOn|fTVL|fTV|fTVR|fFV|pTVL|pTV|pFV|discTV|discTVR|atpOn|chocOn|cavATP|autoComATP|polAlt|coilVCS|boitier|vecteur)$/.test(k)) return 'tachy'; return 'brady'; }
 const titleOf = f => 'PROG_' + String(f.type || '').replace(/[^A-Za-z0-9]+/g, '_') + '_' + String(f.variante || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
 
 /* ---------- stockage ---------- */
@@ -393,15 +429,13 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'g' + Date.now() + 
 function seedFiches() {
   const tvTher = { TV_a1prog: 'SALVE + SCAN', TV_a1nb: '3', TV_a1prem: '8', TV_a1ajout: '0', TV_a1interv: '85', TV_a1decR: '0', TV_a1decS: '8', TV_a1dur: '4', TV_a1coupl: '190',
     TV_a2prog: 'SALVE + SCAN', TV_a2nb: '3', TV_a2prem: '8', TV_a2ajout: '0', TV_a2interv: '80', TV_a2decR: '0', TV_a2decS: '8', TV_a2dur: '4', TV_a2coupl: '190', TV_c1: '42', TV_c2: '42', TV_c42: '4' };
-  const reco = Object.assign({ tvlOn: 'Oui', fTVL: '160', fTV: '185', fTVR: '230', fFV: '255', pTVL: '50', autoComATP: 'Oui' }, tvTher);
-  const chkBrady = { pcMode: 1, autoA: 1, autoVD: 1 };
   const chkTher = { TV_a1dur: 1, TV_a1coupl: 1, TV_a2dur: 1, TV_a2coupl: 1, TV_a1interv: 1 };
-  const base = (type, variante, values, extra) => Object.assign({ id: uid(), type, variante, appareil: 'TALENTIA 4LV SonR CRT-D', values, chk: Object.assign({}, chkBrady), mark: {}, comments: {}, notes: '' }, extra || {});
+  const base = (type, variante, appareil, values, chk) => ({ id: uid(), type, variante, appareil, values, chk, mark: {}, comments: {}, notes: '' });
   return [
-    base('DAI DR', 'RECO', Object.assign({}, reco), { chk: Object.assign({}, chkBrady, chkTher) }),
-    base('DAI DR', 'TOURS', { cavATP: 'D' }, { mark: { cavATP: 1 } }),
-    base('DAI VR', 'RECO', Object.assign({ mode: 'VVI', fbase: '70', discTV: 'Stabilité+ / Accélération' }, reco), { chk: { pcMode: 1, autoVD: 1 }, open: { sondes: 1 } }),
-    base('DAI VR', 'TOURS', { mode: 'VVI', fbase: '70', discTV: 'Stabilité+ / Accélération' }, { chk: { pcMode: 1, autoVD: 1 }, open: { sondes: 1 } })
+    base('DAI DR', 'RECO', 'TALENTIA DF4 DR', Object.assign({ tvlOn: 'Oui', fTVL: '160', pTVL: '50', fTV: '185', fTVR: '230', fFV: '255', autoComATP: 'Oui', pcDur: '1 min' }, tvTher), Object.assign({ pcMode: 1, pcDur: 1, autoA: 1, autoVD: 1 }, chkTher)),
+    base('DAI DR', 'TOURS', 'TALENTIA DF4 DR', { pcDur: '1 min' }, { pcMode: 1, pcDur: 1, autoA: 1, autoVD: 1 }),
+    base('DAI VR', 'RECO', 'TALENTIA DF4 VR', { fbase: '70', pcDur: '1 min' }, { pcMode: 1, pcDur: 1, autoVD: 1 }),
+    base('DAI VR', 'TOURS', 'TALENTIA DF4 VR', { fbase: '70', pcDur: '1 min' }, { pcMode: 1, pcDur: 1, autoVD: 1 })
   ];
 }
 
@@ -479,7 +513,7 @@ try { MQ.addEventListener('change', () => { if (S.cur) renderFiche(); }); } catc
 const keep = (f, k) => avail(k, f.type) && (!S.only || isMod(f, k) || isChk(f, k));
 function mrow(f, k, lab) {
   if (!keep(f, k)) return '';
-  const p = P[k], v = val(f, k), o = isMod(f, k);
+  const p = PT(f.type, k), v = val(f, k), o = isMod(f, k);
   return `<div class="mr ${isChk(f, k) ? 'chk' : ''}" data-k="${k}"><div class="ml">${esc(lab || p.l)}${hasCm(f, k) ? ' <span class="mcm">💬</span>' : ''}${p.u && v !== '' && S.edit && !o ? '' : ''}</div><div class="mv ${o ? 'o' : (p.dim ? 'dim' : '')}">${esc(fmt(k, v))}</div></div>`;
 }
 function mcard(f, id, title, groups, extra) {
@@ -499,7 +533,7 @@ const T_GEN = [['', ['atpOn', 'chocOn']], ['', ['cavATP', 'autoComATP', 'polAlt'
 const thGroups = z => (z === 'FV' ? [['ATP en TV rapide', ATP_FIELDS.map(a => z + '_a1' + a[0])]] : [['ATP 1', ATP_FIELDS.map(a => z + '_a1' + a[0])], ['ATP 2', ATP_FIELDS.map(a => z + '_a2' + a[0])]]).concat([['Chocs', [z + '_c1', z + '_c2', z + '_c42']]]);
 const R_SECT = [
   ['rsSys', 'Système', [['', ['rsSuivi', 'rsAlertes', 'rsIRM', 'rsAsync']]]],
-  ['rsSond', 'Sondes', [['Sonde A', ['rsImpA', 'rsImpAH', 'rsImpAB', 'rsASA', 'rsASAs']], ['Sonde VD', ['rsImpVD', 'rsImpVDH', 'rsImpVDB', 'rsASVD', 'rsASVDs', 'rsLPE', 'rsImpChoc', 'rsCoil']], ['Sonde VG', ['rsImpVG', 'rsImpVGH', 'rsImpVGB']]]],
+  ['rsSond', 'Sondes', [['Sonde A', ['rsImpA', 'rsImpAH', 'rsImpAB', 'rsASA', 'rsASAs']], ['Sonde VD', ['rsImpVD', 'rsImpVDH', 'rsImpVDB', 'rsASVD', 'rsASVDs', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsCoilVCS']], ['Sonde VG', ['rsImpVG', 'rsImpVGH', 'rsImpVGB']]]],
   ['rsTh', 'Thérapies', [['', ['rsChocDes', 'rsChocDel', 'rsATP']]]],
   ['rsCl', 'Alertes cliniques', [['', ['rsFA', 'rsSurdet']]]]
 ];
@@ -522,23 +556,25 @@ function mTachy(f) {
   const ruler = `<div class="ruler">${seg.map(([c, l, k]) => `<div class="${c} ${isMod(f, k) ? 'o' : ''}" data-k="${k}">${l}<b>≥ ${esc(val(f, k) || '—')}</b></div>`).join('')}</div>`;
   const tog = k => { const v = on(k), o = isMod(f, k); return `<span class="onoff ${v ? (o ? 'o' : '') : 'n'} ${isChk(f, k) ? 'chk' : ''}" data-k="${k}">${v ? 'ACTIVÉE' : 'DÉSACTIVÉE'}</span>`; };
   const zk = z => Object.keys(P).filter(k => k.startsWith(z + '_'));
-  const zcard = (id, title, onKey, rows, ther, zone) => {
+  const zcard = (id, title, onKey, rows, ther, zone, extraRow) => {
     const active = !onKey || on(onKey);
     const keys = rows.concat(zone ? zk(zone) : []).concat(onKey ? [onKey] : []);
     const nm = keys.filter(k => isMod(f, k)).length, nc = keys.filter(k => isChk(f, k)).length;
-    return `<div class="mc ${active ? '' : 'off'}"><div class="mh" style="cursor:default"><span class="tl">${title}</span>${nm ? `<span class="bd o">${nm}</span>` : ''}${nc ? `<span class="bd r">${nc}</span>` : ''}${onKey ? tog(onKey) : ''}</div>${active ? `<div class="mb">${rows.map(k => mrow(f, k)).join('')}${ther ? '<div class="msub">Thérapies</div>' + ther : ''}${zone ? `<button class="mgo" data-zone="${zone}">Détail des thérapies ›</button>` : ''}</div>` : ''}</div>`;
+    return `<div class="mc ${active ? '' : 'off'}"><div class="mh" style="cursor:default"><span class="tl">${title}</span>${nm ? `<span class="bd o">${nm}</span>` : ''}${nc ? `<span class="bd r">${nc}</span>` : ''}${onKey ? tog(onKey) : ''}</div>${active ? `<div class="mb">${rows.map(k => mrow(f, k)).join('')}${extraRow || ''}${ther ? '<div class="msub">Thérapies</div>' + ther : ''}${zone ? `<button class="mgo" data-zone="${zone}">Détail des thérapies ›</button>` : ''}</div>` : ''}</div>`;
   };
+  const discRow = (() => { const ks = ['discTV'].concat(DISC_KEYS), o = ks.some(k => isMod(f, k)), c = ks.some(k => isChk(f, k)); return `<div class="mr ${c ? 'chk' : ''}" data-zone="DISC"><div class="ml">Discrimination<small>Critères de discrimination ›</small></div><div class="mv ${o ? 'o' : ''}">${esc(val(f, 'discTV'))}</div></div>`; })();
   const thTV = z => therLine(f, 'ATP 1', zk(z).filter(k => k.includes('_a1')), atpTxt(f, z, 'a1')) + therLine(f, 'ATP 2', zk(z).filter(k => k.includes('_a2')), atpTxt(f, z, 'a2')) + therLine(f, 'Choc 1', [z + '_c1'], chTxt(f, z + '_c1')) + therLine(f, 'Choc 2', [z + '_c2'], chTxt(f, z + '_c2')) + therLine(f, 'Chocs 42 J', [z + '_c42'], chTxt(f, z + '_c42'));
   const thFV = therLine(f, 'Choc 1', ['FV_c1'], chTxt(f, 'FV_c1')) + therLine(f, 'Choc 2', ['FV_c2'], chTxt(f, 'FV_c2')) + therLine(f, 'Chocs 42 J', ['FV_c42'], chTxt(f, 'FV_c42'));
   const thTVR = therLine(f, 'ATP', zk('FV').filter(k => k.includes('_a1')), atpTxt(f, 'FV', 'a1'));
   return ruler +
-    zcard('zTVL', 'Zone TV lente', 'tvlOn', ['fTVL', 'pTVL', 'discTV'], thTV('TVL'), 'TVL') +
-    zcard('zTV', 'Zone TV', 'tvOn', ['fTV', 'pTV', 'discTV'], thTV('TV'), 'TV') +
+    zcard('zTVL', 'Zone TV lente', 'tvlOn', ['fTVL', 'pTVL'], thTV('TVL'), 'TVL', discRow) +
+    zcard('zTV', 'Zone TV', 'tvOn', ['fTV', 'pTV'], thTV('TV'), 'TV', discRow) +
     zcard('zTVR', 'Zone TV rapide', 'tvrOn', ['fTVR', 'discTVR'], thTVR, null) +
     zcard('zFV', 'Zone FV', null, ['fFV', 'pFV'], (on('tvrOn') ? '' : '') + thFV, 'FV') +
-    mcard(f, 'tgen', 'Réglages des thérapies', T_GEN);
+    mcard(f, 'tgen', 'Réglages des thérapies', T_GEN, '<button class="mgo" data-sondes="1">Paramètres sondes ›</button>');
 }
 function mZone(f, z) {
+  if (z === 'DISC') return `<div class="mback"><button data-zback="1">‹ Zones</button><b>Critères de discrimination</b></div>` + mcard(f, 'disc', 'Critères', [['', ['discTV'].concat(discShown(f) ? DISC_KEYS : [])]]).replace('class="mc cl"', 'class="mc"');
   const title = z === 'FV' ? 'Thérapies FV / TV rapide' : 'Thérapies ' + ZONES[z];
   return `<div class="mback"><button data-zback="1">‹ Zones</button><b>${title}</b></div>` + thGroups(z).map(([t, ks], i) => { const sv = S.only; S.only = false; const h = mcard(f, 'th' + z + i, t, [['', ks]]); S.only = sv; return h.replace('class="mc cl"', 'class="mc"'); }).join('');
 }
@@ -547,7 +583,7 @@ function mAll(f) {
   const zTitle = { TVL: 'Thérapies zone TV lente', TV: 'Thérapies zone TV', FV: 'Thérapies FV / TV rapide' };
   const parts = [
     ['Brady', mBrady(f)],
-    ['Tachy', D ? mcard(f, 'tz', 'Zones', [['Zones actives', ['tvlOn', 'tvOn', 'tvrOn']], ['Fréquences', ['fTVL', 'fTV', 'fTVR', 'fFV']], ['Persistance', ['pTVL', 'pTV', 'pFV']], ['Discrimination', ['discTV', 'discTVR']]]) + Object.keys(ZONES).map(z => mcard(f, 'th' + z, zTitle[z], thGroups(z))).join('') + mcard(f, 'tgen', 'Réglages des thérapies', T_GEN) : ''],
+    ['Tachy', D ? mcard(f, 'tz', 'Zones', [['Zones actives', ['tvlOn', 'tvOn', 'tvrOn']], ['Fréquences', ['fTVL', 'fTV', 'fTVR', 'fFV']], ['Persistance', ['pTVL', 'pTV', 'pFV']], ['Discrimination', ['discTV', 'discTVR'].concat(DISC_KEYS)]]) + Object.keys(ZONES).map(z => mcard(f, 'th' + z, zTitle[z], thGroups(z))).join('') + mcard(f, 'tgen', 'Réglages des thérapies', T_GEN) : ''],
     ['Suivi à distance', mRS(f)], ['IRM', mIRM(f)]
   ].filter(p => p[1]);
   if (!parts.length) return `<div class="mempty">Tous les réglages sont aux valeurs nominales.<br>Rien de particulier à programmer.</div>`;
@@ -596,6 +632,7 @@ function bindFiche() {
     $('#del').addEventListener('click', async () => { if (!confirm('Supprimer la fiche ' + titleOf(f) + ' ?')) return; await supabase.createClient().from(TABLE).delete().eq('id', f.id); S.edit = false; history.replaceState(null, '', location.pathname); await loadList(); renderList(); });
   }
   const scr = $('#screen'); if (!scr) return;
+  scr.querySelectorAll('[data-sondes]').forEach(el => el.addEventListener('click', () => { S.tab = 'brady'; S.zone = null; S.open.sondes = true; S.mopen.sondes = true; renderFiche(); setTimeout(() => { const t = document.querySelector('[data-sec=sondes],[data-msec=sondes]'); if (t) t.scrollIntoView({ block: 'start' }); }, 50); }));
   if (mob()) {
     scr.querySelectorAll('[data-k]').forEach(el => el.addEventListener('click', ev => { ev.stopPropagation(); openPop(el.dataset.k); }));
     scr.querySelectorAll('[data-zone]').forEach(el => el.addEventListener('click', () => { S.zone = el.dataset.zone; renderFiche(); window.scrollTo(0, 0); }));
@@ -605,7 +642,7 @@ function bindFiche() {
 /* ---------- briques d'affichage ---------- */
 function field(f, k, lab) {
   if (!avail(k, f.type)) return '';
-  const p = P[k], v = val(f, k), cls = isMod(f, k) ? 'o' : (p.dim ? 'dim' : '');
+  const p = PT(f.type, k), v = val(f, k), cls = isMod(f, k) ? 'o' : (p.dim ? 'dim' : '');
   return `<div class="f ${isChk(f, k) ? 'chk' : ''}"><div class="l">${esc(lab || p.l)}</div><div class="box ${cls}" data-k="${k}">${esc(fmt(k, v))}${hasCm(f, k) ? '<span class="cm">💬</span>' : ''}</div></div>`;
 }
 function sumItem(f, label, keys, sep) {
@@ -617,7 +654,7 @@ function section(f, id, title, keys, sumHtml, openHtml) {
   const mod = keys.some(k => avail(k, f.type) && isMod(f, k)), op = !!S.open[id];
   return `<div class="sec"><div class="side ${mod ? 'mod' : ''}" data-sec="${id}"><span class="ar">${op ? '⌃' : '⌄'}</span><span>${title}${mod ? ' <span class="pen">✎</span>' : ''}</span></div><div class="body">${op ? openHtml : sumHtml}</div></div>`;
 }
-const col = (f, head, keys) => `<div>${head ? `<div class="colh">${head}</div>` : ''}${keys.map(k => field(f, k)).join('')}</div>`;
+const col = (f, head, keys) => !keys.some(k => avail(k, f.type)) ? '<div></div>' : `<div>${head ? `<div class="colh">${head}</div>` : ''}${keys.map(k => field(f, k)).join('')}</div>`;
 
 /* ---------- Brady ---------- */
 function renderBrady(f) {
@@ -667,33 +704,42 @@ function renderTachy(f) {
     <div class="zl">Zones</div><div>${ztog(f, 'tvlOn')}</div><div>${ztog(f, 'tvOn')}</div><div style="grid-column:4/6">${ztog(f, 'tvrOn', 'TV Rapide')}</div>
     <div class="zl">Fréquence</div><div>${tvl ? zbox(f, 'fTVL') : ''}</div><div>${zbox(f, 'fTV')}</div><div>${tvr ? zbox(f, 'fTVR') : ''}</div><div>${zbox(f, 'fFV')}</div>
     <div class="zl">Persistance</div><div>${tvl ? zbox(f, 'pTVL') : ''}</div><div>${zbox(f, 'pTV')}</div><div style="grid-column:4/6">${zbox(f, 'pFV')}</div>
-    <div class="zl">Discrimination</div><div style="grid-column:${tvl ? '2/4' : '3/4'}" class="zdisc ${isMod(f, 'discTV') ? 'o' : ''} ${isChk(f, 'discTV') ? 'chk' : ''}" data-k="discTV">${esc(val(f, 'discTV'))}<span>»</span></div>${tvl ? '' : ''}<div>${tvr ? zbox(f, 'discTVR') : ''}</div><div></div>
+    <div class="zl">Discrimination</div><div style="grid-column:${tvl ? '2/4' : '3/4'}" class="zdisc ${['discTV'].concat(DISC_KEYS).some(k => isMod(f, k)) ? 'o' : ''} ${['discTV'].concat(DISC_KEYS).some(k => isChk(f, k)) ? 'chk' : ''}" data-zone="DISC">${esc(val(f, 'discTV'))}<span>»</span></div>${tvl ? '' : ''}<div>${tvr ? zbox(f, 'discTVR') : ''}</div><div></div>
     <div class="zl" style="line-height:2.05;align-self:start;padding-top:6px">ATP 1<br>ATP 2<br>CHOC 1<br>CHOC 2<br>CHOC 42 J</div>
     <div style="align-self:start">${tvl ? ther('TVL') : ''}</div><div style="align-self:start">${ther('TV')}</div>
     <div style="grid-column:4/6;align-self:start"><div class="ther ${anyChk(zKeys('FV')) ? 'chk' : ''}" data-zone="FV" style="display:inline-block;min-width:48%;margin-bottom:8px"><span class="go">»</span>${tvr ? fvATP : '<span class="x">—</span>'}</div>
       <div class="ther" data-zone="FV"><span class="go">»</span>${fvCh}</div></div>
   </div></div>`;
-  const rr = k => avail(k, f.type) ? `<div class="rr"><div class="l">${esc(P[k].l)}</div>${['atpOn', 'chocOn'].includes(k) ? `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-k="${k}" style="justify-content:flex-start"><span class="sw ${val(f, k) === 'Oui' ? '' : 'off'}" style="${val(f, k) === 'Oui' ? 'background:var(--green)' : ''}"></span><span style="color:${val(f, k) === 'Oui' ? 'var(--green)' : 'var(--redTxt)'}">${esc(val(f, k))}</span></div>` : `<div class="f ${isChk(f, k) ? 'chk' : ''}" style="margin:0"><div class="box ${isMod(f, k) ? 'o' : (P[k].dim ? 'dim' : '')}" data-k="${k}">${esc(fmt(k, val(f, k)))}${hasCm(f, k) ? '<span class="cm">💬</span>' : ''}</div></div>`}</div>` : '';
+  const rr = k => avail(k, f.type) ? `<div class="rr"><div class="l">${esc(P[k].l)}</div>${['atpOn', 'chocOn'].includes(k) ? `<div class="tg ${isChk(f, k) ? 'chk' : ''}" data-k="${k}" style="justify-content:flex-start"><span class="sw ${val(f, k) === 'Oui' ? '' : 'off'}" style="${val(f, k) === 'Oui' ? 'background:var(--green)' : ''}"></span><span style="color:${val(f, k) === 'Oui' ? 'var(--green)' : 'var(--redTxt)'}">${esc(val(f, k))}</span></div>` : `<div class="f ${isChk(f, k) ? 'chk' : ''}" style="margin:0"><div class="box ${isMod(f, k) ? 'o' : (PT(f.type, k).dim ? 'dim' : '')}" data-k="${k}">${esc(fmt(k, val(f, k)))}${hasCm(f, k) ? '<span class="cm">💬</span>' : ''}</div></div>`}</div>` : '';
   const right = `<div class="right">${rr('atpOn')}${rr('chocOn')}<div class="rsep"></div>${rr('cavATP')}${rr('autoComATP')}${rr('polAlt')}${rr('coilVCS')}${rr('boitier')}${rr('vecteur')}</div>`;
-  return `<div class="tachy"><div>${g}<div class="sensrow"><span class="l">Sensibilité VD</span><div class="f ${isChk(f, 'sensVD') ? 'chk' : ''}" style="margin:0;min-width:120px"><div class="box ${isMod(f, 'sensVD') ? 'o' : ''}" data-k="sensVD">${esc(fmt('sensVD', val(f, 'sensVD')))}</div></div></div></div>${right}</div>`;
+  return `<div class="tachy"><div>${g}<div class="sensrow"><span class="l">Sensibilité VD</span><div class="f ${isChk(f, 'sensVD') ? 'chk' : ''}" style="margin:0;min-width:120px"><div class="box ${isMod(f, 'sensVD') ? 'o' : ''}" data-k="sensVD">${esc(fmt('sensVD', val(f, 'sensVD')))}</div></div><span style="flex:1"></span><button class="btnS" data-sondes="1">Paramètres sondes »</button></div></div>${right}</div>`;
 }
 function renderZone(f, z) {
+  if (z === 'DISC') return renderDisc(f);
   const atpCol = (a, title) => `<div class="colc" style="flex:2 1 300px"><div class="hd">${title}</div><div class="in" style="grid-template-columns:1fr 1fr">${ATP_FIELDS.map(([k]) => field(f, z + '_' + a + k)).join('')}</div></div>`;
   const chocs = `<div class="colc" style="flex:1 1 160px"><div class="hd">Chocs</div><div class="in">${field(f, z + '_c1')}${field(f, z + '_c2')}${field(f, z + '_c42')}</div></div>`;
   const title = z === 'FV' ? 'Thérapies en zone FV / TV rapide' : 'Thérapies en zone ' + ZONES[z];
   return `<div class="ztitle"><button data-zback="1">‹ Retour</button><h2>${title}</h2></div><div class="cols">${z === 'FV' ? atpCol('a1', 'ATP (TV rapide)') : atpCol('a1', 'ATP 1') + atpCol('a2', 'ATP 2')}${chocs}</div>`;
 }
 
+function discShown(f) { return !/PARAD/.test(val(f, 'discTV')); }
+function renderDisc(f) {
+  const ks = discShown(f) ? DISC_KEYS : [];
+  return `<div class="ztitle"><button data-zback="1">‹ Retour</button><h2>Critères de discrimination</h2></div>
+    <div class="cols"><div class="colc" style="flex:0 1 460px"><div class="hd">Critères de discrimination</div><div class="in" style="grid-template-columns:1fr 1fr">
+    <div>${field(f, 'discTV', 'Critères de discrimination')}${['dAccel', 'dMajY', 'dCLext', 'dMajX'].filter(k => ks.includes(k)).map(k => field(f, k)).join('')}</div>
+    <div>${['dCLall', 'dStabTV', 'dStabTVR'].filter(k => ks.includes(k)).map(k => field(f, k)).join('')}</div></div></div></div>`;
+}
 /* ---------- Suivi à distance / IRM ---------- */
 function renderRS(f) {
   const t = f.type, A = hasA(t), D = isDAI(t), C = isCRT(t);
-  const sys = ['rsSuivi', 'rsAlertes', 'rsIRM', 'rsAsync'], sond = ['rsImpA', 'rsImpAH', 'rsImpAB', 'rsASA', 'rsASAs', 'rsImpVD', 'rsImpVDH', 'rsImpVDB', 'rsASVD', 'rsASVDs', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsImpVG', 'rsImpVGH', 'rsImpVGB'], th = ['rsChocDes', 'rsChocDel', 'rsATP'], cl = ['rsFA', 'rsSurdet'];
+  const sys = ['rsSuivi', 'rsAlertes', 'rsIRM', 'rsAsync'], sond = ['rsImpA', 'rsImpAH', 'rsImpAB', 'rsASA', 'rsASAs', 'rsImpVD', 'rsImpVDH', 'rsImpVDB', 'rsASVD', 'rsASVDs', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsCoilVCS', 'rsImpVG', 'rsImpVGH', 'rsImpVGB'], th = ['rsChocDes', 'rsChocDel', 'rsATP'], cl = ['rsFA', 'rsSurdet'];
   const sum = keys => `<div class="sumrow">${keys.filter(k => avail(k, t)).map(k => sumItem(f, P[k].l, [k])).join('')}</div>`;
   const sondOpen = (A ? `<div class="subh">SONDE A</div><div class="grid4">${col(f, '', ['rsImpA', 'rsImpAH', 'rsImpAB'])}${col(f, '', ['rsASA', 'rsASAs'])}<div></div><div></div></div>` : '') +
     `<div class="subh">SONDE VD</div><div class="grid4">${col(f, '', ['rsImpVD', 'rsImpVDH', 'rsImpVDB'])}${col(f, '', ['rsASVD', 'rsASVDs'])}${D ? col(f, '', ['rsLPE']) : '<div></div>'}<div></div></div>` +
-    (D ? `<div class="grid4">${col(f, '', ['rsImpChoc'])}${col(f, '', ['rsCoil'])}<div></div><div></div></div>` : '') +
+    (D ? `<div class="grid4">${col(f, '', ['rsImpChoc'])}${col(f, '', ['rsCoil'])}${col(f, '', ['rsCoilVCS'])}<div></div></div>` : '') +
     (C ? `<div class="subh">SONDE VG</div><div class="grid4">${col(f, '', ['rsImpVG', 'rsImpVGH', 'rsImpVGB'])}<div></div><div></div><div></div></div>` : '');
-  const sondSum = `<div class="sumrow">${['rsImpA', 'rsASA', 'rsImpVD', 'rsASVD', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsImpVG'].filter(k => avail(k, t)).map(k => sumItem(f, P[k].l, [k])).join('')}</div>`;
+  const sondSum = `<div class="sumrow">${['rsImpA', 'rsASA', 'rsImpVD', 'rsASVD', 'rsLPE', 'rsImpChoc', 'rsCoil', 'rsCoilVCS', 'rsImpVG'].filter(k => avail(k, t)).map(k => sumItem(f, P[k].l, [k])).join('')}</div>`;
   return section(f, 'rsSys', 'Système', sys, sum(sys), `<div class="grid4">${sys.map(k => col(f, '', [k])).join('')}</div>`) +
     section(f, 'rsSond', 'Sondes', sond, sondSum, sondOpen) +
     (D ? section(f, 'rsTh', 'Thérapies', th, sum(th), `<div class="grid4">${th.map(k => col(f, '', [k])).join('')}<div></div></div>`) : '') +
@@ -703,7 +749,7 @@ function renderIRM(f) { return `<div class="sec"><div class="side"> </div><div c
 
 /* ---------- fenêtre de choix / détail ---------- */
 function openPop(k) {
-  const f = S.cur, p = P[k], v = val(f, k), ovl = $('#ovl');
+  const f = S.cur, p = PT(f.type, k), v = val(f, k), ovl = $('#ovl');
   const opts = (p.o || []).slice(); if (p.o && v && !opts.includes(v)) opts.push(v);
   const title = (p.t || p.l);
   let b = '';
@@ -742,8 +788,20 @@ function openPop(k) {
 /* ---------- démarrage ---------- */
 (async function start() {
   await loadList();
-  let seeded = false; try { seeded = localStorage.getItem('mp_guide_seeded') === '1'; } catch (e) {}
-  if (!S.list.length && !seeded) { for (const f of seedFiches()) await save(f); try { localStorage.setItem('mp_guide_seeded', '1'); } catch (e) {} await loadList(); }
+  let seeded = false; try { seeded = !!localStorage.getItem('mp_guide_seeded'); } catch (e) {}
+  if (!S.list.length && !seeded) { for (const f of seedFiches()) await save(f); try { localStorage.setItem('mp_guide_seeded', '2'); } catch (e) {} await loadList(); }
+  else {
+    // v2 : les 4 exemples DR / VR passent sur l'interface TALENTIA DF4 (notes et commentaires conservés)
+    let v = ''; try { v = localStorage.getItem('mp_guide_seeded') || ''; } catch (e) {}
+    if (v === '1') {
+      for (const n of seedFiches()) {
+        const old = S.list.find(f => f.type === n.type && f.variante === n.variante && f.appareil === 'TALENTIA 4LV SonR CRT-D');
+        if (old) await save(Object.assign({}, n, { id: old.id, notes: old.notes || '', comments: old.comments || {} }));
+      }
+      try { localStorage.setItem('mp_guide_seeded', '2'); } catch (e) {}
+      await loadList();
+    }
+  }
   const id = location.hash.slice(1);
   if (id && S.list.some(f => f.id === id)) openFiche(id); else renderList();
 })();
